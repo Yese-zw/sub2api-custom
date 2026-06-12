@@ -41,13 +41,17 @@ type SystemSettings struct {
 	LoginAgreementUpdatedAt          string                   `json:"login_agreement_updated_at"`
 	LoginAgreementDocuments          []LoginAgreementDocument `json:"login_agreement_documents"`
 
-	SMTPHost               string `json:"smtp_host"`
-	SMTPPort               int    `json:"smtp_port"`
-	SMTPUsername           string `json:"smtp_username"`
-	SMTPPasswordConfigured bool   `json:"smtp_password_configured"`
-	SMTPFrom               string `json:"smtp_from_email"`
-	SMTPFromName           string `json:"smtp_from_name"`
-	SMTPUseTLS             bool   `json:"smtp_use_tls"`
+	EmailProvider                     string `json:"email_provider"`
+	SMTPHost                          string `json:"smtp_host"`
+	SMTPPort                          int    `json:"smtp_port"`
+	SMTPUsername                      string `json:"smtp_username"`
+	SMTPPasswordConfigured            bool   `json:"smtp_password_configured"`
+	SMTPFrom                          string `json:"smtp_from_email"`
+	SMTPFromName                      string `json:"smtp_from_name"`
+	SMTPUseTLS                        bool   `json:"smtp_use_tls"`
+	ResendAPIKeyConfigured            bool   `json:"resend_api_key_configured"`
+	CloudflareEmailAccountID          string `json:"cloudflare_email_account_id"`
+	CloudflareEmailAPITokenConfigured bool   `json:"cloudflare_email_api_token_configured"`
 
 	TurnstileEnabled             bool   `json:"turnstile_enabled"`
 	TurnstileSiteKey             string `json:"turnstile_site_key"`

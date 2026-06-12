@@ -438,7 +438,8 @@ export interface SystemSettings {
   backend_mode_enabled: boolean;
   custom_menu_items: CustomMenuItem[];
   custom_endpoints: CustomEndpoint[];
-  // SMTP settings
+  // Email provider settings
+  email_provider: "smtp" | "resend" | "cloudflare";
   smtp_host: string;
   smtp_port: number;
   smtp_username: string;
@@ -446,6 +447,9 @@ export interface SystemSettings {
   smtp_from_email: string;
   smtp_from_name: string;
   smtp_use_tls: boolean;
+  resend_api_key_configured: boolean;
+  cloudflare_email_account_id: string;
+  cloudflare_email_api_token_configured: boolean;
   // Cloudflare Turnstile settings
   turnstile_enabled: boolean;
   turnstile_site_key: string;
@@ -696,6 +700,7 @@ export interface UpdateSettingsRequest {
   backend_mode_enabled?: boolean;
   custom_menu_items?: CustomMenuItem[];
   custom_endpoints?: CustomEndpoint[];
+  email_provider?: "smtp" | "resend" | "cloudflare";
   smtp_host?: string;
   smtp_port?: number;
   smtp_username?: string;
@@ -703,6 +708,9 @@ export interface UpdateSettingsRequest {
   smtp_from_email?: string;
   smtp_from_name?: string;
   smtp_use_tls?: boolean;
+  resend_api_key?: string;
+  cloudflare_email_account_id?: string;
+  cloudflare_email_api_token?: string;
   turnstile_enabled?: boolean;
   turnstile_site_key?: string;
   turnstile_secret_key?: string;
@@ -904,6 +912,7 @@ export async function testSmtpConnection(
  */
 export interface SendTestEmailRequest {
   email: string;
+  email_provider: "smtp" | "resend" | "cloudflare";
   smtp_host: string;
   smtp_port: number;
   smtp_username: string;
@@ -911,6 +920,9 @@ export interface SendTestEmailRequest {
   smtp_from_email: string;
   smtp_from_name: string;
   smtp_use_tls: boolean;
+  resend_api_key: string;
+  cloudflare_email_account_id: string;
+  cloudflare_email_api_token: string;
 }
 
 /**

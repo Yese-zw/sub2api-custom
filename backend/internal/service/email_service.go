@@ -1,15 +1,19 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
 	"net"
+	"net/http"
 	"net/smtp"
 	"net/url"
 	"strconv"
@@ -17,6 +21,15 @@ import (
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+)
+
+const (
+	EmailProviderSMTP       = "smtp"
+	EmailProviderResend     = "resend"
+	EmailProviderCloudflare = "cloudflare"
+
+	resendEmailEndpoint     = "https://api.resend.com/emails"
+	cloudflareEmailEndpoint = "https://api.cloudflare.com/client/v4/accounts/%s/email/sending/send"
 )
 
 var (
@@ -92,6 +105,17 @@ type SMTPConfig struct {
 	UseTLS   bool
 }
 
+// EmailConfig 邮件发送配置
+type EmailConfig struct {
+	Provider string
+
+	SMTP SMTPConfig
+
+	ResendAPIKey        string
+	CloudflareAccountID string
+	CloudflareAPIToken  string
+}
+
 // EmailService 邮件服务
 type EmailService struct {
 	settingRepo              SettingRepository
@@ -127,6 +151,17 @@ func emailRecipientName(email string) string {
 		return trimmed[:at]
 	}
 	return trimmed
+}
+
+func normalizeEmailProvider(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case EmailProviderResend:
+		return EmailProviderResend
+	case EmailProviderCloudflare:
+		return EmailProviderCloudflare
+	default:
+		return EmailProviderSMTP
+	}
 }
 
 // GetSMTPConfig 从数据库获取SMTP配置
@@ -171,13 +206,85 @@ func (s *EmailService) GetSMTPConfig(ctx context.Context) (*SMTPConfig, error) {
 	}, nil
 }
 
+// GetEmailConfig 从数据库获取邮件发送配置
+func (s *EmailService) GetEmailConfig(ctx context.Context) (*EmailConfig, error) {
+	keys := []string{
+		SettingKeyEmailProvider,
+		SettingKeySMTPHost,
+		SettingKeySMTPPort,
+		SettingKeySMTPUsername,
+		SettingKeySMTPPassword,
+		SettingKeySMTPFrom,
+		SettingKeySMTPFromName,
+		SettingKeySMTPUseTLS,
+		SettingKeyResendAPIKey,
+		SettingKeyCloudflareAccountID,
+		SettingKeyCloudflareEmailAPIToken,
+	}
+
+	settings, err := s.settingRepo.GetMultiple(ctx, keys)
+	if err != nil {
+		return nil, fmt.Errorf("get email settings: %w", err)
+	}
+
+	port := 587
+	if portStr := settings[SettingKeySMTPPort]; portStr != "" {
+		if p, err := strconv.Atoi(portStr); err == nil {
+			port = p
+		}
+	}
+
+	config := &EmailConfig{
+		Provider: normalizeEmailProvider(settings[SettingKeyEmailProvider]),
+		SMTP: SMTPConfig{
+			Host:     strings.TrimSpace(settings[SettingKeySMTPHost]),
+			Port:     port,
+			Username: strings.TrimSpace(settings[SettingKeySMTPUsername]),
+			Password: strings.TrimSpace(settings[SettingKeySMTPPassword]),
+			From:     strings.TrimSpace(settings[SettingKeySMTPFrom]),
+			FromName: strings.TrimSpace(settings[SettingKeySMTPFromName]),
+			UseTLS:   settings[SettingKeySMTPUseTLS] == "true",
+		},
+		ResendAPIKey:        strings.TrimSpace(settings[SettingKeyResendAPIKey]),
+		CloudflareAccountID: strings.TrimSpace(settings[SettingKeyCloudflareAccountID]),
+		CloudflareAPIToken:  strings.TrimSpace(settings[SettingKeyCloudflareEmailAPIToken]),
+	}
+
+	if err := config.validate(); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func (c *EmailConfig) validate() error {
+	if c == nil {
+		return ErrEmailNotConfigured
+	}
+	switch normalizeEmailProvider(c.Provider) {
+	case EmailProviderResend:
+		if strings.TrimSpace(c.ResendAPIKey) == "" || strings.TrimSpace(c.SMTP.From) == "" {
+			return ErrEmailNotConfigured
+		}
+	case EmailProviderCloudflare:
+		if strings.TrimSpace(c.CloudflareAccountID) == "" || strings.TrimSpace(c.CloudflareAPIToken) == "" || strings.TrimSpace(c.SMTP.From) == "" {
+			return ErrEmailNotConfigured
+		}
+	default:
+		if strings.TrimSpace(c.SMTP.Host) == "" {
+			return ErrEmailNotConfigured
+		}
+	}
+	return nil
+}
+
 // SendEmail 发送邮件（使用数据库中保存的配置）
 func (s *EmailService) SendEmail(ctx context.Context, to, subject, body string) error {
-	config, err := s.GetSMTPConfig(ctx)
+	config, err := s.GetEmailConfig(ctx)
 	if err != nil {
 		return err
 	}
-	return s.SendEmailWithConfig(config, to, subject, body)
+	return s.SendEmailWithEmailConfig(ctx, config, to, subject, body)
 }
 
 const smtpDialTimeout = 10 * time.Second
@@ -205,6 +312,81 @@ func (s *EmailService) SendEmailWithConfig(config *SMTPConfig, to, subject, body
 	}
 
 	return s.sendMailPlain(addr, auth, config.From, to, []byte(msg), config.Host)
+}
+
+// SendEmailWithEmailConfig 使用指定配置发送邮件
+func (s *EmailService) SendEmailWithEmailConfig(ctx context.Context, config *EmailConfig, to, subject, body string) error {
+	if err := config.validate(); err != nil {
+		return err
+	}
+
+	switch normalizeEmailProvider(config.Provider) {
+	case EmailProviderResend:
+		return s.sendEmailViaResend(ctx, config, to, subject, body)
+	case EmailProviderCloudflare:
+		return s.sendEmailViaCloudflare(ctx, config, to, subject, body)
+	default:
+		return s.SendEmailWithConfig(&config.SMTP, to, subject, body)
+	}
+}
+
+func (s *EmailService) sendEmailViaResend(ctx context.Context, config *EmailConfig, to, subject, body string) error {
+	payload := map[string]any{
+		"from":    formatAPISender(config.SMTP.From, config.SMTP.FromName),
+		"to":      []string{sanitizeEmailHeader(to)},
+		"subject": sanitizeEmailHeader(subject),
+		"html":    body,
+	}
+	return postEmailAPI(ctx, EmailProviderResend, resendEmailEndpoint, config.ResendAPIKey, payload)
+}
+
+func (s *EmailService) sendEmailViaCloudflare(ctx context.Context, config *EmailConfig, to, subject, body string) error {
+	endpoint := fmt.Sprintf(cloudflareEmailEndpoint, url.PathEscape(config.CloudflareAccountID))
+	payload := map[string]any{
+		"from":    formatAPISender(config.SMTP.From, config.SMTP.FromName),
+		"to":      []string{sanitizeEmailHeader(to)},
+		"subject": sanitizeEmailHeader(subject),
+		"html":    body,
+	}
+	return postEmailAPI(ctx, EmailProviderCloudflare, endpoint, config.CloudflareAPIToken, payload)
+}
+
+func formatAPISender(email, name string) string {
+	email = sanitizeEmailHeader(strings.TrimSpace(email))
+	name = sanitizeEmailHeader(strings.TrimSpace(name))
+	if name == "" {
+		return email
+	}
+	return fmt.Sprintf("%s <%s>", name, email)
+}
+
+func postEmailAPI(ctx context.Context, provider, endpoint, token string, payload any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("%s email payload: %w", provider, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("%s email request: %w", provider, err)
+	}
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(token))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: smtpIOTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("%s email api: %w", provider, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return nil
+	}
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	return fmt.Errorf("%s email api returned %s: %s", provider, resp.Status, strings.TrimSpace(string(respBody)))
 }
 
 // sendMailPlain sends mail without TLS using a dialer with timeout.

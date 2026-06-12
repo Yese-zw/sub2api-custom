@@ -25,14 +25,20 @@ type SystemSettings struct {
 	LoginAgreementUpdatedAt          string
 	LoginAgreementDocuments          []LoginAgreementDocument
 
-	SMTPHost               string
-	SMTPPort               int
-	SMTPUsername           string
-	SMTPPassword           string
-	SMTPPasswordConfigured bool
-	SMTPFrom               string
-	SMTPFromName           string
-	SMTPUseTLS             bool
+	EmailProvider                     string
+	SMTPHost                          string
+	SMTPPort                          int
+	SMTPUsername                      string
+	SMTPPassword                      string
+	SMTPPasswordConfigured            bool
+	SMTPFrom                          string
+	SMTPFromName                      string
+	SMTPUseTLS                        bool
+	ResendAPIKey                      string
+	ResendAPIKeyConfigured            bool
+	CloudflareEmailAccountID          string
+	CloudflareEmailAPIToken           string
+	CloudflareEmailAPITokenConfigured bool
 
 	TurnstileEnabled             bool
 	TurnstileSiteKey             string

@@ -142,13 +142,17 @@ const (
 	SettingKeyLoginAgreementDocuments          = "login_agreement_documents"           // 条款文档列表（JSON，Markdown 内容）
 
 	// 邮件服务设置
-	SettingKeySMTPHost     = "smtp_host"      // SMTP服务器地址
-	SettingKeySMTPPort     = "smtp_port"      // SMTP端口
-	SettingKeySMTPUsername = "smtp_username"  // SMTP用户名
-	SettingKeySMTPPassword = "smtp_password"  // SMTP密码（加密存储）
-	SettingKeySMTPFrom     = "smtp_from"      // 发件人地址
-	SettingKeySMTPFromName = "smtp_from_name" // 发件人名称
-	SettingKeySMTPUseTLS   = "smtp_use_tls"   // 是否使用TLS
+	SettingKeyEmailProvider           = "email_provider" // 邮件发送服务：smtp/resend/cloudflare
+	SettingKeySMTPHost                = "smtp_host"      // SMTP服务器地址
+	SettingKeySMTPPort                = "smtp_port"      // SMTP端口
+	SettingKeySMTPUsername            = "smtp_username"  // SMTP用户名
+	SettingKeySMTPPassword            = "smtp_password"  // SMTP密码（加密存储）
+	SettingKeySMTPFrom                = "smtp_from"      // 发件人地址
+	SettingKeySMTPFromName            = "smtp_from_name" // 发件人名称
+	SettingKeySMTPUseTLS              = "smtp_use_tls"   // 是否使用TLS
+	SettingKeyResendAPIKey            = "resend_api_key" // Resend API Key（加密存储）
+	SettingKeyCloudflareAccountID     = "cloudflare_email_account_id"
+	SettingKeyCloudflareEmailAPIToken = "cloudflare_email_api_token" // Cloudflare Email Sending API Token（加密存储）
 
 	// Cloudflare Turnstile 设置
 	SettingKeyTurnstileEnabled   = "turnstile_enabled"    // 是否启用 Turnstile 验证

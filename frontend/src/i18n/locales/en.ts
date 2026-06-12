@@ -6039,8 +6039,9 @@ export default {
         enabledHint: 'When enabled, the system sends reminders 7, 3, and 1 day before expiry.'
       },
       smtp: {
-        title: 'SMTP Settings',
-        description: 'Configure email sending for verification codes',
+        title: 'Email Sending Settings',
+        description: 'Configure system email delivery with SMTP, Resend, or Cloudflare.',
+        provider: 'Email provider',
         testConnection: 'Test Connection',
         testing: 'Testing...',
         host: 'SMTP Host',
@@ -6059,11 +6060,21 @@ export default {
         fromName: 'From Name',
         fromNamePlaceholder: 'Sub2API',
         useTls: 'Use TLS',
-        useTlsHint: 'Enable TLS encryption for SMTP connection'
+        useTlsHint: 'Enable TLS encryption for SMTP connection',
+        resendApiKey: 'Resend API Key',
+        resendApiKeyPlaceholder: 're_...',
+        resendApiKeyHint: 'Create an API key in Resend to send email through HTTPS API.',
+        cloudflareAccountId: 'Cloudflare Account ID',
+        cloudflareAccountIdPlaceholder: 'Cloudflare account ID',
+        cloudflareApiToken: 'Cloudflare API Token',
+        cloudflareApiTokenPlaceholder: 'Cloudflare Email Sending API Token',
+        cloudflareApiTokenHint: 'Requires permission to send email with Cloudflare Email Sending API.',
+        apiKeyConfiguredPlaceholder: 'Configured. Leave empty to keep current value',
+        apiKeyConfiguredHint: 'Secret configured. Leave empty to keep the current value.'
       },
       testEmail: {
         title: 'Send Test Email',
-        description: 'Send a test email to verify your SMTP configuration',
+        description: 'Send a test email to verify the current email provider configuration',
         recipientEmail: 'Recipient Email',
         recipientEmailPlaceholder: "test{'@'}example.com",
         sendTestEmail: 'Send Test Email',

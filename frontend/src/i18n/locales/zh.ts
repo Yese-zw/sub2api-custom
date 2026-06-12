@@ -6195,8 +6195,9 @@ export default {
         enabledHint: '开启后，系统会在订阅到期前 7 天、3 天、1 天各发送一次提醒。'
       },
       smtp: {
-        title: 'SMTP 设置',
-        description: '配置用于发送验证码的邮件服务',
+        title: '邮件发送设置',
+        description: '配置系统邮件发送服务，可选择 SMTP、Resend 或 Cloudflare。',
+        provider: '发送服务',
         testConnection: '测试连接',
         testing: '测试中...',
         host: 'SMTP 主机',
@@ -6215,11 +6216,21 @@ export default {
         fromName: '发件人名称',
         fromNamePlaceholder: 'Sub2API',
         useTls: '使用 TLS',
-        useTlsHint: '为 SMTP 连接启用 TLS 加密'
+        useTlsHint: '为 SMTP 连接启用 TLS 加密',
+        resendApiKey: 'Resend API Key',
+        resendApiKeyPlaceholder: 're_...',
+        resendApiKeyHint: '在 Resend 控制台创建 API Key，用于通过 HTTPS API 发送邮件。',
+        cloudflareAccountId: 'Cloudflare Account ID',
+        cloudflareAccountIdPlaceholder: 'Cloudflare 账户 ID',
+        cloudflareApiToken: 'Cloudflare API Token',
+        cloudflareApiTokenPlaceholder: 'Cloudflare Email Sending API Token',
+        cloudflareApiTokenHint: '需要具备 Cloudflare Email Sending API 发送权限。',
+        apiKeyConfiguredPlaceholder: '已配置，留空保留当前值',
+        apiKeyConfiguredHint: '密钥已配置，留空以保留当前值。'
       },
       testEmail: {
         title: '发送测试邮件',
-        description: '发送测试邮件以验证 SMTP 配置',
+        description: '发送测试邮件以验证当前邮件发送配置',
         recipientEmail: '收件人邮箱',
         recipientEmailPlaceholder: "test{'@'}example.com",
         sendTestEmail: '发送测试邮件',
