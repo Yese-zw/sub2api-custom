@@ -65,6 +65,29 @@ export interface TrendResponse {
   granularity: string
 }
 
+export interface ProfitTrendPoint {
+  date: string
+  revenue: number
+  account_cost: number
+  balance_profit: number
+  subscription_cost: number
+  profit: number
+}
+
+export interface ProfitTrendResponse {
+  trend: ProfitTrendPoint[]
+  start_date: string
+  end_date: string
+  total_revenue: number
+  total_account_cost: number
+  total_balance_profit: number
+  total_subscription_cost: number
+  total_profit: number
+  month_profit: number
+  today_profit: number
+  current_total_balance: number
+}
+
 /**
  * Get usage trend data
  * @param params - Query parameters for filtering
@@ -72,6 +95,11 @@ export interface TrendResponse {
  */
 export async function getUsageTrend(params?: TrendParams): Promise<TrendResponse> {
   const { data } = await apiClient.get<TrendResponse>('/admin/dashboard/trend', { params })
+  return data
+}
+
+export async function getProfitTrend(params?: { timezone?: string }): Promise<ProfitTrendResponse> {
+  const { data } = await apiClient.get<ProfitTrendResponse>('/admin/dashboard/profit-trend', { params })
   return data
 }
 
@@ -326,6 +354,7 @@ export const dashboardAPI = {
   getStats,
   getRealtimeMetrics,
   getUsageTrend,
+  getProfitTrend,
   getModelStats,
   getGroupStats,
   getSnapshotV2,

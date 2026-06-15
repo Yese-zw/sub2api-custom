@@ -265,6 +265,26 @@ func (h *DashboardHandler) GetUsageTrend(c *gin.Context) {
 	})
 }
 
+// GetProfitTrend handles getting recent profit details.
+// GET /api/v1/admin/dashboard/profit-trend
+func (h *DashboardHandler) GetProfitTrend(c *gin.Context) {
+	userTZ := c.Query("timezone")
+	if strings.TrimSpace(userTZ) == "" {
+		userTZ = "UTC"
+	}
+	now := timezone.NowInUserLocation(userTZ)
+	startTime := timezone.StartOfDayInUserLocation(now.AddDate(0, 0, -29), userTZ)
+	endTime := timezone.StartOfDayInUserLocation(now.AddDate(0, 0, 1), userTZ)
+
+	trend, err := h.dashboardService.GetProfitTrend(c.Request.Context(), startTime, endTime, userTZ)
+	if err != nil {
+		response.Error(c, 500, "Failed to get profit trend")
+		return
+	}
+
+	response.Success(c, trend)
+}
+
 // GetModelStats handles getting model usage statistics
 // GET /api/v1/admin/dashboard/models
 // Query params: start_date, end_date (YYYY-MM-DD), user_id, api_key_id, account_id, group_id, request_type, stream, billing_type

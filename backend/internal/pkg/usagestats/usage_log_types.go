@@ -92,6 +92,40 @@ type TrendDataPoint struct {
 	ActualCost          float64 `json:"actual_cost"` // 实际扣除
 }
 
+// ProfitTrendPoint represents one day of admin profit details.
+type ProfitTrendPoint struct {
+	Date             string  `json:"date"`
+	Revenue          float64 `json:"revenue"`           // 余额计费实际扣除
+	AccountCost      float64 `json:"account_cost"`      // 账号成本
+	BalanceProfit    float64 `json:"balance_profit"`    // 余额扣除 - 余额成本
+	SubscriptionCost float64 `json:"subscription_cost"` // 订阅成本
+	Profit           float64 `json:"profit"`            // 余额扣除 - 全部成本
+}
+
+// ProfitSummary represents aggregate admin profit details.
+type ProfitSummary struct {
+	Revenue          float64 `json:"revenue"`           // 余额计费实际扣除
+	AccountCost      float64 `json:"account_cost"`      // 账号成本
+	BalanceProfit    float64 `json:"balance_profit"`    // 余额扣除 - 余额成本
+	SubscriptionCost float64 `json:"subscription_cost"` // 订阅成本
+	Profit           float64 `json:"profit"`            // 余额扣除 - 全部成本
+}
+
+// ProfitTrendResponse represents admin profit details for a date range.
+type ProfitTrendResponse struct {
+	Trend                  []ProfitTrendPoint `json:"trend"`
+	StartDate              string             `json:"start_date"`
+	EndDate                string             `json:"end_date"`
+	TotalRevenue           float64            `json:"total_revenue"`
+	TotalAccountCost       float64            `json:"total_account_cost"`
+	TotalBalanceProfit     float64            `json:"total_balance_profit"`
+	TotalSubscriptionCost  float64            `json:"total_subscription_cost"`
+	TotalProfit            float64            `json:"total_profit"`
+	MonthProfit            float64            `json:"month_profit"`
+	TodayProfit            float64            `json:"today_profit"`
+	CurrentTotalBalance    float64            `json:"current_total_balance"`
+}
+
 // ModelStat represents usage statistics for a single model
 type ModelStat struct {
 	Model               string  `json:"model"`

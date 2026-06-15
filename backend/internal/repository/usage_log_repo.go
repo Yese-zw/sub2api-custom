@@ -3087,6 +3087,130 @@ func (r *usageLogRepository) GetUsageTrendWithFilters(ctx context.Context, start
 	return results, nil
 }
 
+// GetProfitTrend returns daily profit details.
+func (r *usageLogRepository) GetProfitTrend(ctx context.Context, startTime, endTime time.Time, userTZ string) (results []usagestats.ProfitTrendPoint, err error) {
+	if userTZ == "" {
+		userTZ = "UTC"
+	}
+	startDate := startTime.In(startTime.Location()).Format("2006-01-02")
+	endDate := endTime.Add(-24 * time.Hour).In(startTime.Location()).Format("2006-01-02")
+	query := `
+		WITH days AS (
+			SELECT generate_series(
+				$3::date,
+				$4::date,
+				interval '1 day'
+			)::date AS day
+		),
+		agg AS (
+			SELECT
+				(created_at AT TIME ZONE $5)::date AS day,
+				COALESCE(SUM(CASE WHEN COALESCE(billing_type, 0) = 0 THEN actual_cost ELSE 0 END), 0) AS revenue,
+				COALESCE(SUM(COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1)), 0) AS account_cost,
+				COALESCE(SUM(CASE WHEN COALESCE(billing_type, 0) = 0 THEN COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1) ELSE 0 END), 0) AS balance_cost,
+				COALESCE(SUM(CASE WHEN billing_type = 1 THEN COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1) ELSE 0 END), 0) AS subscription_cost
+			FROM usage_logs
+			WHERE created_at >= $1 AND created_at < $2
+			GROUP BY (created_at AT TIME ZONE $5)::date
+		)
+		SELECT
+			TO_CHAR(days.day::timestamp, 'YYYY-MM-DD') AS date,
+			COALESCE(agg.revenue, 0) AS revenue,
+			COALESCE(agg.account_cost, 0) AS account_cost,
+			COALESCE(agg.revenue, 0) - COALESCE(agg.balance_cost, 0) AS balance_profit,
+			COALESCE(agg.subscription_cost, 0) AS subscription_cost,
+			COALESCE(agg.revenue, 0) - COALESCE(agg.account_cost, 0) AS profit
+		FROM days
+		LEFT JOIN agg ON agg.day = days.day
+		ORDER BY days.day ASC
+	`
+
+	rows, err := r.sql.QueryContext(ctx, query, startTime, endTime, startDate, endDate, userTZ)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = closeErr
+			results = nil
+		}
+	}()
+
+	results = make([]usagestats.ProfitTrendPoint, 0)
+	for rows.Next() {
+		var row usagestats.ProfitTrendPoint
+		if err := rows.Scan(
+			&row.Date,
+			&row.Revenue,
+			&row.AccountCost,
+			&row.BalanceProfit,
+			&row.SubscriptionCost,
+			&row.Profit,
+		); err != nil {
+			return nil, err
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// GetProfitSummary returns aggregate profit details for an optional time range.
+func (r *usageLogRepository) GetProfitSummary(ctx context.Context, startTime, endTime *time.Time) (*usagestats.ProfitSummary, error) {
+	conditions := make([]string, 0, 2)
+	args := make([]any, 0, 2)
+	if startTime != nil {
+		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)+1))
+		args = append(args, *startTime)
+	}
+	if endTime != nil {
+		conditions = append(conditions, fmt.Sprintf("created_at < $%d", len(args)+1))
+		args = append(args, *endTime)
+	}
+
+	query := fmt.Sprintf(`
+		WITH agg AS (
+			SELECT
+				COALESCE(SUM(CASE WHEN COALESCE(billing_type, 0) = 0 THEN actual_cost ELSE 0 END), 0) AS revenue,
+				COALESCE(SUM(COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1)), 0) AS account_cost,
+				COALESCE(SUM(CASE WHEN COALESCE(billing_type, 0) = 0 THEN COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1) ELSE 0 END), 0) AS balance_cost,
+				COALESCE(SUM(CASE WHEN billing_type = 1 THEN COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1) ELSE 0 END), 0) AS subscription_cost
+			FROM usage_logs
+			%s
+		)
+		SELECT
+			revenue,
+			account_cost,
+			revenue - balance_cost AS balance_profit,
+			subscription_cost,
+			revenue - account_cost AS profit
+		FROM agg
+	`, buildWhere(conditions))
+
+	summary := &usagestats.ProfitSummary{}
+	if err := scanSingleRow(ctx, r.sql, query, args,
+		&summary.Revenue,
+		&summary.AccountCost,
+		&summary.BalanceProfit,
+		&summary.SubscriptionCost,
+		&summary.Profit,
+	); err != nil {
+		return nil, err
+	}
+	return summary, nil
+}
+
+// GetCurrentTotalUserBalance returns the current total remaining user balance in the system.
+func (r *usageLogRepository) GetCurrentTotalUserBalance(ctx context.Context) (float64, error) {
+	var total float64
+	if err := scanSingleRow(ctx, r.sql, `SELECT COALESCE(SUM(balance), 0) FROM users`, nil, &total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 func shouldUsePreaggregatedTrend(granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) bool {
 	if granularity != "day" && granularity != "hour" {
 		return false

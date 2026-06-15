@@ -378,6 +378,7 @@ export default {
     announcements: '公告',
     apiKeys: 'API 密钥',
     usage: '使用记录',
+    profit: '利润明细',
     redeem: '兑换',
     affiliate: '邀请返利',
     affiliateManagement: '邀请返利',
@@ -1497,6 +1498,32 @@ export default {
       systemSettings: '系统设置',
       configureSystem: '配置系统设置',
       failedToLoad: '加载仪表盘数据失败'
+    },
+
+    profit: {
+      title: '利润明细',
+      description: '2026 年 6 月 15 日起利润统计',
+      totalProfit: '总利润',
+      allTimeHint: '2026 年 6 月 15 日起累计',
+      monthProfit: '本月利润',
+      monthProfitHint: '本月截至今日',
+      todayProfit: '今日利润',
+      todayProfitHint: '今日实时利润',
+      currentTotalBalance: '系统当前剩余总余额',
+      currentTotalBalanceHint: '系统当前剩余用户余额',
+      balanceRevenue: '余额扣除',
+      accountCost: '账号成本',
+      balanceProfit: '余额利润',
+      subscriptionCost: '订阅成本',
+      profit: '利润',
+      recent30Days: '最近 30 天',
+      balanceRevenueHint: '仅统计余额计费实际扣除',
+      allBillingCost: '余额与订阅的账号成本',
+      subscriptionCostHint: '订阅分组仅扣减成本',
+      trendTitle: '2026 年 6 月 15 日起利润趋势',
+      trendDescription: '余额分组按实际扣除减成本；订阅分组只减账号成本。',
+      detailTitle: '按日明细',
+      failedToLoad: '加载利润明细失败'
     },
 
     backup: {

@@ -2356,6 +2356,18 @@ func (r *stubUsageLogRepo) GetUsageTrendWithFilters(ctx context.Context, startTi
 	return nil, errors.New("not implemented")
 }
 
+func (r *stubUsageLogRepo) GetProfitTrend(ctx context.Context, startTime, endTime time.Time, timezone string) ([]usagestats.ProfitTrendPoint, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (r *stubUsageLogRepo) GetProfitSummary(ctx context.Context, startTime, endTime *time.Time) (*usagestats.ProfitSummary, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (r *stubUsageLogRepo) GetCurrentTotalUserBalance(ctx context.Context) (float64, error) {
+	return 0, errors.New("not implemented")
+}
+
 func (r *stubUsageLogRepo) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usagestats.ModelStat, error) {
 	return nil, errors.New("not implemented")
 }

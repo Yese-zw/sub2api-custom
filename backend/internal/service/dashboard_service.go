@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -17,6 +18,12 @@ const (
 	defaultDashboardStatsFreshTTL       = 15 * time.Second
 	defaultDashboardStatsCacheTTL       = 30 * time.Second
 	defaultDashboardStatsRefreshTimeout = 30 * time.Second
+)
+
+const (
+	profitTrackingStartYear  = 2026
+	profitTrackingStartMonth = time.June
+	profitTrackingStartDay   = 15
 )
 
 // ErrDashboardStatsCacheMiss 标记仪表盘缓存未命中。
@@ -130,6 +137,67 @@ func (s *DashboardService) GetUsageTrendWithFilters(ctx context.Context, startTi
 		return nil, fmt.Errorf("get usage trend with filters: %w", err)
 	}
 	return trend, nil
+}
+
+func (s *DashboardService) GetProfitTrend(ctx context.Context, startTime, endTime time.Time, timezone string) (*usagestats.ProfitTrendResponse, error) {
+	loc := time.UTC
+	if strings.TrimSpace(timezone) != "" {
+		if loaded, loadErr := time.LoadLocation(timezone); loadErr == nil {
+			loc = loaded
+		}
+	}
+	profitStart := time.Date(profitTrackingStartYear, profitTrackingStartMonth, profitTrackingStartDay, 0, 0, 0, 0, loc)
+	if startTime.Before(profitStart) {
+		startTime = profitStart
+	}
+
+	trend, err := s.usageRepo.GetProfitTrend(ctx, startTime, endTime, timezone)
+	if err != nil {
+		return nil, fmt.Errorf("get profit trend: %w", err)
+	}
+	totalSummary, err := s.usageRepo.GetProfitSummary(ctx, &profitStart, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get total profit summary: %w", err)
+	}
+
+	now := time.Now().In(loc)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+	if monthStart.Before(profitStart) {
+		monthStart = profitStart
+	}
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	if todayStart.Before(profitStart) {
+		todayStart = profitStart
+	}
+	tomorrowStart := todayStart.AddDate(0, 0, 1)
+
+	monthSummary, err := s.usageRepo.GetProfitSummary(ctx, &monthStart, &tomorrowStart)
+	if err != nil {
+		return nil, fmt.Errorf("get month profit summary: %w", err)
+	}
+	todaySummary, err := s.usageRepo.GetProfitSummary(ctx, &todayStart, &tomorrowStart)
+	if err != nil {
+		return nil, fmt.Errorf("get today profit summary: %w", err)
+	}
+	currentTotalBalance, err := s.usageRepo.GetCurrentTotalUserBalance(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get current total user balance: %w", err)
+	}
+
+	resp := &usagestats.ProfitTrendResponse{
+		Trend:                 trend,
+		StartDate:             startTime.Format("2006-01-02"),
+		EndDate:               endTime.Add(-24 * time.Hour).Format("2006-01-02"),
+		TotalRevenue:          totalSummary.Revenue,
+		TotalAccountCost:      totalSummary.AccountCost,
+		TotalBalanceProfit:    totalSummary.BalanceProfit,
+		TotalSubscriptionCost: totalSummary.SubscriptionCost,
+		TotalProfit:           totalSummary.Profit,
+		MonthProfit:           monthSummary.Profit,
+		TodayProfit:           todaySummary.Profit,
+		CurrentTotalBalance:   currentTotalBalance,
+	}
+	return resp, nil
 }
 
 func (s *DashboardService) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usagestats.ModelStat, error) {

@@ -378,6 +378,7 @@ export default {
     announcements: 'Announcements',
     apiKeys: 'API Keys',
     usage: 'Usage',
+    profit: 'Profit Details',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
     affiliateManagement: 'Affiliate Rebates',
@@ -1476,6 +1477,32 @@ export default {
       requestsShort: 'Req',
       tokensShort: 'Tok',
       failedToLoad: 'Failed to load dashboard statistics'
+    },
+
+    profit: {
+      title: 'Profit Details',
+      description: 'Profit statistics since June 15, 2026',
+      totalProfit: 'Total Profit',
+      allTimeHint: 'Accumulated since June 15, 2026',
+      monthProfit: 'Monthly Profit',
+      monthProfitHint: 'Current month to date',
+      todayProfit: 'Today Profit',
+      todayProfitHint: 'Real-time profit today',
+      currentTotalBalance: 'Current Remaining Balance',
+      currentTotalBalanceHint: 'Current remaining user balance',
+      balanceRevenue: 'Balance Deduction',
+      accountCost: 'Account Cost',
+      balanceProfit: 'Balance Profit',
+      subscriptionCost: 'Subscription Cost',
+      profit: 'Profit',
+      recent30Days: 'Last 30 days',
+      balanceRevenueHint: 'Actual deductions from balance billing only',
+      allBillingCost: 'Account cost from balance and subscription usage',
+      subscriptionCostHint: 'Subscription groups only deduct cost',
+      trendTitle: 'Profit Trend Since June 15, 2026',
+      trendDescription: 'Balance groups use actual deductions minus cost; subscription groups only subtract account cost.',
+      detailTitle: 'Daily Details',
+      failedToLoad: 'Failed to load profit details'
     },
 
     backup: {
