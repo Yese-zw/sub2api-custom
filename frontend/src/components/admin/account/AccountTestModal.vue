@@ -378,6 +378,16 @@ const addLine = (text: string, className: string = 'text-gray-300') => {
   scrollToBottom()
 }
 
+const formatLatency = (value?: number): string => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '-'
+  return `${Math.round(value)}ms`
+}
+
+const addLatencyLines = (event: TestEventPayload) => {
+  addLine(t('admin.accounts.tokenLatency', { latency: formatLatency(event.token_latency_ms) }), 'text-cyan-300')
+  addLine(t('admin.accounts.totalLatency', { latency: formatLatency(event.total_latency_ms) }), 'text-cyan-300')
+}
+
 const scrollToBottom = async () => {
   await nextTick()
   if (terminalRef.value) {
@@ -462,7 +472,7 @@ const startTest = async () => {
   }
 }
 
-const handleEvent = (event: {
+interface TestEventPayload {
   type: string
   text?: string
   model?: string
@@ -470,7 +480,11 @@ const handleEvent = (event: {
   error?: string
   image_url?: string
   mime_type?: string
-}) => {
+  token_latency_ms?: number
+  total_latency_ms?: number
+}
+
+const handleEvent = (event: TestEventPayload) => {
   switch (event.type) {
     case 'test_start':
       addLine(t('admin.accounts.connectedToApi'), 'text-green-400')
@@ -494,6 +508,12 @@ const handleEvent = (event: {
       }
       break
 
+    case 'status':
+      if (event.text) {
+        addLine(event.text, 'text-cyan-300')
+      }
+      break
+
     case 'image':
       if (event.image_url) {
         generatedImages.value.push({
@@ -510,6 +530,7 @@ const handleEvent = (event: {
         addLine(streamingContent.value, 'text-green-300')
         streamingContent.value = ''
       }
+      addLatencyLines(event)
       if (event.success) {
         status.value = 'success'
       } else {
@@ -525,6 +546,7 @@ const handleEvent = (event: {
         addLine(streamingContent.value, 'text-green-300')
         streamingContent.value = ''
       }
+      addLatencyLines(event)
       break
   }
 }

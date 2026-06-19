@@ -38,16 +38,25 @@ const (
 
 // TestEvent represents a SSE event for account testing
 type TestEvent struct {
-	Type     string `json:"type"`
-	Text     string `json:"text,omitempty"`
-	Model    string `json:"model,omitempty"`
-	Status   string `json:"status,omitempty"`
-	Code     string `json:"code,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
-	MimeType string `json:"mime_type,omitempty"`
-	Data     any    `json:"data,omitempty"`
-	Success  bool   `json:"success,omitempty"`
-	Error    string `json:"error,omitempty"`
+	Type           string `json:"type"`
+	Text           string `json:"text,omitempty"`
+	Model          string `json:"model,omitempty"`
+	Status         string `json:"status,omitempty"`
+	Code           string `json:"code,omitempty"`
+	ImageURL       string `json:"image_url,omitempty"`
+	MimeType       string `json:"mime_type,omitempty"`
+	Data           any    `json:"data,omitempty"`
+	Success        bool   `json:"success,omitempty"`
+	Error          string `json:"error,omitempty"`
+	TokenLatencyMs *int64 `json:"token_latency_ms,omitempty"`
+	TotalLatencyMs *int64 `json:"total_latency_ms,omitempty"`
+}
+
+const accountTestTimingContextKey = "account_test_timing"
+
+type accountTestTiming struct {
+	startedAt    time.Time
+	firstTokenAt time.Time
 }
 
 const (
@@ -172,6 +181,7 @@ func createTestPayload(modelID string) (map[string]any, error) {
 // mode is optional - "compact" routes OpenAI accounts to the /responses/compact probe path
 func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int64, modelID string, prompt string, mode string) error {
 	ctx := c.Request.Context()
+	startAccountTestTiming(c)
 
 	// Get account
 	account, err := s.accountRepo.GetByID(ctx, accountID)
@@ -1579,7 +1589,7 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 	c.Writer.Flush()
 
 	s.sendEvent(c, TestEvent{Type: "test_start", Model: modelID})
-	s.sendEvent(c, TestEvent{Type: "content", Text: "Calling Codex /responses image tool...\n"})
+	s.sendEvent(c, TestEvent{Type: "status", Text: "Calling Codex /responses image tool..."})
 
 	parsed := &OpenAIImagesRequest{
 		Endpoint: openAIImagesGenerationsEndpoint,
@@ -1665,12 +1675,78 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 }
 
 func (s *AccountTestService) sendEvent(c *gin.Context, event TestEvent) {
+	enrichAccountTestEvent(c, &event)
 	eventJSON, _ := json.Marshal(event)
 	if _, err := fmt.Fprintf(c.Writer, "data: %s\n\n", eventJSON); err != nil {
 		log.Printf("failed to write SSE event: %v", err)
 		return
 	}
 	c.Writer.Flush()
+}
+
+func startAccountTestTiming(c *gin.Context) {
+	if c == nil {
+		return
+	}
+	c.Set(accountTestTimingContextKey, &accountTestTiming{startedAt: time.Now()})
+}
+
+func getAccountTestTiming(c *gin.Context) *accountTestTiming {
+	if c == nil {
+		return nil
+	}
+	raw, ok := c.Get(accountTestTimingContextKey)
+	if !ok {
+		return nil
+	}
+	timing, _ := raw.(*accountTestTiming)
+	return timing
+}
+
+func enrichAccountTestEvent(c *gin.Context, event *TestEvent) {
+	if event == nil {
+		return
+	}
+	timing := getAccountTestTiming(c)
+	if timing == nil || timing.startedAt.IsZero() {
+		return
+	}
+	now := time.Now()
+	if accountTestEventHasOutputToken(*event) && timing.firstTokenAt.IsZero() {
+		timing.firstTokenAt = now
+	}
+	if !accountTestEventCarriesLatency(*event) {
+		return
+	}
+	if event.TotalLatencyMs == nil {
+		total := now.Sub(timing.startedAt).Milliseconds()
+		if total < 0 {
+			total = 0
+		}
+		event.TotalLatencyMs = &total
+	}
+	if event.TokenLatencyMs == nil && !timing.firstTokenAt.IsZero() {
+		token := timing.firstTokenAt.Sub(timing.startedAt).Milliseconds()
+		if token < 0 {
+			token = 0
+		}
+		event.TokenLatencyMs = &token
+	}
+}
+
+func accountTestEventHasOutputToken(event TestEvent) bool {
+	switch event.Type {
+	case "content":
+		return event.Text != ""
+	case "image":
+		return event.ImageURL != ""
+	default:
+		return false
+	}
+}
+
+func accountTestEventCarriesLatency(event TestEvent) bool {
+	return event.Type == "test_complete" || event.Type == "error"
 }
 
 // sendErrorAndEnd sends an error event and ends the stream

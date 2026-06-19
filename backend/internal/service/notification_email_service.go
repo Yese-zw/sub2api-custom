@@ -28,6 +28,7 @@ const (
 	NotificationEmailEventBalanceLow                  = "balance.low"
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
 	NotificationEmailEventAccountQuotaAlert           = "account.quota_alert"
+	NotificationEmailEventUpstreamBalanceLow          = "upstream.balance_low"
 	NotificationEmailEventContentModerationViolation  = "content_moderation.violation_notice"
 	NotificationEmailEventContentModerationDisabled   = "content_moderation.account_disabled"
 	NotificationEmailEventCyberPolicyNotice           = "content_moderation.cyber_policy_notice"
@@ -869,6 +870,10 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"quota_limit":         "100.00",
 			"quota_remaining":     "20.00",
 			"quota_threshold":     "20%",
+			"mode":                "new_api",
+			"upstream_balance":    "18.20$",
+			"adjusted_balance":    "9.10$",
+			"balance_threshold":   "10.00$",
 			"triggered_at":        "2026-05-20 12:00:00",
 			"group_name":          "默认分组",
 			"moderation_category": "violence",
@@ -915,6 +920,10 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"quota_limit":         "100.00",
 		"quota_remaining":     "20.00",
 		"quota_threshold":     "20%",
+		"mode":                "new_api",
+		"upstream_balance":    "18.20$",
+		"adjusted_balance":    "9.10$",
+		"balance_threshold":   "10.00$",
 		"triggered_at":        "2026-05-20 12:00:00",
 		"group_name":          "Default group",
 		"moderation_category": "violence",
@@ -946,6 +955,7 @@ var notificationEmailEventOrder = []string{
 	NotificationEmailEventBalanceLow,
 	NotificationEmailEventBalanceRechargeSuccess,
 	NotificationEmailEventAccountQuotaAlert,
+	NotificationEmailEventUpstreamBalanceLow,
 	NotificationEmailEventContentModerationViolation,
 	NotificationEmailEventContentModerationDisabled,
 	NotificationEmailEventCyberPolicyNotice,
@@ -1018,6 +1028,15 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Optional:    false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...),
 			"account_id", "account_name", "platform", "quota_dimension", "quota_used", "quota_limit", "quota_remaining", "quota_threshold"),
+	},
+	NotificationEmailEventUpstreamBalanceLow: {
+		Event:       NotificationEmailEventUpstreamBalanceLow,
+		Label:       "Upstream balance low alert",
+		Description: "Sent to account-level notification emails when a refreshed upstream balance is below the configured threshold.",
+		Category:    "admin",
+		Optional:    false,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...),
+			"account_id", "account_name", "mode", "upstream_balance", "adjusted_balance", "balance_threshold"),
 	},
 	NotificationEmailEventContentModerationViolation: {
 		Event:       NotificationEmailEventContentModerationViolation,
@@ -1230,6 +1249,34 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
   <tr><td>剩余额度</td><td>{{quota_remaining}}</td></tr>
   <tr><td>告警阈值</td><td>{{quota_threshold}}</td></tr>
 </table>`),
+		},
+	},
+	NotificationEmailEventUpstreamBalanceLow: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] Upstream balance low - {{account_name}}",
+			HTML: notificationEmailCard("#dc2626", "Upstream balance low", `
+<p>The upstream account <strong>{{account_name}}</strong> is below its configured balance alert threshold.</p>
+<table style="width:100%;border-collapse:collapse;">
+  <tr><td>Account ID</td><td>{{account_id}}</td></tr>
+  <tr><td>Mode</td><td>{{mode}}</td></tr>
+  <tr><td>Upstream balance</td><td>{{upstream_balance}}</td></tr>
+  <tr><td>Adjusted balance</td><td>{{adjusted_balance}}</td></tr>
+  <tr><td>Alert threshold</td><td>{{balance_threshold}}</td></tr>
+</table>
+<p>Please review or recharge this upstream account in time.</p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 上游余额不足 - {{account_name}}",
+			HTML: notificationEmailCard("#dc2626", "上游余额不足", `
+<p>上游账号 <strong>{{account_name}}</strong> 已低于配置的余额提醒阈值。</p>
+<table style="width:100%;border-collapse:collapse;">
+  <tr><td>账号 ID</td><td>{{account_id}}</td></tr>
+  <tr><td>模式</td><td>{{mode}}</td></tr>
+  <tr><td>上游余额</td><td>{{upstream_balance}}</td></tr>
+  <tr><td>折算余额</td><td>{{adjusted_balance}}</td></tr>
+  <tr><td>提醒阈值</td><td>{{balance_threshold}}</td></tr>
+</table>
+<p>请及时检查或充值该上游账号。</p>`),
 		},
 	},
 	NotificationEmailEventContentModerationViolation: {

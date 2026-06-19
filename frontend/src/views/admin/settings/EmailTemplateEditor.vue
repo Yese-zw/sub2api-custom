@@ -357,6 +357,11 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "上游账号的用量达到配置的额度告警阈值时发送给管理员通知邮箱。",
     categoryLabel: "管理告警",
   },
+  "upstream.balance_low": {
+    label: "上游余额不足提醒",
+    timing: "刷新上游余额后，账号折算余额低于账号配置的阈值时发送。",
+    categoryLabel: "管理告警",
+  },
   "content_moderation.violation_notice": {
     label: "内容审计违规提醒",
     timing: "用户请求命中内容审计或风控规则、但尚未被禁用时发送。",
@@ -418,6 +423,11 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   "account.quota_alert": {
     label: "Account Quota Alert",
     timing: "Sent to admin notification emails when an upstream account reaches the configured quota alert threshold.",
+    categoryLabel: "Admin",
+  },
+  "upstream.balance_low": {
+    label: "Upstream Balance Low Alert",
+    timing: "Sent after an upstream balance refresh when the adjusted account balance is below the configured threshold.",
     categoryLabel: "Admin",
   },
   "content_moderation.violation_notice": {

@@ -62,6 +62,8 @@ var schedulerNeutralExtraKeyPrefixes = []string{
 var schedulerNeutralExtraKeys = map[string]struct{}{
 	"codex_usage_updated_at":     {},
 	"session_window_utilization": {},
+	"upstream_balance":           {},
+	"upstream_balance_config":    {},
 }
 
 const postgresParameterBatchSize = 50000
@@ -474,7 +476,12 @@ func (r *accountRepository) ListWithFilters(ctx context.Context, params paginati
 		q = q.Where(dbaccount.PlatformEQ(platform))
 	}
 	if accountType != "" {
-		q = q.Where(dbaccount.TypeEQ(accountType))
+		accountTypes := splitAccountTypeFilter(accountType)
+		if len(accountTypes) == 1 {
+			q = q.Where(dbaccount.TypeEQ(accountTypes[0]))
+		} else if len(accountTypes) > 1 {
+			q = q.Where(dbaccount.TypeIn(accountTypes...))
+		}
 	}
 	if status != "" {
 		switch status {
@@ -582,6 +589,23 @@ func (r *accountRepository) ListWithFilters(ctx context.Context, params paginati
 		return nil, nil, err
 	}
 	return outAccounts, paginationResultFromTotal(int64(total), params), nil
+}
+
+func splitAccountTypeFilter(accountType string) []string {
+	seen := make(map[string]struct{})
+	types := make([]string, 0, 2)
+	for _, part := range strings.Split(accountType, ",") {
+		t := strings.TrimSpace(part)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		types = append(types, t)
+	}
+	return types
 }
 
 func accountListOrder(params pagination.PaginationParams) []func(*entsql.Selector) {

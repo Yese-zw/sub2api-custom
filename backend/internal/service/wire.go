@@ -603,6 +603,8 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentService,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
+	ProvideUpstreamBalanceService,
+	ProvideUpstreamBalanceRefreshService,
 	ProvideChannelMonitorService,
 	ProvideChannelMonitorRunner,
 	NewChannelMonitorRequestTemplateService,
@@ -626,6 +628,21 @@ func ProvidePaymentConfigService(entClient *dbent.Client, settingRepo SettingRep
 func ProvideBalanceNotifyService(emailService *EmailService, settingRepo SettingRepository, accountRepo AccountRepository, notificationEmailService *NotificationEmailService) *BalanceNotifyService {
 	svc := NewBalanceNotifyService(emailService, settingRepo, accountRepo)
 	svc.SetNotificationEmailService(notificationEmailService)
+	return svc
+}
+
+// ProvideUpstreamBalanceService creates UpstreamBalanceService with notification support.
+func ProvideUpstreamBalanceService(cfg *config.Config, balanceNotifyService *BalanceNotifyService, adminService AdminService) *UpstreamBalanceService {
+	svc := NewUpstreamBalanceService(cfg)
+	svc.SetBalanceNotifyService(balanceNotifyService)
+	svc.SetAccountLister(adminService)
+	return svc
+}
+
+// ProvideUpstreamBalanceRefreshService creates and starts the scheduled upstream balance refresher.
+func ProvideUpstreamBalanceRefreshService(upstreamBalanceService *UpstreamBalanceService) *UpstreamBalanceRefreshService {
+	svc := NewUpstreamBalanceRefreshService(upstreamBalanceService, upstreamBalanceRefreshInterval)
+	svc.Start()
 	return svc
 }
 

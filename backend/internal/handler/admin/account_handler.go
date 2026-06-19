@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"math"
 	"net/http"
+	"net/mail"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,6 +55,7 @@ type AccountHandler struct {
 	rateLimitService        *service.RateLimitService
 	accountUsageService     *service.AccountUsageService
 	accountTestService      *service.AccountTestService
+	upstreamBalanceService  *service.UpstreamBalanceService
 	concurrencyService      *service.ConcurrencyService
 	crsSyncService          *service.CRSSyncService
 	sessionLimitCache       service.SessionLimitCache
@@ -70,6 +73,7 @@ func NewAccountHandler(
 	rateLimitService *service.RateLimitService,
 	accountUsageService *service.AccountUsageService,
 	accountTestService *service.AccountTestService,
+	upstreamBalanceService *service.UpstreamBalanceService,
 	concurrencyService *service.ConcurrencyService,
 	crsSyncService *service.CRSSyncService,
 	sessionLimitCache service.SessionLimitCache,
@@ -85,6 +89,7 @@ func NewAccountHandler(
 		rateLimitService:        rateLimitService,
 		accountUsageService:     accountUsageService,
 		accountTestService:      accountTestService,
+		upstreamBalanceService:  upstreamBalanceService,
 		concurrencyService:      concurrencyService,
 		crsSyncService:          crsSyncService,
 		sessionLimitCache:       sessionLimitCache,
@@ -164,6 +169,17 @@ type CheckMixedChannelRequest struct {
 	Platform  string  `json:"platform" binding:"required"`
 	GroupIDs  []int64 `json:"group_ids"`
 	AccountID *int64  `json:"account_id"`
+}
+
+type UpstreamBalanceConfigRequest struct {
+	Mode                      string   `json:"mode"`
+	BalanceRatio              *float64 `json:"balance_ratio"`
+	NewAPIUserID              string   `json:"new_api_user_id"`
+	LowBalanceNotifyEnabled   bool     `json:"low_balance_notify_enabled"`
+	LowBalanceNotifyThreshold *float64 `json:"low_balance_notify_threshold"`
+	LowBalanceNotifyEmails    []string `json:"low_balance_notify_emails"`
+	AccountAccessKey          string   `json:"account_access_key"`
+	ClearAccessKey            bool     `json:"clear_access_key"`
 }
 
 // AccountWithConcurrency extends Account with real-time concurrency info
@@ -1822,6 +1838,235 @@ func (h *AccountHandler) ResetQuota(c *gin.Context) {
 	}
 
 	response.Success(c, h.buildAccountResponseWithRuntime(c.Request.Context(), account))
+}
+
+// RefreshUpstreamBalance handles querying and caching upstream API key balance.
+// POST /api/v1/admin/accounts/:id/upstream-balance/refresh
+func (h *AccountHandler) RefreshUpstreamBalance(c *gin.Context) {
+	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid account ID")
+		return
+	}
+	if h.upstreamBalanceService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Upstream balance service unavailable")
+		return
+	}
+
+	ctx := c.Request.Context()
+	account, err := h.adminService.GetAccount(ctx, accountID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	snapshot, err := h.upstreamBalanceService.Query(ctx, account)
+	if err != nil {
+		if infraerrors.Code(err) == http.StatusBadRequest || errors.Is(err, service.ErrUpstreamBalanceMissingCredentials) {
+			response.ErrorFrom(c, err)
+			return
+		}
+		slog.Warn("upstream_balance_refresh_failed", "account_id", accountID, "error", err)
+		response.Error(c, http.StatusBadGateway, "Failed to query upstream balance")
+		return
+	}
+
+	if err := h.adminService.UpdateAccountExtra(ctx, accountID, map[string]any{
+		"upstream_balance": snapshot,
+	}); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	updated, err := h.adminService.GetAccount(ctx, accountID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, h.buildAccountResponseWithRuntime(ctx, updated))
+}
+
+// RefreshUpstreamBalances handles querying and caching balances for the filtered upstream account set.
+// POST /api/v1/admin/accounts/upstream-balances/refresh
+func (h *AccountHandler) RefreshUpstreamBalances(c *gin.Context) {
+	if h.upstreamBalanceService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Upstream balance service unavailable")
+		return
+	}
+
+	ctx := c.Request.Context()
+	platform := c.Query("platform")
+	status := c.Query("status")
+	search := strings.TrimSpace(c.Query("search"))
+	result, err := h.upstreamBalanceService.RefreshAccounts(ctx, service.UpstreamBalanceRefreshOptions{
+		Platform:          platform,
+		Status:            status,
+		Search:            search,
+		SkipRecentlyFresh: true,
+	}, func(itemCtx context.Context, account *service.Account) any {
+		return h.buildAccountResponseWithRuntime(itemCtx, account)
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"items":   result.Items,
+		"success": result.Success,
+		"skipped": result.Skipped,
+		"failed":  result.Failed,
+		"errors":  result.Errors,
+	})
+}
+
+// UpdateUpstreamBalanceConfig handles saving upstream balance query settings.
+// PUT /api/v1/admin/accounts/:id/upstream-balance/config
+func (h *AccountHandler) UpdateUpstreamBalanceConfig(c *gin.Context) {
+	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid account ID")
+		return
+	}
+
+	var req UpstreamBalanceConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body")
+		return
+	}
+
+	mode := string(service.NormalizeUpstreamBalanceModeForConfig(req.Mode))
+	if strings.TrimSpace(req.Mode) != "" && mode == "" {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_MODE", "invalid upstream balance mode"))
+		return
+	}
+
+	ratio := 1.0
+	if req.BalanceRatio != nil {
+		ratio = *req.BalanceRatio
+	}
+	if ratio < 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_RATIO", "balance ratio must be a non-negative number"))
+		return
+	}
+	notifyThreshold := 0.0
+	if req.LowBalanceNotifyThreshold != nil {
+		notifyThreshold = *req.LowBalanceNotifyThreshold
+	}
+	if notifyThreshold < 0 || math.IsNaN(notifyThreshold) || math.IsInf(notifyThreshold, 0) {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_NOTIFY_THRESHOLD", "low balance notify threshold must be a non-negative number"))
+		return
+	}
+	notifyEmails, err := normalizeUpstreamBalanceNotifyEmails(req.LowBalanceNotifyEmails)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if req.LowBalanceNotifyEnabled {
+		if notifyThreshold <= 0 {
+			response.ErrorFrom(c, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_NOTIFY_THRESHOLD", "low balance notify threshold is required when notification is enabled"))
+			return
+		}
+		if len(notifyEmails) == 0 {
+			response.ErrorFrom(c, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_NOTIFY_EMAILS", "at least one notification email is required when notification is enabled"))
+			return
+		}
+	}
+
+	ctx := c.Request.Context()
+	account, err := h.adminService.GetAccount(ctx, accountID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if account.Type != service.AccountTypeAPIKey && account.Type != service.AccountTypeUpstream {
+		response.ErrorFrom(c, infraerrors.BadRequest("UPSTREAM_BALANCE_UNSUPPORTED_ACCOUNT", "only API key upstream accounts support upstream balance query"))
+		return
+	}
+
+	config := map[string]any{
+		"mode":                                    mode,
+		"balance_ratio":                           ratio,
+		service.UpstreamBalanceConfigNewAPIUserID: strings.TrimSpace(req.NewAPIUserID),
+		service.UpstreamBalanceConfigNotifyEnabled: req.LowBalanceNotifyEnabled,
+		service.UpstreamBalanceConfigNotifyThreshold: notifyThreshold,
+		service.UpstreamBalanceConfigNotifyEmails:  notifyEmails,
+	}
+	if req.LowBalanceNotifyEnabled {
+		existingConfig := service.UpstreamBalanceConfigFromAccount(account)
+		expectedNotifyKey := service.UpstreamBalanceLowNotifyKey(notifyThreshold, ratio, notifyEmails)
+		if lastNotifyKey, ok := existingConfig[service.UpstreamBalanceConfigNotifyLastKey].(string); ok && strings.TrimSpace(lastNotifyKey) == expectedNotifyKey {
+			config[service.UpstreamBalanceConfigNotifyLastKey] = strings.TrimSpace(lastNotifyKey)
+		}
+	}
+	if err := h.adminService.UpdateAccountExtra(ctx, accountID, map[string]any{
+		service.UpstreamBalanceConfigExtraKey: config,
+	}); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	trimmedAccessKey := strings.TrimSpace(req.AccountAccessKey)
+	if req.ClearAccessKey || trimmedAccessKey != "" {
+		credentials := make(map[string]any, len(account.Credentials)+1)
+		for key, value := range account.Credentials {
+			credentials[key] = value
+		}
+		if req.ClearAccessKey {
+			credentials[service.UpstreamBalanceAccessKeyCredential] = ""
+		} else {
+			credentials[service.UpstreamBalanceAccessKeyCredential] = trimmedAccessKey
+		}
+		if _, err := h.adminService.UpdateAccount(ctx, accountID, &service.UpdateAccountInput{
+			Credentials: credentials,
+		}); err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+	}
+
+	updated, err := h.adminService.GetAccount(ctx, accountID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, h.buildAccountResponseWithRuntime(ctx, updated))
+}
+
+func normalizeUpstreamBalanceNotifyEmails(raw []string) ([]string, error) {
+	seen := make(map[string]struct{}, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, value := range raw {
+		for _, email := range splitNotifyEmailInput(value) {
+			if len(email) > 254 {
+				return nil, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_NOTIFY_EMAIL", "invalid notification email")
+			}
+			addr, err := mail.ParseAddress(email)
+			if err != nil || !strings.EqualFold(strings.TrimSpace(addr.Address), email) {
+				return nil, infraerrors.BadRequest("INVALID_UPSTREAM_BALANCE_NOTIFY_EMAIL", "invalid notification email")
+			}
+			key := strings.ToLower(email)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(out, email)
+		}
+	}
+	return out, nil
+}
+
+func splitNotifyEmailInput(raw string) []string {
+	fields := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\r' || r == '\t' || r == ' '
+	})
+	out := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if email := strings.TrimSpace(field); email != "" {
+			out = append(out, email)
+		}
+	}
+	return out
 }
 
 // GetTempUnschedulable handles getting temporary unschedulable status

@@ -817,6 +817,37 @@ export interface TempUnschedulableStatus {
   state?: TempUnschedulableState
 }
 
+export interface UpstreamBalanceSnapshot {
+  mode?: string
+  balance?: number
+  remaining?: number
+  quota_limit?: number
+  quota_used?: number
+  quota_remaining?: number
+  quota_unlimited?: boolean
+  unit?: string
+  status?: string
+  plan_name?: string
+  today_requests?: number
+  today_total_tokens?: number
+  today_cost?: number
+  total_requests?: number
+  total_total_tokens?: number
+  total_cost?: number
+  updated_at?: string
+  latency_ms?: number
+  error?: string
+}
+
+export interface UpstreamBalanceConfig {
+  mode?: 'sub2api' | 'new_api' | ''
+  balance_ratio?: number
+  new_api_user_id?: string
+  low_balance_notify_enabled?: boolean
+  low_balance_notify_threshold?: number
+  low_balance_notify_emails?: string[]
+}
+
 export interface Account {
   id: number
   name: string
@@ -833,6 +864,8 @@ export interface Account {
   extra?: (CodexUsageSnapshot & OpenAICompactState & {
     model_rate_limits?: Record<string, { rate_limited_at: string; rate_limit_reset_at: string }>
     antigravity_credits_overages?: Record<string, { activated_at: string; active_until: string }>
+    upstream_balance?: UpstreamBalanceSnapshot
+    upstream_balance_config?: UpstreamBalanceConfig
   } & Record<string, unknown>)
   proxy_id: number | null
   proxy_fallback_origin_id?: number | null

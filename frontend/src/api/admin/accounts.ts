@@ -6,6 +6,7 @@
 import { apiClient } from '../client'
 import type {
   Account,
+  UpstreamBalanceConfig,
   CreateAccountRequest,
   UpdateAccountRequest,
   PaginatedResponse,
@@ -201,6 +202,55 @@ export async function testAccount(id: number): Promise<{
  */
 export async function refreshCredentials(id: number): Promise<Account> {
   const { data } = await apiClient.post<Account>(`/admin/accounts/${id}/refresh`)
+  return data
+}
+
+/**
+ * Refresh and cache upstream balance for an API key account.
+ * @param id - Account ID
+ * @returns Updated account
+ */
+export async function refreshUpstreamBalance(id: number): Promise<Account> {
+  const { data } = await apiClient.post<Account>(`/admin/accounts/${id}/upstream-balance/refresh`)
+  return data
+}
+
+export async function refreshUpstreamBalances(filters?: {
+  status?: string
+  search?: string
+}): Promise<{
+  items: Account[]
+  success: number
+  skipped?: number
+  failed: number
+  errors?: Array<{ account_id: number; error: string }>
+}> {
+  const { data } = await apiClient.post<{
+    items: Account[]
+    success: number
+    skipped?: number
+    failed: number
+    errors?: Array<{ account_id: number; error: string }>
+  }>('/admin/accounts/upstream-balances/refresh', null, {
+    params: filters
+  })
+  return data
+}
+
+export async function updateUpstreamBalanceConfig(
+  id: number,
+  payload: {
+    mode?: UpstreamBalanceConfig['mode']
+    balance_ratio?: number
+    new_api_user_id?: string
+    low_balance_notify_enabled?: boolean
+    low_balance_notify_threshold?: number
+    low_balance_notify_emails?: string[]
+    account_access_key?: string
+    clear_access_key?: boolean
+  }
+): Promise<Account> {
+  const { data } = await apiClient.put<Account>(`/admin/accounts/${id}/upstream-balance/config`, payload)
   return data
 }
 
@@ -786,6 +836,9 @@ export const accountsAPI = {
   toggleStatus,
   testAccount,
   refreshCredentials,
+  refreshUpstreamBalance,
+  refreshUpstreamBalances,
+  updateUpstreamBalanceConfig,
   applyOAuthCredentials,
   getStats,
   clearError,
