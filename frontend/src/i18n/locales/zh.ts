@@ -4346,6 +4346,8 @@ export default {
       refreshFailed: '刷新上游余额失败',
       configSaved: '上游余额配置已保存',
       configSaveFailed: '保存上游余额配置失败',
+      dedupeByRequestUrl: '按请求 URL 去重',
+      dedupeByRequestUrlHint: '相同请求 URL 只显示一条，优先保留已配置上游余额设置的账号',
       saving: '保存中...',
       invalidRatio: '余额比例必须是非负数字',
       invalidLowBalanceThreshold: '低余额通知阈值必须大于 0',

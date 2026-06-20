@@ -255,6 +255,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 		search = search[:100]
 	}
 	lite := parseBoolQueryWithDefault(c.Query("lite"), false)
+	dedupeByUpstreamBalanceURL := parseBoolQueryWithDefault(c.Query("dedupe_by_upstream_balance_url"), false)
 
 	var groupID int64
 	if groupIDStr := c.Query("group"); groupIDStr != "" {
@@ -274,7 +275,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 		}
 	}
 
-	accounts, total, err := h.adminService.ListAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
+	accounts, total, err := h.listAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder, dedupeByUpstreamBalanceURL)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -396,7 +397,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 		result[i] = item
 	}
 
-	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, lite)
+	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, lite, dedupeByUpstreamBalanceURL)
 	if etag != "" {
 		c.Header("ETag", etag)
 		c.Header("Vary", "If-None-Match")
@@ -409,33 +410,80 @@ func (h *AccountHandler) List(c *gin.Context) {
 	response.Paginated(c, result, total, page, pageSize)
 }
 
+func (h *AccountHandler) listAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode, sortBy, sortOrder string, dedupeByUpstreamBalanceURL bool) ([]service.Account, int64, error) {
+	if !dedupeByUpstreamBalanceURL {
+		return h.adminService.ListAccounts(ctx, page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
+	}
+
+	allAccounts, err := h.listAccountsFiltered(ctx, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
+	if err != nil {
+		return nil, 0, err
+	}
+	deduped := dedupeAccountsByUpstreamBalanceRequestURL(allAccounts)
+	total := int64(len(deduped))
+	start := (page - 1) * pageSize
+	if start >= len(deduped) {
+		return []service.Account{}, total, nil
+	}
+	end := start + pageSize
+	if end > len(deduped) {
+		end = len(deduped)
+	}
+	return deduped[start:end], total, nil
+}
+
+func dedupeAccountsByUpstreamBalanceRequestURL(accounts []service.Account) []service.Account {
+	out := make([]service.Account, 0, len(accounts))
+	indexByURL := make(map[string]int, len(accounts))
+	for _, account := range accounts {
+		key := service.UpstreamBalanceRequestDedupKey(&account)
+		if key == "" {
+			out = append(out, account)
+			continue
+		}
+		existingIndex, ok := indexByURL[key]
+		if !ok {
+			indexByURL[key] = len(out)
+			out = append(out, account)
+			continue
+		}
+		if service.HasUpstreamBalanceConfig(&account) && !service.HasUpstreamBalanceConfig(&out[existingIndex]) {
+			out[existingIndex] = account
+		}
+	}
+	return out
+}
+
 func buildAccountsListETag(
 	items []AccountWithConcurrency,
 	total int64,
 	page, pageSize int,
 	platform, accountType, status, search string,
 	lite bool,
+	dedupeByUpstreamBalanceURL bool,
 ) string {
 	payload := struct {
-		Total       int64                    `json:"total"`
-		Page        int                      `json:"page"`
-		PageSize    int                      `json:"page_size"`
-		Platform    string                   `json:"platform"`
-		AccountType string                   `json:"type"`
-		Status      string                   `json:"status"`
-		Search      string                   `json:"search"`
-		Lite        bool                     `json:"lite"`
-		Items       []AccountWithConcurrency `json:"items"`
+		Total                       int64                    `json:"total"`
+		Page                        int                      `json:"page"`
+		PageSize                    int                      `json:"page_size"`
+		Platform                    string                   `json:"platform"`
+		AccountType                 string                   `json:"type"`
+		Status                      string                   `json:"status"`
+		Search                      string                   `json:"search"`
+		Lite                        bool                     `json:"lite"`
+		DedupeByUpstreamBalanceURL  bool                     `json:"dedupe_by_upstream_balance_url"`
+		Items                       []AccountWithConcurrency `json:"items"`
 	}{
-		Total:       total,
-		Page:        page,
-		PageSize:    pageSize,
-		Platform:    platform,
-		AccountType: accountType,
-		Status:      status,
-		Search:      search,
-		Lite:        lite,
-		Items:       items,
+		Total:                      total,
+		Page:                       page,
+		PageSize:                   pageSize,
+		Platform:                   platform,
+		AccountType:                accountType,
+		Status:                     status,
+		Search:                     search,
+		Lite:                       lite,
+		DedupeByUpstreamBalanceURL: dedupeByUpstreamBalanceURL,
+		Items:                      items,
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {

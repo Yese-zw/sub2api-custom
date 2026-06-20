@@ -4254,6 +4254,8 @@ export default {
       refreshFailed: 'Failed to refresh upstream balance',
       configSaved: 'Upstream balance config saved',
       configSaveFailed: 'Failed to save upstream balance config',
+      dedupeByRequestUrl: 'Deduplicate by request URL',
+      dedupeByRequestUrlHint: 'Show only one row per request URL, preferring accounts with upstream balance settings',
       saving: 'Saving...',
       invalidRatio: 'Balance ratio must be a non-negative number',
       invalidLowBalanceThreshold: 'Low-balance notification threshold must be greater than 0',

@@ -533,6 +533,88 @@ func upstreamBalanceBaseURL(account *Account) string {
 	return strings.TrimSpace(account.GetCredential("base_url"))
 }
 
+func UpstreamBalanceRequestDedupKey(account *Account) string {
+	if account == nil {
+		return ""
+	}
+	baseURL := strings.TrimSpace(upstreamBalanceBaseURL(account))
+	if baseURL == "" {
+		return ""
+	}
+	mode := upstreamBalanceConfigMode(account)
+	if mode == "" {
+		mode = normalizeUpstreamBalanceMode(account.GetCredential("usage_integration_type"))
+	}
+	if mode == "" {
+		mode = normalizeUpstreamBalanceMode(account.GetExtraString("usage_integration_type"))
+	}
+	if mode == "" {
+		mode = detectUpstreamBalanceMode(baseURL)
+	}
+	accountAccessKey := strings.TrimSpace(account.GetCredential(UpstreamBalanceAccessKeyCredential))
+	newAPIUserID := upstreamBalanceConfigString(account, UpstreamBalanceConfigNewAPIUserID)
+	apiKey := strings.TrimSpace(account.GetCredential("api_key"))
+
+	var targetURL string
+	var err error
+	switch mode {
+	case UpstreamBalanceModeNewAPI:
+		targetURL, err = newAPIUserSelfURL(baseURL)
+	case UpstreamBalanceModeSub2API:
+		urls, urlsErr := sub2APIUsageURLs(baseURL)
+		if urlsErr == nil && len(urls) > 0 {
+			targetURL = urls[0]
+		}
+		err = urlsErr
+	default:
+		if accountAccessKey != "" && newAPIUserID != "" {
+			targetURL, err = newAPIUserSelfURL(baseURL)
+		} else if apiKey != "" {
+			urls, urlsErr := sub2APIUsageURLs(baseURL)
+			if urlsErr == nil && len(urls) > 0 {
+				targetURL = urls[0]
+			}
+			err = urlsErr
+		} else {
+			targetURL, err = newAPIUserSelfURL(baseURL)
+		}
+	}
+	if err != nil || strings.TrimSpace(targetURL) == "" {
+		return ""
+	}
+	return normalizeUpstreamBalanceRequestURL(targetURL)
+}
+
+func HasUpstreamBalanceConfig(account *Account) bool {
+	if account == nil || account.Extra == nil {
+		return false
+	}
+	raw, ok := account.Extra[UpstreamBalanceConfigExtraKey]
+	if !ok || raw == nil {
+		return false
+	}
+	if config, ok := raw.(map[string]any); ok {
+		return len(config) > 0
+	}
+	return true
+}
+
+func normalizeUpstreamBalanceRequestURL(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return strings.TrimSpace(raw)
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	u.Host = strings.ToLower(u.Host)
+	u.RawQuery = ""
+	u.Fragment = ""
+	u.Path = strings.TrimRight(u.Path, "/")
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	return u.String()
+}
+
 func upstreamBalanceProxyURL(account *Account) string {
 	if account != nil && account.ProxyID != nil && account.Proxy != nil {
 		return account.Proxy.URL()

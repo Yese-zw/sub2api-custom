@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+        <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
           <div class="flex flex-1 flex-wrap items-center gap-3">
             <div class="relative w-full sm:w-72">
               <Icon
@@ -27,6 +27,17 @@
               @update:model-value="updateStatusFilter"
               @change="reload"
             />
+            <div class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 dark:border-dark-700 dark:text-gray-300">
+              <Toggle v-model="dedupeByRequestUrl" />
+              <div class="min-w-0">
+                <div class="font-medium text-gray-700 dark:text-gray-200">
+                  {{ t('admin.upstreamBalances.dedupeByRequestUrl') }}
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.upstreamBalances.dedupeByRequestUrlHint') }}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="flex flex-wrap items-center justify-end gap-2">
@@ -300,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -309,6 +320,7 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { adminAPI } from '@/api/admin'
 import { useAppStore } from '@/stores/app'
@@ -327,6 +339,7 @@ const appStore = useAppStore()
 const accounts = ref<Account[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
+const dedupeByRequestUrl = ref(true)
 const refreshingIds = ref<Set<number>>(new Set())
 const refreshingAll = ref(false)
 const configDialogOpen = ref(false)
@@ -409,6 +422,7 @@ const load = async () => {
       {
         ...params,
         type: 'apikey,upstream',
+        dedupe_by_upstream_balance_url: dedupeByRequestUrl.value ? 'true' : 'false',
         sort_by: params.sort_by,
         sort_order: params.sort_order
       }
@@ -430,6 +444,10 @@ const reload = () => {
 }
 
 const debouncedReload = useDebounceFn(reload, 300)
+
+watch(dedupeByRequestUrl, () => {
+  reload()
+})
 
 const handleSearch = () => {
   params.search = searchQuery.value.trim()
