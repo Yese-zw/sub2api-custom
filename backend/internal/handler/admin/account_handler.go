@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"sort"
 	"net/mail"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -235,6 +237,8 @@ func (h *AccountHandler) buildAccountResponseWithRuntime(ctx context.Context, ac
 		}
 	}
 
+	h.enrichShadowParents(ctx, []AccountWithConcurrency{item})
+
 	return item
 }
 
@@ -398,6 +402,9 @@ func (h *AccountHandler) List(c *gin.Context) {
 	}
 
 	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, lite, dedupeByUpstreamBalanceURL)
+	h.enrichShadowParents(c.Request.Context(), result)
+
+	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, lite)
 	if etag != "" {
 		c.Header("ETag", etag)
 		c.Header("Vary", "If-None-Match")
@@ -410,80 +417,33 @@ func (h *AccountHandler) List(c *gin.Context) {
 	response.Paginated(c, result, total, page, pageSize)
 }
 
-func (h *AccountHandler) listAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode, sortBy, sortOrder string, dedupeByUpstreamBalanceURL bool) ([]service.Account, int64, error) {
-	if !dedupeByUpstreamBalanceURL {
-		return h.adminService.ListAccounts(ctx, page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
-	}
-
-	allAccounts, err := h.listAccountsFiltered(ctx, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
-	if err != nil {
-		return nil, 0, err
-	}
-	deduped := dedupeAccountsByUpstreamBalanceRequestURL(allAccounts)
-	total := int64(len(deduped))
-	start := (page - 1) * pageSize
-	if start >= len(deduped) {
-		return []service.Account{}, total, nil
-	}
-	end := start + pageSize
-	if end > len(deduped) {
-		end = len(deduped)
-	}
-	return deduped[start:end], total, nil
-}
-
-func dedupeAccountsByUpstreamBalanceRequestURL(accounts []service.Account) []service.Account {
-	out := make([]service.Account, 0, len(accounts))
-	indexByURL := make(map[string]int, len(accounts))
-	for _, account := range accounts {
-		key := service.UpstreamBalanceRequestDedupKey(&account)
-		if key == "" {
-			out = append(out, account)
-			continue
-		}
-		existingIndex, ok := indexByURL[key]
-		if !ok {
-			indexByURL[key] = len(out)
-			out = append(out, account)
-			continue
-		}
-		if service.HasUpstreamBalanceConfig(&account) && !service.HasUpstreamBalanceConfig(&out[existingIndex]) {
-			out[existingIndex] = account
-		}
-	}
-	return out
-}
-
 func buildAccountsListETag(
 	items []AccountWithConcurrency,
 	total int64,
 	page, pageSize int,
 	platform, accountType, status, search string,
 	lite bool,
-	dedupeByUpstreamBalanceURL bool,
 ) string {
 	payload := struct {
-		Total                       int64                    `json:"total"`
-		Page                        int                      `json:"page"`
-		PageSize                    int                      `json:"page_size"`
-		Platform                    string                   `json:"platform"`
-		AccountType                 string                   `json:"type"`
-		Status                      string                   `json:"status"`
-		Search                      string                   `json:"search"`
-		Lite                        bool                     `json:"lite"`
-		DedupeByUpstreamBalanceURL  bool                     `json:"dedupe_by_upstream_balance_url"`
-		Items                       []AccountWithConcurrency `json:"items"`
+		Total       int64                    `json:"total"`
+		Page        int                      `json:"page"`
+		PageSize    int                      `json:"page_size"`
+		Platform    string                   `json:"platform"`
+		AccountType string                   `json:"type"`
+		Status      string                   `json:"status"`
+		Search      string                   `json:"search"`
+		Lite        bool                     `json:"lite"`
+		Items       []AccountWithConcurrency `json:"items"`
 	}{
-		Total:                      total,
-		Page:                       page,
-		PageSize:                   pageSize,
-		Platform:                   platform,
-		AccountType:                accountType,
-		Status:                     status,
-		Search:                     search,
-		Lite:                       lite,
-		DedupeByUpstreamBalanceURL: dedupeByUpstreamBalanceURL,
-		Items:                      items,
+		Total:       total,
+		Page:        page,
+		PageSize:    pageSize,
+		Platform:    platform,
+		AccountType: accountType,
+		Status:      status,
+		Search:      search,
+		Lite:        lite,
+		Items:       items,
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -896,6 +856,12 @@ func (h *AccountHandler) refreshSingleAccount(ctx context.Context, account *serv
 	if !account.IsOAuth() {
 		return nil, "", infraerrors.BadRequest("NOT_OAUTH", "cannot refresh non-OAuth account")
 	}
+	// spark 影子凭据由母账号管理、自身恒空,刷新无意义且会先打上游;在调用上游前早拒
+	// (覆盖单账号与批量两入口;批量侧将其计为 failed 并附说明)(外审第6轮)。
+	if account.IsCredentialShadow() {
+		return nil, "", infraerrors.BadRequest("SPARK_SHADOW_NO_REFRESH",
+			"cannot refresh spark shadow account; its credentials are managed by the parent account")
+	}
 
 	var newCredentials map[string]any
 
@@ -913,6 +879,7 @@ func (h *AccountHandler) refreshSingleAccount(ctx context.Context, account *serv
 				newCredentials[k] = v
 			}
 		}
+		newCredentials = service.NormalizeOpenAIPersonalAccessTokenCredentials(account, tokenInfo, newCredentials)
 	} else if account.Platform == service.PlatformGemini {
 		tokenInfo, err := h.geminiOAuthService.RefreshAccountToken(ctx, account)
 		if err != nil {
@@ -1875,7 +1842,7 @@ func (h *AccountHandler) ResetQuota(c *gin.Context) {
 	}
 
 	if err := h.adminService.ResetAccountQuota(c.Request.Context(), accountID); err != nil {
-		response.InternalError(c, "Failed to reset account quota: "+err.Error())
+		response.ErrorFrom(c, err)
 		return
 	}
 
