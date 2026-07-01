@@ -3262,7 +3262,6 @@ func (r *usageLogRepository) GetCurrentTotalUserBalance(ctx context.Context) (fl
 	return total, nil
 }
 
-func shouldUsePreaggregatedTrend(granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) bool {
 func shouldUsePreaggregatedTrend(granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8, billingMode string) bool {
 	if granularity != "day" && granularity != "hour" {
 		return false

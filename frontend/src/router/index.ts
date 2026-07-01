@@ -254,6 +254,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/gpt-radar',
+    name: 'GPTRadar',
+    component: () => import('@/views/user/GPTRadarView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'GPT Radar',
+      titleKey: 'gptRadar.title',
+      descriptionKey: 'gptRadar.description'
+    }
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/user/ProfileView.vue'),

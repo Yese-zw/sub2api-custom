@@ -434,7 +434,13 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
+    gptRadar: 'GPT 雷达',
     riskControl: '风控中心',
+  },
+
+  gptRadar: {
+    title: 'GPT 雷达',
+    description: '查看降智雷达'
   },
 
   // Auth

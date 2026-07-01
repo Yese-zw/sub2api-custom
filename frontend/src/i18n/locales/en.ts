@@ -434,7 +434,13 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
+    gptRadar: 'GPT Radar',
     riskControl: 'Risk Control',
+  },
+
+  gptRadar: {
+    title: 'GPT Radar',
+    description: 'View model IQ radar'
   },
 
   // Auth
