@@ -13,6 +13,7 @@ import (
 	"math"
 	"net/http"
 	"net/mail"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -745,16 +746,16 @@ func buildAccountsListETag(
 	lite, dedupeByUpstreamBalanceURL bool,
 ) string {
 	payload := struct {
-		Total                       int64                    `json:"total"`
-		Page                        int                      `json:"page"`
-		PageSize                    int                      `json:"page_size"`
-		Platform                    string                   `json:"platform"`
-		AccountType                 string                   `json:"type"`
-		Status                      string                   `json:"status"`
-		Search                      string                   `json:"search"`
-		Lite                        bool                     `json:"lite"`
-		DedupeByUpstreamBalanceURL  bool                     `json:"dedupe_by_upstream_balance_url"`
-		Items                       []AccountWithConcurrency `json:"items"`
+		Total                      int64                    `json:"total"`
+		Page                       int                      `json:"page"`
+		PageSize                   int                      `json:"page_size"`
+		Platform                   string                   `json:"platform"`
+		AccountType                string                   `json:"type"`
+		Status                     string                   `json:"status"`
+		Search                     string                   `json:"search"`
+		Lite                       bool                     `json:"lite"`
+		DedupeByUpstreamBalanceURL bool                     `json:"dedupe_by_upstream_balance_url"`
+		Items                      []AccountWithConcurrency `json:"items"`
 	}{
 		Total:                      total,
 		Page:                       page,
@@ -2322,12 +2323,12 @@ func (h *AccountHandler) UpdateUpstreamBalanceConfig(c *gin.Context) {
 	}
 
 	config := map[string]any{
-		"mode":                                    mode,
-		"balance_ratio":                           ratio,
-		service.UpstreamBalanceConfigNewAPIUserID: strings.TrimSpace(req.NewAPIUserID),
-		service.UpstreamBalanceConfigNotifyEnabled: req.LowBalanceNotifyEnabled,
+		"mode":          mode,
+		"balance_ratio": ratio,
+		service.UpstreamBalanceConfigNewAPIUserID:    strings.TrimSpace(req.NewAPIUserID),
+		service.UpstreamBalanceConfigNotifyEnabled:   req.LowBalanceNotifyEnabled,
 		service.UpstreamBalanceConfigNotifyThreshold: notifyThreshold,
-		service.UpstreamBalanceConfigNotifyEmails:  notifyEmails,
+		service.UpstreamBalanceConfigNotifyEmails:    notifyEmails,
 	}
 	if req.LowBalanceNotifyEnabled {
 		existingConfig := service.UpstreamBalanceConfigFromAccount(account)
