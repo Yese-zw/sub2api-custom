@@ -552,12 +552,6 @@ const handleEvent = (event: TestEventPayload) => {
       }
       break
 
-    case 'status':
-      if (event.text) {
-        addLine(event.text, 'text-cyan-300')
-      }
-      break
-
     case 'test_complete':
       // Move streaming content to output lines
       if (streamingContent.value) {
