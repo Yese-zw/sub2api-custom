@@ -1,3 +1,5 @@
+//go:build split_setting_handler
+
 package admin
 
 import (

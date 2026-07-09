@@ -1,16 +1,21 @@
 package admin
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -47,6 +52,13 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func stringSetting(value *string, fallback string) string {
+	if value == nil {
+		return fallback
+	}
+	return *value
 }
 
 // SettingHandler 系统设置处理器
@@ -3023,4 +3035,155 @@ func systemSettingsResponseData(settings dto.SystemSettings, authSourceDefaults 
 	data["force_email_on_third_party_signup"] = authSourceDefaults.ForceEmailOnThirdPartySignup
 
 	return data
+}
+
+func (h *SettingHandler) ensureDingTalkSyncAttributes(ctx context.Context, settings *service.SystemSettings) {
+	if h.userAttributeService == nil || settings == nil {
+		return
+	}
+	if settings.DingTalkConnectCorpRestrictionPolicy != "internal_only" {
+		return
+	}
+	if settings.DingTalkConnectSyncDisplayName {
+		h.ensureUserAttributeDefinition(ctx, settings.DingTalkConnectSyncDisplayNameAttrKey, settings.DingTalkConnectSyncDisplayNameAttrName, "钉钉 internal_only 登录时同步的钉钉姓名", service.AttributeTypeText)
+	}
+	if settings.DingTalkConnectSyncCorpEmail {
+		h.ensureUserAttributeDefinition(ctx, settings.DingTalkConnectSyncCorpEmailAttrKey, settings.DingTalkConnectSyncCorpEmailAttrName, "钉钉 internal_only 登录时同步的企业邮箱", service.AttributeTypeEmail)
+	}
+	if settings.DingTalkConnectSyncDept {
+		h.ensureUserAttributeDefinition(ctx, settings.DingTalkConnectSyncDeptAttrKey, settings.DingTalkConnectSyncDeptAttrName, "钉钉 internal_only 登录时同步的完整部门路径（如：公司/研发部）", service.AttributeTypeText)
+	}
+}
+
+func (h *SettingHandler) ensureUserAttributeDefinition(ctx context.Context, key, name, description string, attrType service.UserAttributeType) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return
+	}
+	existing, err := h.userAttributeService.GetDefinitionByKey(ctx, key)
+	if err == nil && existing != nil {
+		if strings.TrimSpace(name) != "" && existing.Name != name {
+			if _, err := h.userAttributeService.UpdateDefinition(ctx, existing.ID, service.UpdateAttributeDefinitionInput{
+				Name: &name,
+			}); err != nil {
+				slog.Warn("dingtalk: update user attribute definition name failed", "key", key, "err", err.Error())
+				return
+			}
+			slog.Info("dingtalk: updated user attribute definition name", "key", key, "name", name)
+		}
+		return
+	}
+	if _, err := h.userAttributeService.CreateDefinition(ctx, service.CreateAttributeDefinitionInput{
+		Key:         key,
+		Name:        name,
+		Description: description,
+		Type:        attrType,
+		Enabled:     true,
+	}); err != nil {
+		slog.Warn("dingtalk: ensure user attribute definition failed", "key", key, "err", err.Error())
+		return
+	}
+	slog.Info("dingtalk: created user attribute definition", "key", key, "name", name, "type", attrType)
+}
+
+func equalStringSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalDefaultSubscriptions(a, b []service.DefaultSubscriptionSetting) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].GroupID != b[i].GroupID || a[i].ValidityDays != b[i].ValidityDays {
+			return false
+		}
+	}
+	return true
+}
+
+func equalLoginAgreementDocuments(a, b []service.LoginAgreementDocument) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].ID != b[i].ID || a[i].Title != b[i].Title || a[i].ContentMD != b[i].ContentMD {
+			return false
+		}
+	}
+	return true
+}
+
+func equalIntSlice(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalNotifyEmailEntries(a, b []service.NotifyEmailEntry) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Email != b[i].Email || a[i].Verified != b[i].Verified || a[i].Disabled != b[i].Disabled {
+			return false
+		}
+	}
+	return true
+}
+
+func equalNullableFloat(a, b *float64) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+func slotOf(s *service.DefaultPlatformQuotaSetting, win string) *float64 {
+	if s == nil {
+		return nil
+	}
+	switch win {
+	case "daily":
+		return s.DailyLimitUSD
+	case "weekly":
+		return s.WeeklyLimitUSD
+	case "monthly":
+		return s.MonthlyLimitUSD
+	}
+	return nil
+}
+
+func equalPlatformQuotaSettings(before, after map[string]*service.DefaultPlatformQuotaSetting) bool {
+	for _, platform := range service.AllowedQuotaPlatforms {
+		b := before[platform]
+		a := after[platform]
+		if !equalNullableFloat(slotOf(b, "daily"), slotOf(a, "daily")) {
+			return false
+		}
+		if !equalNullableFloat(slotOf(b, "weekly"), slotOf(a, "weekly")) {
+			return false
+		}
+		if !equalNullableFloat(slotOf(b, "monthly"), slotOf(a, "monthly")) {
+			return false
+		}
+	}
+	return true
 }

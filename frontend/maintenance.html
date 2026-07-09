@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>服务器维护中</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+          "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
+        color: #1f2937;
+        background:
+          radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 32%),
+          linear-gradient(135deg, #f8fafc 0%, #e5e7eb 100%);
+      }
+
+      main {
+        width: min(100%, 640px);
+        padding: 48px 40px;
+        border: 1px solid rgba(148, 163, 184, 0.42);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+        text-align: center;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        color: #0369a1;
+        background: #e0f2fe;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .status::before {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #0284c7;
+        content: "";
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 5vw, 46px);
+        line-height: 1.16;
+        letter-spacing: 0;
+      }
+
+      .message {
+        margin: 18px auto 0;
+        max-width: 520px;
+        color: #4b5563;
+        font-size: 17px;
+        line-height: 1.8;
+      }
+
+      .info {
+        display: grid;
+        gap: 14px;
+        margin: 32px 0 0;
+        text-align: left;
+      }
+
+      .item {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 18px 20px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #f9fafb;
+      }
+
+      .label {
+        color: #6b7280;
+        font-size: 15px;
+      }
+
+      .value {
+        color: #111827;
+        font-size: 16px;
+        font-weight: 700;
+        text-align: right;
+      }
+
+      footer {
+        margin-top: 32px;
+        color: #6b7280;
+        font-size: 14px;
+      }
+
+      @media (max-width: 520px) {
+        main {
+          padding: 36px 22px;
+        }
+
+        .item {
+          display: grid;
+          gap: 6px;
+        }
+
+        .value {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="status">维护通知</div>
+      <h1>服务器维护中</h1>
+      <p class="message">
+        当前服务正在进行维护升级，期间可能无法正常访问。我们会尽快完成维护并恢复服务。
+      </p>
+
+      <section class="info" aria-label="维护信息">
+        <div class="item">
+          <span class="label">预计恢复时间</span>
+          <span class="value">2026/7/10 13:00</span>
+        </div>
+        <div class="item">
+          <span class="label">问题联系 QQ</span>
+          <span class="value">960777365</span>
+        </div>
+      </section>
+
+      <footer>感谢您的理解与耐心等待</footer>
+    </main>
+  </body>
+</html>

@@ -1,3 +1,5 @@
+//go:build legacy_usage_log_repo
+
 package repository
 
 import (
