@@ -969,6 +969,9 @@ export default {
     cost: '费用',
     firstToken: '首 Token',
     duration: '耗时',
+    latency: '延迟',
+    latencyFirstToken: '首字',
+    latencyDuration: '总耗时',
     time: '时间',
     ws: 'WS',
     stream: '流式',
@@ -1036,7 +1039,7 @@ export default {
       detailAccuracy: '定位精度',
       detailCoordinates: '坐标',
     },
-    tabs: { usage: '用量明细', errors: '错误请求' },
+    tabs: { usage: '用量明细', errors: '错误请求', ranking: '用户排行' },
     errors: {
       time: '时间', model: '模型', endpoint: '端点', status: '状态码',
       category: '分类', platform: '平台', message: '错误信息',
@@ -5103,6 +5106,20 @@ export default {
       clickToViewBalance: '点击查看充值记录',
       failedToLoadUser: '加载用户信息失败',
       userDeletedBadge: '已删除',
+      tokenRanking: {
+        subtitle: '按当前筛选与时间范围统计每个用户的 Token 用量',
+        rowHint: '点击查看该用户的用量明细',
+        userCount: '共 {count} 位用户',
+        columns: {
+          user: '用户',
+          requests: '请求数',
+          inputTokens: '输入 Token',
+          outputTokens: '输出 Token',
+          cacheTokens: '缓存 Token',
+          totalTokens: '总 Token',
+          cost: '费用'
+        }
+      },
       cleanup: {
         button: '清理',
         title: '清理使用记录',

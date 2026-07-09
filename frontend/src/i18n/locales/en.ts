@@ -965,6 +965,9 @@ export default {
     cost: 'Cost',
     firstToken: 'First Token',
     duration: 'Duration',
+    latency: 'Latency',
+    latencyFirstToken: 'First',
+    latencyDuration: 'Total',
     time: 'Time',
     ws: 'WS',
     stream: 'Stream',
@@ -1032,7 +1035,7 @@ export default {
       detailAccuracy: 'Accuracy',
       detailCoordinates: 'Coordinates',
     },
-    tabs: { usage: 'Usage', errors: 'Error Requests' },
+    tabs: { usage: 'Usage', errors: 'Error Requests', ranking: 'User Ranking' },
     errors: {
       time: 'Time', model: 'Model', endpoint: 'Endpoint', status: 'Status',
       category: 'Category', platform: 'Platform', message: 'Message',
@@ -4952,6 +4955,20 @@ export default {
       clickToViewBalance: 'Click to view balance history',
       failedToLoadUser: 'Failed to load user info',
       userDeletedBadge: 'Deleted',
+      tokenRanking: {
+        subtitle: 'Per-user token usage for the current filters and time range',
+        rowHint: "Click to view this user's usage details",
+        userCount: '{count} users',
+        columns: {
+          user: 'User',
+          requests: 'Requests',
+          inputTokens: 'Input Tokens',
+          outputTokens: 'Output Tokens',
+          cacheTokens: 'Cache Tokens',
+          totalTokens: 'Total Tokens',
+          cost: 'Cost'
+        }
+      },
       cleanup: {
         button: 'Cleanup',
         title: 'Cleanup Usage Records',
