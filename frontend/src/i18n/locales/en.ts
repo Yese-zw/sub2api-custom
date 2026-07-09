@@ -1,3 +1,4 @@
+
 export default {
   batchImageGuide: {
     title: 'Batch Image Generation',
