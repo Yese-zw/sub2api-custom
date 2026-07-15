@@ -443,13 +443,17 @@ type UpdateSettingsRequest struct {
 	LoginAgreementDocuments          []dto.LoginAgreementDocument `json:"login_agreement_documents"`
 
 	// 邮件服务设置
-	SMTPHost     string `json:"smtp_host"`
-	SMTPPort     int    `json:"smtp_port"`
-	SMTPUsername string `json:"smtp_username"`
-	SMTPPassword string `json:"smtp_password"`
-	SMTPFrom     string `json:"smtp_from_email"`
-	SMTPFromName string `json:"smtp_from_name"`
-	SMTPUseTLS   bool   `json:"smtp_use_tls"`
+	EmailProvider             string `json:"email_provider"`
+	SMTPHost                  string `json:"smtp_host"`
+	SMTPPort                  int    `json:"smtp_port"`
+	SMTPUsername              string `json:"smtp_username"`
+	SMTPPassword              string `json:"smtp_password"`
+	SMTPFrom                  string `json:"smtp_from_email"`
+	SMTPFromName              string `json:"smtp_from_name"`
+	SMTPUseTLS                bool   `json:"smtp_use_tls"`
+	ResendAPIKey              string `json:"resend_api_key"`
+	CloudflareEmailAccountID string `json:"cloudflare_email_account_id"`
+	CloudflareEmailAPIToken   string `json:"cloudflare_email_api_token"`
 
 	// Cloudflare Turnstile 设置
 	TurnstileEnabled   bool   `json:"turnstile_enabled"`
@@ -1585,6 +1589,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		LoginAgreementMode:               loginAgreementMode,
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
 		LoginAgreementDocuments:          loginAgreementDocuments,
+		EmailProvider:                    req.EmailProvider,
 		SMTPHost:                         req.SMTPHost,
 		SMTPPort:                         req.SMTPPort,
 		SMTPUsername:                     req.SMTPUsername,
@@ -1592,6 +1597,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		SMTPFrom:                         req.SMTPFrom,
 		SMTPFromName:                     req.SMTPFromName,
 		SMTPUseTLS:                       req.SMTPUseTLS,
+		ResendAPIKey:                     req.ResendAPIKey,
+		CloudflareEmailAccountID:         req.CloudflareEmailAccountID,
+		CloudflareEmailAPIToken:          req.CloudflareEmailAPIToken,
 		TurnstileEnabled:                 req.TurnstileEnabled,
 		TurnstileSiteKey:                 req.TurnstileSiteKey,
 		TurnstileSecretKey:               req.TurnstileSecretKey,
