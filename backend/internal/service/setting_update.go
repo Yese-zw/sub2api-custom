@@ -139,6 +139,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyLoginAgreementDocuments] = loginAgreementDocumentsJSON
 
 	// 邮件服务设置（只有非空才更新密码）
+	updates[SettingKeyEmailProvider] = normalizeEmailProvider(settings.EmailProvider)
 	updates[SettingKeySMTPHost] = settings.SMTPHost
 	updates[SettingKeySMTPPort] = strconv.Itoa(settings.SMTPPort)
 	updates[SettingKeySMTPUsername] = settings.SMTPUsername
@@ -148,6 +149,13 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeySMTPFrom] = settings.SMTPFrom
 	updates[SettingKeySMTPFromName] = settings.SMTPFromName
 	updates[SettingKeySMTPUseTLS] = strconv.FormatBool(settings.SMTPUseTLS)
+	if settings.ResendAPIKey != "" {
+		updates[SettingKeyResendAPIKey] = settings.ResendAPIKey
+	}
+	updates[SettingKeyCloudflareAccountID] = settings.CloudflareEmailAccountID
+	if settings.CloudflareEmailAPIToken != "" {
+		updates[SettingKeyCloudflareEmailAPIToken] = settings.CloudflareEmailAPIToken
+	}
 
 	// Cloudflare Turnstile 设置（只有非空才更新密钥）
 	updates[SettingKeyTurnstileEnabled] = strconv.FormatBool(settings.TurnstileEnabled)

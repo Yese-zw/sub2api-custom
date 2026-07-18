@@ -462,17 +462,17 @@ type UpdateSettingsRequest struct {
 	LoginAgreementDocuments          []dto.LoginAgreementDocument `json:"login_agreement_documents"`
 
 	// 邮件服务设置
-	EmailProvider             string `json:"email_provider"`
-	SMTPHost                  string `json:"smtp_host"`
-	SMTPPort                  int    `json:"smtp_port"`
-	SMTPUsername              string `json:"smtp_username"`
-	SMTPPassword              string `json:"smtp_password"`
-	SMTPFrom                  string `json:"smtp_from_email"`
-	SMTPFromName              string `json:"smtp_from_name"`
-	SMTPUseTLS                bool   `json:"smtp_use_tls"`
-	ResendAPIKey              string `json:"resend_api_key"`
+	EmailProvider            string `json:"email_provider"`
+	SMTPHost                 string `json:"smtp_host"`
+	SMTPPort                 int    `json:"smtp_port"`
+	SMTPUsername             string `json:"smtp_username"`
+	SMTPPassword             string `json:"smtp_password"`
+	SMTPFrom                 string `json:"smtp_from_email"`
+	SMTPFromName             string `json:"smtp_from_name"`
+	SMTPUseTLS               bool   `json:"smtp_use_tls"`
+	ResendAPIKey             string `json:"resend_api_key"`
 	CloudflareEmailAccountID string `json:"cloudflare_email_account_id"`
-	CloudflareEmailAPIToken   string `json:"cloudflare_email_api_token"`
+	CloudflareEmailAPIToken  string `json:"cloudflare_email_api_token"`
 
 	// Cloudflare Turnstile 设置
 	TurnstileEnabled   bool   `json:"turnstile_enabled"`
@@ -831,6 +831,13 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	if req.TablePageSizeOptions == nil {
 		req.TablePageSizeOptions = previousSettings.TablePageSizeOptions
 	}
+	req.EmailProvider = strings.ToLower(strings.TrimSpace(req.EmailProvider))
+	if req.EmailProvider == "" {
+		req.EmailProvider = previousSettings.EmailProvider
+	}
+	req.ResendAPIKey = strings.TrimSpace(req.ResendAPIKey)
+	req.CloudflareEmailAccountID = strings.TrimSpace(req.CloudflareEmailAccountID)
+	req.CloudflareEmailAPIToken = strings.TrimSpace(req.CloudflareEmailAPIToken)
 	req.SMTPHost = strings.TrimSpace(req.SMTPHost)
 	req.SMTPUsername = strings.TrimSpace(req.SMTPUsername)
 	req.SMTPPassword = strings.TrimSpace(req.SMTPPassword)
@@ -850,11 +857,26 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	// 防止前端加载设置失败时空表单覆盖已保存的 SMTP 配置
 	if req.SMTPHost == "" && previousSettings.SMTPHost != "" {
 		req.SMTPHost = previousSettings.SMTPHost
-		req.SMTPPort = previousSettings.SMTPPort
-		req.SMTPUsername = previousSettings.SMTPUsername
-		req.SMTPFrom = previousSettings.SMTPFrom
-		req.SMTPFromName = previousSettings.SMTPFromName
-		req.SMTPUseTLS = previousSettings.SMTPUseTLS
+		if req.EmailProvider == service.EmailProviderSMTP {
+			req.SMTPPort = previousSettings.SMTPPort
+			req.SMTPUsername = previousSettings.SMTPUsername
+			req.SMTPFrom = previousSettings.SMTPFrom
+			req.SMTPFromName = previousSettings.SMTPFromName
+			req.SMTPUseTLS = previousSettings.SMTPUseTLS
+		} else {
+			if req.SMTPUsername == "" {
+				req.SMTPUsername = previousSettings.SMTPUsername
+			}
+			if req.SMTPFrom == "" {
+				req.SMTPFrom = previousSettings.SMTPFrom
+			}
+			if req.SMTPFromName == "" {
+				req.SMTPFromName = previousSettings.SMTPFromName
+			}
+		}
+	}
+	if req.CloudflareEmailAccountID == "" && previousSettings.CloudflareEmailAccountID != "" {
+		req.CloudflareEmailAccountID = previousSettings.CloudflareEmailAccountID
 	}
 
 	// Turnstile 参数验证
@@ -2430,6 +2452,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if !equalLoginAgreementDocuments(before.LoginAgreementDocuments, after.LoginAgreementDocuments) {
 		changed = append(changed, "login_agreement_documents")
 	}
+	if before.EmailProvider != after.EmailProvider {
+		changed = append(changed, "email_provider")
+	}
 	if before.SMTPHost != after.SMTPHost {
 		changed = append(changed, "smtp_host")
 	}
@@ -2450,6 +2475,15 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.SMTPUseTLS != after.SMTPUseTLS {
 		changed = append(changed, "smtp_use_tls")
+	}
+	if req.ResendAPIKey != "" {
+		changed = append(changed, "resend_api_key")
+	}
+	if before.CloudflareEmailAccountID != after.CloudflareEmailAccountID {
+		changed = append(changed, "cloudflare_email_account_id")
+	}
+	if req.CloudflareEmailAPIToken != "" {
+		changed = append(changed, "cloudflare_email_api_token")
 	}
 	if before.TurnstileEnabled != after.TurnstileEnabled {
 		changed = append(changed, "turnstile_enabled")

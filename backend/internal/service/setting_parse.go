@@ -155,6 +155,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAuthSourceDefaultDingTalkGrantOnSignup:    "false",
 		SettingKeyAuthSourceDefaultDingTalkGrantOnFirstBind: "false",
 		SettingKeyForceEmailOnThirdPartySignup:              "false",
+		SettingKeyEmailProvider:                             EmailProviderSMTP,
 		SettingKeySMTPPort:                                  "587",
 		SettingKeySMTPUseTLS:                                "false",
 		// Model fallback defaults
@@ -252,44 +253,48 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		apiKeyACLTrustForwardedIP = s.cfg.Security.TrustForwardedIPForAPIKeyACL
 	}
 	result := &SystemSettings{
-		RegistrationEnabled:              settings[SettingKeyRegistrationEnabled] == "true",
-		EmailVerifyEnabled:               emailVerifyEnabled,
-		RegistrationEmailSuffixWhitelist: ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist]),
-		PromoCodeEnabled:                 settings[SettingKeyPromoCodeEnabled] != "false", // 默认启用
-		PasswordResetEnabled:             emailVerifyEnabled && settings[SettingKeyPasswordResetEnabled] == "true",
-		FrontendURL:                      settings[SettingKeyFrontendURL],
-		InvitationCodeEnabled:            settings[SettingKeyInvitationCodeEnabled] == "true",
-		TotpEnabled:                      settings[SettingKeyTotpEnabled] == "true",
-		SessionBindingEnabled:            settings[SettingKeySessionBindingEnabled] == "true", // 默认关闭
-		StepUpEnabled:                    settings[SettingKeyStepUpEnabled] == "true",         // 默认关闭
-		AuditLogRetentionDays:            parseAuditLogRetentionDays(settings[SettingKeyAuditLogRetentionDays]),
-		LoginAgreementEnabled:            settings[SettingKeyLoginAgreementEnabled] == "true",
-		LoginAgreementMode:               normalizeLoginAgreementMode(settings[SettingKeyLoginAgreementMode]),
-		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
-		LoginAgreementDocuments:          loginAgreementDocuments,
-		SMTPHost:                         settings[SettingKeySMTPHost],
-		SMTPUsername:                     settings[SettingKeySMTPUsername],
-		SMTPFrom:                         settings[SettingKeySMTPFrom],
-		SMTPFromName:                     settings[SettingKeySMTPFromName],
-		SMTPUseTLS:                       settings[SettingKeySMTPUseTLS] == "true",
-		SMTPPasswordConfigured:           settings[SettingKeySMTPPassword] != "",
-		TurnstileEnabled:                 settings[SettingKeyTurnstileEnabled] == "true",
-		TurnstileSiteKey:                 settings[SettingKeyTurnstileSiteKey],
-		TurnstileSecretKeyConfigured:     settings[SettingKeyTurnstileSecretKey] != "",
-		APIKeyACLTrustForwardedIP:        apiKeyACLTrustForwardedIP,
-		SiteName:                         s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
-		SiteLogo:                         settings[SettingKeySiteLogo],
-		SiteSubtitle:                     s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
-		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
-		ContactInfo:                      settings[SettingKeyContactInfo],
-		DocURL:                           settings[SettingKeyDocURL],
-		HomeContent:                      settings[SettingKeyHomeContent],
-		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
-		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
-		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
-		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
-		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
-		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
+		RegistrationEnabled:               settings[SettingKeyRegistrationEnabled] == "true",
+		EmailVerifyEnabled:                emailVerifyEnabled,
+		RegistrationEmailSuffixWhitelist:  ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist]),
+		PromoCodeEnabled:                  settings[SettingKeyPromoCodeEnabled] != "false", // 默认启用
+		PasswordResetEnabled:              emailVerifyEnabled && settings[SettingKeyPasswordResetEnabled] == "true",
+		FrontendURL:                       settings[SettingKeyFrontendURL],
+		InvitationCodeEnabled:             settings[SettingKeyInvitationCodeEnabled] == "true",
+		TotpEnabled:                       settings[SettingKeyTotpEnabled] == "true",
+		SessionBindingEnabled:             settings[SettingKeySessionBindingEnabled] == "true", // 默认关闭
+		StepUpEnabled:                     settings[SettingKeyStepUpEnabled] == "true",         // 默认关闭
+		AuditLogRetentionDays:             parseAuditLogRetentionDays(settings[SettingKeyAuditLogRetentionDays]),
+		LoginAgreementEnabled:             settings[SettingKeyLoginAgreementEnabled] == "true",
+		LoginAgreementMode:                normalizeLoginAgreementMode(settings[SettingKeyLoginAgreementMode]),
+		LoginAgreementUpdatedAt:           loginAgreementUpdatedAt,
+		LoginAgreementDocuments:           loginAgreementDocuments,
+		EmailProvider:                     normalizeEmailProvider(settings[SettingKeyEmailProvider]),
+		SMTPHost:                          settings[SettingKeySMTPHost],
+		SMTPUsername:                      settings[SettingKeySMTPUsername],
+		SMTPFrom:                          settings[SettingKeySMTPFrom],
+		SMTPFromName:                      settings[SettingKeySMTPFromName],
+		SMTPUseTLS:                        settings[SettingKeySMTPUseTLS] == "true",
+		SMTPPasswordConfigured:            settings[SettingKeySMTPPassword] != "",
+		ResendAPIKeyConfigured:            settings[SettingKeyResendAPIKey] != "",
+		CloudflareEmailAccountID:          settings[SettingKeyCloudflareAccountID],
+		CloudflareEmailAPITokenConfigured: settings[SettingKeyCloudflareEmailAPIToken] != "",
+		TurnstileEnabled:                  settings[SettingKeyTurnstileEnabled] == "true",
+		TurnstileSiteKey:                  settings[SettingKeyTurnstileSiteKey],
+		TurnstileSecretKeyConfigured:      settings[SettingKeyTurnstileSecretKey] != "",
+		APIKeyACLTrustForwardedIP:         apiKeyACLTrustForwardedIP,
+		SiteName:                          s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
+		SiteLogo:                          settings[SettingKeySiteLogo],
+		SiteSubtitle:                      s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
+		APIBaseURL:                        settings[SettingKeyAPIBaseURL],
+		ContactInfo:                       settings[SettingKeyContactInfo],
+		DocURL:                            settings[SettingKeyDocURL],
+		HomeContent:                       settings[SettingKeyHomeContent],
+		HideCcsImportButton:               settings[SettingKeyHideCcsImportButton] == "true",
+		PurchaseSubscriptionEnabled:       settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
+		PurchaseSubscriptionURL:           strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
+		CustomMenuItems:                   settings[SettingKeyCustomMenuItems],
+		CustomEndpoints:                   settings[SettingKeyCustomEndpoints],
+		BackendModeEnabled:                settings[SettingKeyBackendModeEnabled] == "true",
 	}
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
 		settings[SettingKeyTableDefaultPageSize],
@@ -344,6 +349,8 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 
 	// 敏感信息直接返回，方便测试连接时使用
 	result.SMTPPassword = settings[SettingKeySMTPPassword]
+	result.ResendAPIKey = settings[SettingKeyResendAPIKey]
+	result.CloudflareEmailAPIToken = settings[SettingKeyCloudflareEmailAPIToken]
 	result.TurnstileSecretKey = settings[SettingKeyTurnstileSecretKey]
 
 	// LinuxDo Connect 设置：

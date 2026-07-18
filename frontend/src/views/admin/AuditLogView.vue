@@ -102,8 +102,8 @@
 
           <template #cell-action="{ row }">
             <div class="min-w-0 max-w-xs">
-              <div class="truncate font-mono text-sm text-gray-800 dark:text-gray-200" :title="row.action">
-                {{ row.action }}
+              <div class="truncate text-sm text-gray-800 dark:text-gray-200" :title="row.action">
+                {{ actionLabel(row.action) }}
               </div>
               <div class="mt-0.5 truncate font-mono text-xs text-gray-400" :title="`${row.method} ${row.path}`">
                 {{ row.method }} {{ row.path }}
@@ -182,8 +182,8 @@
               <span class="h-1.5 w-1.5 rounded-full" :class="statusDotClass(detail.status_code)"></span>
               {{ detail.status_code }} {{ statusText(detail.status_code) }}
             </span>
-            <span class="break-all font-mono text-base font-semibold text-gray-900 dark:text-white">
-              {{ detail.action }}
+            <span class="break-all text-base font-semibold text-gray-900 dark:text-white" :title="detail.action">
+              {{ actionLabel(detail.action) }}
             </span>
           </div>
 
@@ -497,6 +497,52 @@ const resultOptions = computed(() => [
 function authMethodLabel(method: string): string {
   const found = authMethodOptions.value.find((o) => o.value === method)
   return found && found.value ? found.label : method
+}
+
+function actionLabel(action: string): string {
+  const normalized = String(action || '').trim()
+  if (!normalized) return '—'
+
+  // Action codes contain dots, which vue-i18n treats as nested paths. Convert
+  // them to stable flat keys while keeping the original code in the tooltip.
+  const key = normalized.replace(/[^a-zA-Z0-9]+/g, '_')
+  const translationKey = `admin.audit.actionLabels.${key}`
+  const translated = t(translationKey)
+  if (translated !== translationKey) return translated
+
+  const parts = normalized.split('.').filter(Boolean)
+  if (parts[0] === 'admin') parts.shift()
+  if (parts.length === 0) return normalized
+
+  const verb = parts.pop() || ''
+  const operationTokens = new Set([
+    'batch',
+    'clear',
+    'duplicate',
+    'extend',
+    'generate',
+    'preview',
+    'probe',
+    'refresh',
+    'regenerate',
+    'restart',
+    'restore',
+    'rollback'
+  ])
+  // POST routes such as `...refresh.create` already encode the real operation
+  // in the preceding segment, so the generated `create` suffix is redundant.
+  if (!(verb === 'create' && operationTokens.has(parts[parts.length - 1] || ''))) {
+    parts.push(verb)
+  }
+
+  return parts.map(actionTokenLabel).join(' · ')
+}
+
+function actionTokenLabel(token: string): string {
+  const key = token.replace(/[^a-zA-Z0-9]+/g, '_')
+  const translationKey = `admin.audit.actionTokens.${key}`
+  const translated = t(translationKey)
+  return translated === translationKey ? token.replace(/_/g, ' ') : translated
 }
 
 function toRFC3339(local: string): string | undefined {

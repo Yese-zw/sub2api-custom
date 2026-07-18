@@ -1,5 +1,10 @@
 export default {
 
+  gptRadar: {
+    title: 'GPT 雷达',
+    description: '查看降智雷达'
+  },
+
   // Subscription Progress (Header component)
   subscriptionProgress: {
     title: '我的订阅',

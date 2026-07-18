@@ -1,5 +1,10 @@
 export default {
 
+  gptRadar: {
+    title: 'GPT Radar',
+    description: 'View the intelligence degradation radar'
+  },
+
   // Subscription Progress (Header component)
   subscriptionProgress: {
     title: 'My Subscriptions',

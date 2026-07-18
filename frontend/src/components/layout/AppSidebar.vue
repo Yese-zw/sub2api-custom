@@ -844,8 +844,8 @@ const adminNavItems = computed((): NavItem[] => {
       ],
     },
     { path: '/admin/usage', label: t('nav.usage'), icon: ChartIcon },
-    { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon, hideInSimpleMode: true }
-  { path: '/admin/profit', label: t('nav.profit'), icon: ChartIcon }
+    { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon, hideInSimpleMode: true },
+    { path: '/admin/profit', label: t('nav.profit'), icon: ChartIcon },
   ]
 
   const visible = applyFeatureFlags(baseItems)

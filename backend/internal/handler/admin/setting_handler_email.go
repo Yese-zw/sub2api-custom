@@ -78,14 +78,18 @@ func (h *SettingHandler) TestSMTPConnection(c *gin.Context) {
 
 // SendTestEmailRequest 发送测试邮件请求
 type SendTestEmailRequest struct {
-	Email        string `json:"email" binding:"required,email"`
-	SMTPHost     string `json:"smtp_host"`
-	SMTPPort     int    `json:"smtp_port"`
-	SMTPUsername string `json:"smtp_username"`
-	SMTPPassword string `json:"smtp_password"`
-	SMTPFrom     string `json:"smtp_from_email"`
-	SMTPFromName string `json:"smtp_from_name"`
-	SMTPUseTLS   bool   `json:"smtp_use_tls"`
+	Email                    string `json:"email" binding:"required,email"`
+	EmailProvider            string `json:"email_provider"`
+	SMTPHost                 string `json:"smtp_host"`
+	SMTPPort                 int    `json:"smtp_port"`
+	SMTPUsername             string `json:"smtp_username"`
+	SMTPPassword             string `json:"smtp_password"`
+	SMTPFrom                 string `json:"smtp_from_email"`
+	SMTPFromName             string `json:"smtp_from_name"`
+	SMTPUseTLS               bool   `json:"smtp_use_tls"`
+	ResendAPIKey             string `json:"resend_api_key"`
+	CloudflareEmailAccountID string `json:"cloudflare_email_account_id"`
+	CloudflareEmailAPIToken  string `json:"cloudflare_email_api_token"`
 }
 
 // SendTestEmail 发送测试邮件
@@ -97,52 +101,83 @@ func (h *SettingHandler) SendTestEmail(c *gin.Context) {
 		return
 	}
 
+	req.EmailProvider = strings.TrimSpace(req.EmailProvider)
 	req.SMTPHost = strings.TrimSpace(req.SMTPHost)
 	req.SMTPUsername = strings.TrimSpace(req.SMTPUsername)
 	req.SMTPFrom = strings.TrimSpace(req.SMTPFrom)
 	req.SMTPFromName = strings.TrimSpace(req.SMTPFromName)
+	req.ResendAPIKey = strings.TrimSpace(req.ResendAPIKey)
+	req.CloudflareEmailAccountID = strings.TrimSpace(req.CloudflareEmailAccountID)
+	req.CloudflareEmailAPIToken = strings.TrimSpace(req.CloudflareEmailAPIToken)
 
-	var savedConfig *service.SMTPConfig
-	if cfg, err := h.emailService.GetSMTPConfig(c.Request.Context()); err == nil && cfg != nil {
-		savedConfig = cfg
+	var savedSettings *service.SystemSettings
+	if settings, err := h.settingService.GetAllSettings(c.Request.Context()); err == nil && settings != nil {
+		savedSettings = settings
 	}
 
-	if req.SMTPHost == "" && savedConfig != nil {
-		req.SMTPHost = savedConfig.Host
+	if req.EmailProvider == "" && savedSettings != nil {
+		req.EmailProvider = savedSettings.EmailProvider
+	}
+	switch strings.ToLower(strings.TrimSpace(req.EmailProvider)) {
+	case service.EmailProviderResend:
+		req.EmailProvider = service.EmailProviderResend
+	case service.EmailProviderCloudflare:
+		req.EmailProvider = service.EmailProviderCloudflare
+	default:
+		req.EmailProvider = service.EmailProviderSMTP
+	}
+
+	if req.SMTPHost == "" && savedSettings != nil {
+		req.SMTPHost = savedSettings.SMTPHost
 	}
 	if req.SMTPPort <= 0 {
-		if savedConfig != nil && savedConfig.Port > 0 {
-			req.SMTPPort = savedConfig.Port
+		if savedSettings != nil && savedSettings.SMTPPort > 0 {
+			req.SMTPPort = savedSettings.SMTPPort
 		} else {
 			req.SMTPPort = 587
 		}
 	}
-	if req.SMTPUsername == "" && savedConfig != nil {
-		req.SMTPUsername = savedConfig.Username
+	if req.SMTPUsername == "" && savedSettings != nil {
+		req.SMTPUsername = savedSettings.SMTPUsername
 	}
 	password := strings.TrimSpace(req.SMTPPassword)
-	if password == "" && savedConfig != nil {
-		password = savedConfig.Password
+	if password == "" && savedSettings != nil {
+		password = savedSettings.SMTPPassword
 	}
-	if req.SMTPFrom == "" && savedConfig != nil {
-		req.SMTPFrom = savedConfig.From
+	if req.SMTPFrom == "" && savedSettings != nil {
+		req.SMTPFrom = savedSettings.SMTPFrom
 	}
-	if req.SMTPFromName == "" && savedConfig != nil {
-		req.SMTPFromName = savedConfig.FromName
+	if req.SMTPFromName == "" && savedSettings != nil {
+		req.SMTPFromName = savedSettings.SMTPFromName
 	}
-	if req.SMTPHost == "" {
+	if req.ResendAPIKey == "" && savedSettings != nil {
+		req.ResendAPIKey = savedSettings.ResendAPIKey
+	}
+	if req.CloudflareEmailAccountID == "" && savedSettings != nil {
+		req.CloudflareEmailAccountID = savedSettings.CloudflareEmailAccountID
+	}
+	if req.CloudflareEmailAPIToken == "" && savedSettings != nil {
+		req.CloudflareEmailAPIToken = savedSettings.CloudflareEmailAPIToken
+	}
+	if req.EmailProvider == service.EmailProviderSMTP && req.SMTPHost == "" {
 		response.BadRequest(c, "SMTP host is required")
 		return
 	}
 
-	config := &service.SMTPConfig{
-		Host:     req.SMTPHost,
-		Port:     req.SMTPPort,
-		Username: req.SMTPUsername,
-		Password: password,
-		From:     req.SMTPFrom,
-		FromName: req.SMTPFromName,
-		UseTLS:   req.SMTPUseTLS,
+	config := &service.EmailConfig{
+		Provider: req.EmailProvider,
+		SMTP: service.SMTPConfig{
+			Host:     req.SMTPHost,
+			Port:     req.SMTPPort,
+			Username: req.SMTPUsername,
+			Password: password,
+			From:     req.SMTPFrom,
+			FromName: req.SMTPFromName,
+			UseTLS:   req.SMTPUseTLS,
+		},
+		ResendAPIKey:        req.ResendAPIKey,
+		CloudflareAccountID: req.CloudflareEmailAccountID,
+		CloudflareAPIToken:  req.CloudflareEmailAPIToken,
 	}
 
 	siteName := h.settingService.GetSiteName(c.Request.Context())
@@ -169,7 +204,7 @@ func (h *SettingHandler) SendTestEmail(c *gin.Context) {
         <div class="content">
             <div class="success">✓</div>
             <h2>Email Configuration Successful!</h2>
-            <p>This is a test email to verify your SMTP settings are working correctly.</p>
+            <p>This is a test email to verify your email provider settings are working correctly.</p>
         </div>
         <div class="footer">
             <p>This is an automated test message.</p>
@@ -179,7 +214,7 @@ func (h *SettingHandler) SendTestEmail(c *gin.Context) {
 </html>
 `
 
-	if err := h.emailService.SendEmailWithConfig(config, req.Email, subject, body); err != nil {
+	if err := h.emailService.SendEmailWithEmailConfig(c.Request.Context(), config, req.Email, subject, body); err != nil {
 		response.BadRequest(c, "Failed to send test email: "+err.Error())
 		return
 	}
