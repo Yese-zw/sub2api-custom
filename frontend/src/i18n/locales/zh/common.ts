@@ -45,6 +45,7 @@ export default {
     more: '更多',
     close: '关闭',
     communityGroup: '交流群',
+    communityGroupReward: '进群领 Token',
     toggleMenu: '切换菜单',
     userMenu: '用户菜单',
     pageNotFound: '页面不存在',

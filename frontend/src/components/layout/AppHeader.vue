@@ -27,12 +27,15 @@
         <button
           v-if="user && communityGroupImage"
           type="button"
-          class="flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
-          :aria-label="t('common.communityGroup')"
+          class="group flex h-9 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/50"
+          :aria-label="t('common.communityGroupReward')"
           @click="communityGroupDialogOpen = true"
         >
           <Icon name="users" size="sm" />
-          <span class="hidden sm:inline">{{ t('common.communityGroup') }}</span>
+          <span class="hidden lg:inline">{{ t('common.communityGroup') }}</span>
+          <span class="rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white transition-colors group-hover:bg-emerald-800 dark:bg-emerald-500 dark:text-emerald-950 dark:group-hover:bg-emerald-400">
+            {{ t('common.communityGroupReward') }}
+          </span>
         </button>
 
         <!-- Announcement Bell -->

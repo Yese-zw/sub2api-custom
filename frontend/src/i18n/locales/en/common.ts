@@ -45,6 +45,7 @@ export default {
     more: 'More',
     close: 'Close',
     communityGroup: 'Community Group',
+    communityGroupReward: 'Join for Tokens',
     toggleMenu: 'Toggle menu',
     userMenu: 'User menu',
     pageNotFound: 'Page not found',
