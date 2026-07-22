@@ -291,7 +291,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 			forwardedClientIPHeaders = parsed
 		}
 	}
-\tresult := &SystemSettings{
+	result := &SystemSettings{
 		RegistrationEnabled:               settings[SettingKeyRegistrationEnabled] == "true",
 		EmailVerifyEnabled:                emailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:  ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist]),
@@ -333,6 +333,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		PurchaseSubscriptionURL:           strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
 		CustomMenuItems:                   settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                   settings[SettingKeyCustomEndpoints],
+		BackendModeEnabled:                settings[SettingKeyBackendModeEnabled] == "true",
 		ForwardedClientIPHeaders:         forwardedClientIPHeaders,
 	}
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
