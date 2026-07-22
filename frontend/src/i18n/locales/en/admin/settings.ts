@@ -494,6 +494,8 @@ export default {
         uploadImage: 'Upload Image',
         remove: 'Remove',
         logoHint: 'PNG, JPG, or SVG. Max 300KB. Recommended: 80x80px square image.',
+        communityGroupImage: 'Community Group Image',
+        communityGroupImageHint: 'When set, a community group button appears to the left of announcements. Supports images up to 1MB.',
         logoSizeError: 'Image size exceeds 300KB limit ({size}KB)',
         logoTypeError: 'Please select an image file',
         logoReadError: 'Failed to read the image file',

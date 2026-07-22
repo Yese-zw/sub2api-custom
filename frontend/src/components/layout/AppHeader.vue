@@ -23,6 +23,18 @@
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
       <div class="flex min-w-0 items-center gap-1 sm:gap-3">
+        <!-- Community Group -->
+        <button
+          v-if="user && communityGroupImage"
+          type="button"
+          class="flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+          :aria-label="t('common.communityGroup')"
+          @click="communityGroupDialogOpen = true"
+        >
+          <Icon name="users" size="sm" />
+          <span class="hidden sm:inline">{{ t('common.communityGroup') }}</span>
+        </button>
+
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
@@ -236,6 +248,21 @@
         </div>
       </div>
     </div>
+
+    <BaseDialog
+      :show="communityGroupDialogOpen"
+      :title="t('common.communityGroup')"
+      width="narrow"
+      :close-on-click-outside="true"
+      @close="communityGroupDialogOpen = false"
+    >
+      <img
+        v-if="communityGroupImage"
+        :src="communityGroupImage"
+        :alt="t('common.communityGroup')"
+        class="max-h-[70vh] w-full object-contain"
+      />
+    </BaseDialog>
   </header>
 </template>
 
@@ -248,6 +275,7 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 
@@ -260,6 +288,11 @@ const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
 
 const user = computed(() => authStore.user)
+const communityGroupDialogOpen = ref(false)
+const communityGroupImage = computed(() => sanitizeUrl(
+  appStore.cachedPublicSettings?.community_group_image || '',
+  { allowRelative: true, allowDataUrl: true }
+))
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)

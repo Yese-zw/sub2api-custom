@@ -44,6 +44,7 @@ export default {
     inactive: 'Inactive',
     more: 'More',
     close: 'Close',
+    communityGroup: 'Community Group',
     toggleMenu: 'Toggle menu',
     userMenu: 'User menu',
     pageNotFound: 'Page not found',

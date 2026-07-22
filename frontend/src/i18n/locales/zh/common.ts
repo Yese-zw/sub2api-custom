@@ -44,6 +44,7 @@ export default {
     inactive: '禁用',
     more: '更多',
     close: '关闭',
+    communityGroup: '交流群',
     toggleMenu: '切换菜单',
     userMenu: '用户菜单',
     pageNotFound: '页面不存在',

@@ -239,6 +239,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		GoogleOAuthFrontendRedirectURL:                         settings.GoogleOAuthFrontendRedirectURL,
 		SiteName:                                               settings.SiteName,
 		SiteLogo:                                               settings.SiteLogo,
+		CommunityGroupImage:                                    settings.CommunityGroupImage,
 		SiteSubtitle:                                           settings.SiteSubtitle,
 		APIBaseURL:                                             settings.APIBaseURL,
 		ContactInfo:                                            settings.ContactInfo,
@@ -563,6 +564,7 @@ type UpdateSettingsRequest struct {
 	// OEM设置
 	SiteName                    string                `json:"site_name"`
 	SiteLogo                    string                `json:"site_logo"`
+	CommunityGroupImage         string                `json:"community_group_image"`
 	SiteSubtitle                string                `json:"site_subtitle"`
 	APIBaseURL                  string                `json:"api_base_url"`
 	ContactInfo                 string                `json:"contact_info"`
@@ -1721,6 +1723,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		GoogleOAuthFrontendRedirectURL:         req.GoogleOAuthFrontendRedirectURL,
 		SiteName:                               req.SiteName,
 		SiteLogo:                               req.SiteLogo,
+		CommunityGroupImage:                    req.CommunityGroupImage,
 		SiteSubtitle:                           req.SiteSubtitle,
 		APIBaseURL:                             req.APIBaseURL,
 		ContactInfo:                            req.ContactInfo,

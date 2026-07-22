@@ -67,6 +67,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		settingKeyForwardedClientIPModeV2:                   "true",
 		SettingKeySiteName:                                  "Sub2API",
 		SettingKeySiteLogo:                                  "",
+		SettingKeyCommunityGroupImage:                       "",
 		SettingKeyPurchaseSubscriptionEnabled:               "false",
 		SettingKeyPurchaseSubscriptionURL:                   "",
 		SettingKeyTableDefaultPageSize:                      "20",
@@ -323,6 +324,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		APIKeyACLTrustForwardedIP:         apiKeyACLTrustForwardedIP,
 		SiteName:                          s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
 		SiteLogo:                          settings[SettingKeySiteLogo],
+		CommunityGroupImage:               settings[SettingKeyCommunityGroupImage],
 		SiteSubtitle:                      s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
 		APIBaseURL:                        settings[SettingKeyAPIBaseURL],
 		ContactInfo:                       settings[SettingKeyContactInfo],
@@ -334,7 +336,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		CustomMenuItems:                   settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                   settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:                settings[SettingKeyBackendModeEnabled] == "true",
-		ForwardedClientIPHeaders:         forwardedClientIPHeaders,
+		ForwardedClientIPHeaders:          forwardedClientIPHeaders,
 	}
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
 		settings[SettingKeyTableDefaultPageSize],
