@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-dark-950">
+  <div class="app-shell min-h-screen bg-gray-50 dark:bg-dark-950">
     <!-- Background Decoration -->
-    <div class="pointer-events-none fixed inset-0 bg-mesh-gradient"></div>
+    <div class="app-grid pointer-events-none fixed inset-0 bg-mesh-gradient"></div>
 
     <!-- Sidebar -->
     <AppSidebar />
@@ -50,3 +50,8 @@ onMounted(() => {
 
 defineExpose({ replayTour })
 </script>
+
+<style>
+html.pixel-ui .app-shell { background: var(--pixel-canvas); }
+html.pixel-ui .app-grid { background-image: linear-gradient(var(--pixel-grid) 1px, transparent 1px), linear-gradient(90deg, var(--pixel-grid) 1px, transparent 1px); background-size: 32px 32px; }
+</style>

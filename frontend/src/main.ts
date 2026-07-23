@@ -23,6 +23,8 @@ function initIOSViewportZoomFix() {
 }
 
 function initThemeClass() {
+	const uiTheme = window.__APP_CONFIG__?.ui_theme || 'pixel'
+	document.documentElement.classList.toggle('pixel-ui', uiTheme !== 'original')
   const savedTheme = localStorage.getItem('theme')
   const shouldUseDark =
     savedTheme === 'dark' ||

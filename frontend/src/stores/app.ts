@@ -294,6 +294,7 @@ export const useAppStore = defineStore('app', () => {
       window.__APP_CONFIG__ = { ...config }
     }
     cachedPublicSettings.value = config
+    applyUITheme(config.ui_theme)
     siteName.value = config.site_name || 'Sub2API'
     siteLogo.value = config.site_logo || ''
     siteVersion.value = config.version || ''
@@ -301,6 +302,17 @@ export const useAppStore = defineStore('app', () => {
     apiBaseUrl.value = config.api_base_url || ''
     docUrl.value = config.doc_url || ''
     publicSettingsLoaded.value = true
+  }
+
+  function applyUITheme(theme: PublicSettings['ui_theme']): void {
+    const uiTheme = theme === 'original' ? 'original' : 'pixel'
+    document.documentElement.classList.toggle('pixel-ui', uiTheme === 'pixel')
+    if (typeof window !== 'undefined' && window.__APP_CONFIG__) {
+      window.__APP_CONFIG__ = { ...window.__APP_CONFIG__, ui_theme: uiTheme }
+    }
+    if (cachedPublicSettings.value) {
+      cachedPublicSettings.value = { ...cachedPublicSettings.value, ui_theme: uiTheme }
+    }
   }
 
   /**
@@ -338,6 +350,7 @@ export const useAppStore = defineStore('app', () => {
         site_name: siteName.value,
         site_logo: siteLogo.value,
         community_group_image: '',
+		ui_theme: 'pixel',
         site_subtitle: '',
         api_base_url: apiBaseUrl.value,
         contact_info: contactInfo.value,
@@ -481,6 +494,7 @@ export const useAppStore = defineStore('app', () => {
     // Public settings actions
     fetchPublicSettings,
     clearPublicSettingsCache,
+    applyUITheme,
     initFromInjectedConfig
   }
 })

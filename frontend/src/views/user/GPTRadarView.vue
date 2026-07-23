@@ -14,11 +14,52 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import DOMPurify from 'dompurify'
+import { Chart as ChartJS, CategoryScale, LineController, LineElement, LinearScale, LogarithmicScale, PointElement, ScatterController, Tooltip } from 'chart.js'
 import AppLayout from '@/components/layout/AppLayout.vue'
+
+ChartJS.register(CategoryScale, LineController, LineElement, LinearScale, LogarithmicScale, PointElement, ScatterController, Tooltip)
 
 const RADAR_PAGE_URL = 'https://codexradar.com/%E9%9B%B7%E8%BE%BE%E9%9B%B7%E8%BE%BE'
 const RADAR_ORIGIN = 'https://codexradar.com'
+const RADAR_SECTION_SELECTOR = 'section.intelligence-efficiency'
+const RADAR_DATA_URL = `${RADAR_ORIGIN}/data/intelligence-efficiency.json`
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
+
+const MODEL_METADATA: Record<string, { label: string; color: string }> = {
+  'gpt-5.6-sol': { label: 'Sol', color: '#eab308' },
+  'gpt-5.6-terra': { label: 'Terra', color: '#3b82f6' },
+  'gpt-5.6-luna': { label: 'Luna', color: '#c7d2e0' },
+  'gpt-5.5': { label: 'GPT-5.5', color: '#00e5ff' },
+}
+
+const EFFORT_ORDER = ['ultra', 'max', 'xhigh', 'high', 'medium', 'low']
+
+interface RadarPoint {
+  model: string
+  effort: string
+  iq: number
+  average_price_usd: number
+  average_minutes: number
+  combined_cost_index?: number
+  passed?: number
+  valid_tasks?: number
+  total_runs?: number
+  average_agent_steps?: number | null
+  agent_steps_samples?: number
+  average_total_tokens?: number | null
+  token_samples?: number
+  cache_hit_rate?: number | null
+  cache_token_samples?: number
+  price_samples?: number
+  duration_samples?: number
+  latest_graded_at?: string
+}
+
+interface RadarPayload {
+  source_updated_at?: string
+  points?: RadarPoint[]
+  history?: Array<{ at: string; points: RadarPoint[] }>
+}
 
 const SHADOW_OVERRIDES = `
 :host {
@@ -47,8 +88,214 @@ const SHADOW_OVERRIDES = `
   --shadow-soft: 0 10px 28px rgba(31, 43, 59, 0.06);
 }
 
-:host .model-iq {
+:host .intelligence-efficiency {
   margin: 0;
+}
+
+:host .intelligence-efficiency-plot-scroll {
+  overflow-x: auto;
+}
+
+:host .intelligence-efficiency-svg {
+  min-width: 720px;
+}
+
+:host .intelligence-efficiency-grid:empty {
+  display: none;
+}
+
+:host .radar-chart-figure,
+:host .radar-history-card,
+:host .radar-pk-panel {
+  margin: 0;
+  border: 1px solid var(--line, #dce3ed);
+  border-radius: 8px;
+  background: var(--panel, #fff);
+}
+
+:host .radar-chart-figure {
+  padding: 16px;
+}
+
+:host .radar-chart-head,
+:host .radar-history-head,
+:host .radar-pk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--ink, #17202b);
+  font-size: 14px;
+}
+
+:host .radar-chart-head strong,
+:host .radar-history-head strong,
+:host .radar-pk-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+:host .radar-chart-head select,
+:host .radar-pk-head select {
+  min-height: 32px;
+  border: 1px solid var(--line-strong, #cbd5e1);
+  border-radius: 5px;
+  background: var(--panel, #fff);
+  color: inherit;
+  padding: 0 9px;
+}
+
+:host .radar-canvas-wrap {
+  position: relative;
+  min-height: 360px;
+}
+
+:host .radar-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+:host .radar-history-card {
+  padding: 12px;
+}
+
+:host .radar-history-card .radar-canvas-wrap {
+  min-height: 240px;
+}
+
+:host .radar-pk-panel {
+  margin-top: 16px;
+  padding: 16px;
+}
+
+:host .radar-pk-options {
+  display: grid;
+  gap: 8px;
+}
+
+:host .radar-pk-family {
+  display: grid;
+  grid-template-columns: 72px repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+
+:host .radar-pk-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--family-color) 48%, var(--line, #dce3ed));
+  border-radius: 5px;
+  color: var(--ink, #17202b);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+:host .radar-pk-option input {
+  margin: 0;
+  accent-color: var(--family-color);
+}
+
+:host .radar-pk-value {
+  margin-left: auto;
+  color: var(--family-color);
+  font-weight: 800;
+}
+
+:host .radar-pk-empty {
+  margin: 14px 0 0;
+  color: var(--muted, #667085);
+  font-size: 13px;
+}
+
+:host .radar-detail-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .52);
+}
+
+:host .radar-detail-panel {
+  width: min(540px, 100%);
+  max-height: min(700px, calc(100vh - 40px));
+  overflow: auto;
+  border: 1px solid var(--line-strong, #cbd5e1);
+  border-radius: 8px;
+  background: var(--panel, #fff);
+  box-shadow: var(--shadow, 0 18px 44px rgba(31, 43, 59, .18));
+  color: var(--ink, #17202b);
+}
+
+:host .radar-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--line, #dce3ed);
+}
+
+:host .radar-detail-head h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+:host .radar-detail-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 23px;
+  line-height: 1;
+}
+
+:host .radar-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 12px 20px;
+}
+
+:host .radar-detail-summary > div {
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line, #dce3ed);
+}
+
+:host .radar-detail-summary dt {
+  color: var(--muted, #667085);
+  font-size: 12px;
+}
+
+:host .radar-detail-summary dd {
+  margin: 5px 0 0;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+:host .radar-detail-foot {
+  margin: 0;
+  padding: 0 20px 20px;
+  color: var(--muted, #667085);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  :host .radar-history-grid { grid-template-columns: 1fr; }
+  :host .radar-pk-family { grid-template-columns: 64px repeat(3, minmax(0, 1fr)); }
+  :host .radar-canvas-wrap { min-height: 280px; }
 }
 `
 
@@ -58,6 +305,7 @@ const errorMessage = ref('')
 
 let shadowRoot: ShadowRoot | null = null
 let refreshTimer: number | undefined
+let chartInstances: ChartJS[] = []
 let cleanupCallbacks: Array<() => void> = []
 
 async function loadRadar() {
@@ -65,23 +313,35 @@ async function loadRadar() {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(RADAR_PAGE_URL, {
-      cache: 'no-store',
-      referrerPolicy: 'strict-origin-when-cross-origin',
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
+    const [pageResponse, dataResponse] = await Promise.all([
+      fetch(RADAR_PAGE_URL, {
+        cache: 'no-store',
+        referrerPolicy: 'strict-origin-when-cross-origin',
+      }),
+      fetch(RADAR_DATA_URL, { cache: 'no-store' }),
+    ])
+    if (!pageResponse.ok || !dataResponse.ok) {
+      throw new Error(`HTTP ${pageResponse.status} / ${dataResponse.status}`)
     }
 
-    const html = await response.text()
+    const [html, payload] = await Promise.all([
+      pageResponse.text(),
+      dataResponse.json() as Promise<RadarPayload>,
+    ])
+    const points = validRadarPoints(payload.points)
+    if (points.length === 0) {
+      throw new Error('intelligence-efficiency points missing')
+    }
+
     const parser = new DOMParser()
     const doc = parser.parseFromString(html, 'text/html')
-    const section = doc.querySelector<HTMLElement>('section.model-iq')
+    const section = doc.querySelector<HTMLElement>(RADAR_SECTION_SELECTOR)
 
     if (!section) {
-      throw new Error('model-iq section missing')
+      throw new Error('intelligence-efficiency section missing')
     }
 
+    section.querySelector('.intelligence-efficiency-callout')?.remove()
     absolutizeSectionUrls(section)
     pruneRadarSection(section)
     const sanitizedSection = DOMPurify.sanitize(section.outerHTML, {
@@ -94,13 +354,26 @@ async function loadRadar() {
       .join('\n')
 
     await nextTick()
-    renderRadar(styleText, sanitizedSection)
+    renderRadar(styleText, sanitizedSection, payload, points)
   } catch (error) {
     console.error('Failed to load GPT radar:', error)
     errorMessage.value = '降智雷达加载失败，请稍后重试。'
   } finally {
     loading.value = false
   }
+}
+
+function validRadarPoints(points: RadarPayload['points']): RadarPoint[] {
+  if (!Array.isArray(points)) return []
+
+  return points.filter((point): point is RadarPoint => (
+    typeof point?.model === 'string'
+    && typeof point.effort === 'string'
+    && typeof point.iq === 'number'
+    && typeof point.average_price_usd === 'number'
+    && typeof point.average_minutes === 'number'
+    && point.model in MODEL_METADATA
+  ))
 }
 
 function absolutizeSectionUrls(section: HTMLElement) {
@@ -133,7 +406,7 @@ function pruneRadarSection(section: HTMLElement) {
   }
 }
 
-function renderRadar(styleText: string, html: string) {
+function renderRadar(styleText: string, html: string, payload: RadarPayload, points: RadarPoint[]) {
   const host = radarHost.value
   if (!host) return
 
@@ -148,109 +421,460 @@ function renderRadar(styleText: string, html: string) {
   const container = document.createElement('div')
   container.innerHTML = html
   shadowRoot.appendChild(container)
-
-  initModelIqInteractions(shadowRoot)
+  populateRadarData(shadowRoot, payload, points)
 }
 
-function initModelIqInteractions(root: ShadowRoot) {
-  const sections = Array.from(root.querySelectorAll<HTMLElement>('.model-iq-score'))
+function populateRadarData(root: ShadowRoot, payload: RadarPayload, points: RadarPoint[]) {
+  const cards = root.querySelector<HTMLElement>('[data-intelligence-efficiency-cards]')
+  if (!cards) return
 
-  for (const section of sections) {
-    const metricSelect = section.querySelector<HTMLSelectElement>('[data-model-iq-chart-metric]')
-    const onMetricChange = () => setMetric(section, metricSelect?.value || 'iq')
-    metricSelect?.addEventListener('change', onMetricChange)
-    if (metricSelect) {
-      cleanupCallbacks.push(() => metricSelect.removeEventListener('change', onMetricChange))
+  cards.replaceChildren()
+  for (const [model, metadata] of Object.entries(MODEL_METADATA)) {
+    const modelPoints = points
+      .filter((point) => point.model === model)
+      .sort((left, right) => EFFORT_ORDER.indexOf(left.effort) - EFFORT_ORDER.indexOf(right.effort))
+    if (modelPoints.length === 0) continue
+
+    const row = document.createElement('div')
+    row.className = 'intelligence-efficiency-family-row'
+    row.dataset.efficiencyFamily = model
+
+    for (const point of modelPoints) {
+      const card = document.createElement('button')
+      card.className = 'intelligence-efficiency-card'
+      card.type = 'button'
+      card.dataset.efficiencyCard = ''
+      card.dataset.model = point.model
+      card.dataset.effort = point.effort
+      card.style.setProperty('--family-color', metadata.color)
+      card.style.setProperty('--effort-column', String(EFFORT_ORDER.indexOf(point.effort) + 1))
+      card.setAttribute('aria-label', `${metadata.label} ${point.effort} IQ ${formatNumber(point.iq)} · 详细指标`)
+
+      const score = document.createElement('span')
+      score.className = 'intelligence-efficiency-card-iq'
+      const label = document.createElement('span')
+      label.className = 'intelligence-efficiency-card-label'
+      label.textContent = `${metadata.label} ${point.effort}`
+      const iq = document.createElement('strong')
+      iq.textContent = formatNumber(point.iq)
+      score.append(label, iq)
+
+      const details = document.createElement('span')
+      details.className = 'intelligence-efficiency-card-meta'
+      const price = document.createElement('span')
+      price.textContent = `$${formatNumber(point.average_price_usd)}`
+      const minutes = document.createElement('span')
+      minutes.textContent = `${formatNumber(point.average_minutes)}分钟`
+      details.append(price, minutes)
+      card.append(score, details)
+      row.appendChild(card)
     }
-    setMetric(section, metricSelect?.value || 'iq')
 
-    const onClick = (event: MouseEvent) => {
-      if (event.target instanceof Element && event.target.closest('[data-model-iq-chart-metric]')) return
-      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-model-key]') : null
-      if (!target || !section.contains(target)) {
-        if (section.querySelector<HTMLElement>('.model-iq-chart')?.dataset.selectedModels) {
-          setSelection(section, [])
-        }
-        return
-      }
-      toggleSelection(section, target.dataset.modelKey || '')
+    cards.appendChild(row)
+  }
+
+  const updated = root.querySelector<HTMLElement>('[data-intelligence-efficiency-updated]')
+  if (updated && payload.source_updated_at) {
+    const date = new Date(payload.source_updated_at)
+    if (!Number.isNaN(date.getTime())) {
+      const value = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(date)
+      updated.textContent = `每 10 分钟刷新 · ${value} 更新`
     }
+  }
 
-    const onKeydown = (event: KeyboardEvent) => {
-      if (event.target instanceof Element && event.target.closest('[data-model-iq-chart-metric]')) return
-      if (event.key === 'Escape') {
-        setSelection(section, [])
-        return
-      }
-      if (event.key !== 'Enter' && event.key !== ' ') return
+  renderEfficiencyCharts(root, payload, points)
+  renderHistoryComparison(root, payload, points)
 
-      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-model-key]') : null
-      if (!target || !section.contains(target)) return
-      event.preventDefault()
-      toggleSelection(section, target.dataset.modelKey || '')
-    }
+  const onCardClick = (event: MouseEvent) => {
+    const card = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-efficiency-card]') : null
+    if (!card) return
+    const point = points.find((item) => item.model === card.dataset.model && item.effort === card.dataset.effort)
+    if (point) openRadarDetail(root, point)
+  }
+  cards.addEventListener('click', onCardClick)
+  cleanupCallbacks.push(() => cards.removeEventListener('click', onCardClick))
+}
 
-    section.addEventListener('click', onClick)
-    section.addEventListener('keydown', onKeydown)
-    cleanupCallbacks.push(() => {
-      section.removeEventListener('click', onClick)
-      section.removeEventListener('keydown', onKeydown)
+function formatNumber(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, '')
+}
+
+function renderEfficiencyCharts(root: ShadowRoot, payload: RadarPayload, points: RadarPoint[]) {
+  const charts = root.querySelector<HTMLElement>('[data-intelligence-efficiency-charts]')
+  if (!charts) return
+
+  charts.replaceChildren()
+  const figure = document.createElement('figure')
+  figure.className = 'radar-chart-figure'
+  const head = document.createElement('figcaption')
+  head.className = 'radar-chart-head'
+  const title = document.createElement('strong')
+  const select = document.createElement('select')
+  const metrics = [
+    { value: 'combined_cost_index', label: '综合成本 × IQ' },
+    { value: 'average_minutes', label: '时间成本 × IQ' },
+    { value: 'average_price_usd', label: '费用成本 × IQ' },
+  ]
+  for (const metric of metrics) {
+    const option = document.createElement('option')
+    option.value = metric.value
+    option.textContent = metric.label
+    select.appendChild(option)
+  }
+  head.append(title, select)
+  const canvasWrap = document.createElement('div')
+  canvasWrap.className = 'radar-canvas-wrap'
+  figure.append(head, canvasWrap)
+  charts.appendChild(figure)
+
+  let chart: ChartJS | null = null
+  const draw = () => {
+    chart?.destroy()
+    const metric = metrics.find((item) => item.value === select.value) || metrics[0]
+    title.textContent = metric.label
+    const canvas = document.createElement('canvas')
+    canvasWrap.replaceChildren(canvas)
+    const datasets = Object.entries(MODEL_METADATA).map(([model, metadata]) => ({
+      label: metadata.label,
+      showLine: true,
+      borderColor: metadata.color,
+      backgroundColor: metadata.color,
+      borderWidth: 1.8,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      data: points
+        .filter((point) => point.model === model)
+        .map((point) => ({
+          x: Math.max(Number(point[metric.value as keyof RadarPoint]) || 0.0001, 0.0001),
+          y: point.iq,
+          label: `${metadata.label} ${point.effort}`,
+        })),
+    }))
+    chart = new ChartJS(canvas, {
+      type: 'scatter',
+      data: { datasets },
+      options: radarChartOptions({
+        xTitle: metric.label.replace(' × IQ', ''),
+        yTitle: 'IQ',
+        logarithmic: true,
+        tooltipLabel: (context) => `${context.raw.label}: IQ ${formatNumber(context.parsed.y)} · ${metric.label.replace(' × IQ', '')} ${formatNumber(context.parsed.x)}`,
+      }),
     })
+    chartInstances.push(chart)
+  }
+  select.addEventListener('change', draw)
+  cleanupCallbacks.push(() => {
+    select.removeEventListener('change', draw)
+    chart?.destroy()
+  })
+  draw()
+
+  const history = validHistory(payload.history)
+  if (history.length === 0) return
+
+  const historyFigure = document.createElement('figure')
+  historyFigure.className = 'radar-chart-figure'
+  const historyHead = document.createElement('figcaption')
+  historyHead.className = 'radar-chart-head'
+  const historyTitle = document.createElement('strong')
+  historyTitle.textContent = '近 48 小时 IQ 历史趋势'
+  const historyCaption = document.createElement('span')
+  historyCaption.textContent = '每 4 小时观察点 · 每 10 分钟刷新'
+  historyHead.append(historyTitle, historyCaption)
+  const historyGrid = document.createElement('div')
+  historyGrid.className = 'radar-history-grid'
+  historyFigure.append(historyHead, historyGrid)
+  charts.appendChild(historyFigure)
+
+  for (const [model, metadata] of Object.entries(MODEL_METADATA)) {
+    const available = points.some((point) => point.model === model)
+    if (!available) continue
+    const card = document.createElement('section')
+    card.className = 'radar-history-card'
+    card.style.setProperty('--family-color', metadata.color)
+    const cardHead = document.createElement('div')
+    cardHead.className = 'radar-history-head'
+    const cardTitle = document.createElement('strong')
+    cardTitle.textContent = metadata.label
+    const range = document.createElement('span')
+    const values = points.filter((point) => point.model === model).map((point) => point.iq)
+    range.textContent = `${formatNumber(Math.min(...values))}-${formatNumber(Math.max(...values))}`
+    cardHead.append(cardTitle, range)
+    const wrap = document.createElement('div')
+    wrap.className = 'radar-canvas-wrap'
+    const canvas = document.createElement('canvas')
+    wrap.appendChild(canvas)
+    card.append(cardHead, wrap)
+    historyGrid.appendChild(card)
+    chartInstances.push(createHistoryChart(canvas, history, model, metadata.color, 'iq', 'IQ'))
   }
 }
 
-function selectedKeys(section: HTMLElement): Set<string> {
-  const raw = section.querySelector<HTMLElement>('.model-iq-chart')?.dataset.selectedModels || ''
-  return new Set(raw.split(',').map((key) => key.trim()).filter(Boolean))
-}
+function renderHistoryComparison(root: ShadowRoot, payload: RadarPayload, points: RadarPoint[]) {
+  const panel = root.querySelector<HTMLElement>('[data-efficiency-pk]')
+  if (!panel) return
+  const history = validHistory(payload.history)
+  if (history.length === 0) {
+    panel.remove()
+    return
+  }
 
-function setSelection(section: HTMLElement, selected: Iterable<string>) {
-  const selectedSet = new Set(Array.from(selected).filter(Boolean))
-  const chart = section.querySelector<HTMLElement>('.model-iq-chart')
-  if (chart) {
-    if (selectedSet.size > 0) {
-      chart.dataset.selectedModels = Array.from(selectedSet).join(',')
-    } else {
-      delete chart.dataset.selectedModels
+  panel.replaceChildren()
+  panel.classList.add('radar-pk-panel')
+  const head = document.createElement('header')
+  head.className = 'radar-pk-head'
+  const title = document.createElement('h3')
+  title.textContent = '历史数据比较'
+  const select = document.createElement('select')
+  const metrics = [
+    { value: 'iq', label: 'IQ', field: 'iq' as const },
+    { value: 'price', label: '费用', field: 'average_price_usd' as const },
+    { value: 'minutes', label: '耗时', field: 'average_minutes' as const },
+    { value: 'steps', label: 'Agent steps', field: 'average_agent_steps' as const },
+    { value: 'cache', label: 'cache 命中率', field: 'cache_hit_rate' as const },
+    { value: 'tokens', label: '总 tokens', field: 'average_total_tokens' as const },
+  ]
+  for (const metric of metrics) {
+    const option = document.createElement('option')
+    option.value = metric.value
+    option.textContent = metric.label
+    select.appendChild(option)
+  }
+  const hint = document.createElement('span')
+  hint.textContent = '选择一个或多个模型档位，对比近 48 小时历史。'
+  head.append(title, select, hint)
+  const options = document.createElement('div')
+  options.className = 'radar-pk-options'
+  const chartWrap = document.createElement('div')
+  panel.append(head, options, chartWrap)
+
+  const selected = new Set<string>()
+  for (const [model, metadata] of Object.entries(MODEL_METADATA)) {
+    const family = document.createElement('div')
+    family.className = 'radar-pk-family'
+    const modelName = document.createElement('strong')
+    modelName.textContent = metadata.label
+    modelName.style.color = metadata.color
+    family.appendChild(modelName)
+    for (const effort of EFFORT_ORDER) {
+      const point = points.find((item) => item.model === model && item.effort === effort)
+      if (!point) continue
+      const label = document.createElement('label')
+      label.className = 'radar-pk-option'
+      label.style.setProperty('--family-color', metadata.color)
+      const input = document.createElement('input')
+      input.type = 'checkbox'
+      input.value = `${model}|${effort}`
+      const text = document.createElement('span')
+      text.textContent = effort
+      const value = document.createElement('span')
+      value.className = 'radar-pk-value'
+      value.textContent = formatNumber(point.iq)
+      label.append(input, text, value)
+      family.appendChild(label)
+      input.addEventListener('change', () => {
+        if (input.checked) selected.add(input.value)
+        else selected.delete(input.value)
+        drawComparison()
+      })
+      cleanupCallbacks.push(() => input.replaceWith(input.cloneNode(true)))
     }
+    options.appendChild(family)
   }
 
-  for (const target of section.querySelectorAll<HTMLElement>('[data-model-key]')) {
-    const matches = selectedSet.has(target.dataset.modelKey || '')
-    target.classList.toggle('is-selected', matches)
-    target.classList.toggle('is-muted', selectedSet.size > 0 && !matches)
-    if (target.getAttribute('role') === 'button') {
-      target.setAttribute('aria-pressed', matches ? 'true' : 'false')
+  let chart: ChartJS | null = null
+  const drawComparison = () => {
+    chart?.destroy()
+    chartWrap.replaceChildren()
+    if (selected.size === 0) {
+      const empty = document.createElement('p')
+      empty.className = 'radar-pk-empty'
+      empty.textContent = '暂未选择模型档位。'
+      chartWrap.appendChild(empty)
+      return
     }
+    const metric = metrics.find((item) => item.value === select.value) || metrics[0]
+    const wrap = document.createElement('div')
+    wrap.className = 'radar-canvas-wrap'
+    const canvas = document.createElement('canvas')
+    wrap.appendChild(canvas)
+    chartWrap.appendChild(wrap)
+    chart = createHistoryChart(canvas, history, '', '', metric.field, metric.label, selected)
+    chartInstances.push(chart)
+  }
+  select.addEventListener('change', drawComparison)
+  cleanupCallbacks.push(() => {
+    select.removeEventListener('change', drawComparison)
+    chart?.destroy()
+  })
+  drawComparison()
+}
+
+function createHistoryChart(
+  canvas: HTMLCanvasElement,
+  history: Array<{ at: string; points: RadarPoint[] }>,
+  model: string,
+  color: string,
+  metric: keyof RadarPoint,
+  label: string,
+  selected?: Set<string>,
+) {
+  const keys = selected
+    ? Array.from(selected)
+    : EFFORT_ORDER.map((effort) => `${model}|${effort}`)
+  const datasets = keys.map((key) => {
+    const [entryModel, effort] = key.split('|')
+    const metadata = MODEL_METADATA[entryModel]
+    const pointColor = color || metadata?.color || '#2d65c8'
+    return {
+      label: `${metadata?.label || entryModel} ${effort}`,
+      borderColor: pointColor,
+      backgroundColor: pointColor,
+      borderWidth: 1.7,
+      pointRadius: 2.5,
+      pointHoverRadius: 4,
+      tension: 0.18,
+      data: history.map((snapshot) => {
+        const point = snapshot.points.find((item) => item.model === entryModel && item.effort === effort)
+        const value = point?.[metric]
+        return typeof value === 'number' ? value : null
+      }),
+    }
+  })
+  return new ChartJS(canvas, {
+    type: 'line',
+    data: {
+      labels: history.map((snapshot) => formatHistoryTime(snapshot.at)),
+      datasets,
+    },
+    options: radarChartOptions({ xTitle: '', yTitle: label }),
+  })
+}
+
+function radarChartOptions({ xTitle, yTitle, logarithmic = false, tooltipLabel }: {
+  xTitle: string
+  yTitle: string
+  logarithmic?: boolean
+  tooltipLabel?: (context: any) => string
+}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'nearest' as const, intersect: false },
+    plugins: {
+      legend: { position: 'top' as const, labels: { boxWidth: 10, usePointStyle: true } },
+      tooltip: { callbacks: tooltipLabel ? { label: tooltipLabel } : undefined },
+    },
+    scales: {
+      x: {
+        type: logarithmic ? 'logarithmic' as const : 'category' as const,
+        title: { display: Boolean(xTitle), text: xTitle },
+        grid: { color: 'rgba(148, 163, 184, .2)' },
+      },
+      y: {
+        title: { display: Boolean(yTitle), text: yTitle },
+        grid: { color: 'rgba(148, 163, 184, .2)' },
+      },
+    },
   }
 }
 
-function toggleSelection(section: HTMLElement, key: string) {
-  if (!key) return
-  const keys = selectedKeys(section)
-  if (keys.has(key)) {
-    keys.delete(key)
-  } else {
-    keys.add(key)
-  }
-  setSelection(section, keys)
+function validHistory(history: RadarPayload['history']): Array<{ at: string; points: RadarPoint[] }> {
+  if (!Array.isArray(history)) return []
+  return history
+    .map((snapshot) => ({ at: snapshot?.at, points: validRadarPoints(snapshot?.points) }))
+    .filter((snapshot): snapshot is { at: string; points: RadarPoint[] } => typeof snapshot.at === 'string' && snapshot.points.length > 0)
 }
 
-function setMetric(section: HTMLElement, metric: string) {
-  const chart = section.querySelector<HTMLElement>('.model-iq-chart')
-  if (!chart) return
+function formatHistoryTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+  }).format(date)
+}
 
-  chart.dataset.selectedMetric = metric
-  for (const view of chart.querySelectorAll<HTMLElement>('[data-model-iq-chart-view]')) {
-    view.hidden = view.dataset.modelIqChartView !== metric
+function openRadarDetail(root: ShadowRoot, point: RadarPoint) {
+  root.querySelector<HTMLElement>('.radar-detail-backdrop')?.remove()
+  const metadata = MODEL_METADATA[point.model]
+  if (!metadata) return
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'radar-detail-backdrop'
+  const panel = document.createElement('section')
+  panel.className = 'radar-detail-panel'
+  panel.setAttribute('role', 'dialog')
+  panel.setAttribute('aria-modal', 'true')
+  panel.setAttribute('aria-label', `${metadata.label} ${point.effort} · 详细指标`)
+  const head = document.createElement('header')
+  head.className = 'radar-detail-head'
+  const title = document.createElement('h3')
+  title.textContent = `${metadata.label} ${point.effort} · 详细指标`
+  const close = document.createElement('button')
+  close.className = 'radar-detail-close'
+  close.type = 'button'
+  close.setAttribute('aria-label', '关闭')
+  close.textContent = '×'
+  head.append(title, close)
+  const summary = document.createElement('dl')
+  summary.className = 'radar-detail-summary'
+  const successRate = point.valid_tasks ? `${formatNumber((100 * (point.passed || 0)) / point.valid_tasks)}%` : '—'
+  const items: Array<[string, string]> = [
+    ['IQ', formatNumber(point.iq)],
+    ['通过率', successRate],
+    ['通过数 / 有效题数', `${point.passed ?? '—'}/${point.valid_tasks ?? '—'}`],
+    ['已记录运行', point.total_runs ? `${point.total_runs} 次` : '—'],
+    ['平均 Agent steps', sampleValue(point.average_agent_steps, point.agent_steps_samples)],
+    ['平均价格', `$${formatNumber(point.average_price_usd)}`],
+    ['cache 命中率', point.cache_hit_rate == null ? '—' : sampleValue(point.cache_hit_rate * 100, point.cache_token_samples, '%')],
+    ['平均耗时', `${formatNumber(point.average_minutes)} 分钟`],
+    ['平均总 tokens', point.average_total_tokens == null ? '—' : sampleValue(point.average_total_tokens / 10000, point.token_samples, '万')],
+    ['费用样本', point.price_samples ? `${point.price_samples} 次` : '—'],
+    ['耗时样本', point.duration_samples ? `${point.duration_samples} 次` : '—'],
+    ['最近判分', point.latest_graded_at ? formatHistoryTime(point.latest_graded_at) : '—'],
+  ]
+  for (const [label, value] of items) {
+    const entry = document.createElement('div')
+    const term = document.createElement('dt')
+    term.textContent = label
+    const definition = document.createElement('dd')
+    definition.textContent = value
+    entry.append(term, definition)
+    summary.appendChild(entry)
   }
+  const foot = document.createElement('p')
+  foot.className = 'radar-detail-foot'
+  foot.textContent = 'IQ 与平均值均按每题最新有效结果统计。'
+  panel.append(head, summary, foot)
+  backdrop.appendChild(panel)
+  root.appendChild(backdrop)
+  const dismiss = () => backdrop.remove()
+  close.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) dismiss()
+  })
+}
+
+function sampleValue(value: number | null | undefined, samples?: number, suffix = ''): string {
+  if (value == null) return '—'
+  return `${formatNumber(value)}${suffix}${samples ? ` · ${samples} 个样本` : ''}`
 }
 
 function cleanupRadar() {
-  for (const callback of cleanupCallbacks) {
-    callback()
-  }
+  for (const callback of cleanupCallbacks) callback()
   cleanupCallbacks = []
+  for (const chart of chartInstances) chart.destroy()
+  chartInstances = []
 }
 
 onMounted(() => {

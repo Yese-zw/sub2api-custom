@@ -459,6 +459,10 @@ export default {
         siteSubtitle: 'Site Subtitle',
         siteSubtitlePlaceholder: 'Subscription to API Conversion Platform',
         siteSubtitleHint: 'Displayed on login and register pages',
+		uiTheme: 'Interface Theme',
+		uiThemePixel: 'Tech Pixel',
+		uiThemeOriginal: 'Original Theme',
+		uiThemeHint: 'Applied across all pages. You can switch back to the original theme at any time.',
         apiBaseUrl: 'API Base URL',
         apiBaseUrlPlaceholder: 'https://api.example.com',
         apiBaseUrlHint:

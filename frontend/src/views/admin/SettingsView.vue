@@ -5371,6 +5371,19 @@
                 </div>
               </div>
 
+              <div>
+                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t("admin.settings.site.uiTheme") }}
+                </label>
+                <select v-model="form.ui_theme" class="input max-w-sm">
+                  <option value="pixel">{{ t("admin.settings.site.uiThemePixel") }}</option>
+                  <option value="original">{{ t("admin.settings.site.uiThemeOriginal") }}</option>
+                </select>
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.site.uiThemeHint") }}
+                </p>
+              </div>
+
               <!-- API Base URL -->
               <div>
                 <label
@@ -8530,6 +8543,7 @@ const form = reactive<SettingsForm>({
   site_name: "Sub2API",
   site_logo: "",
   community_group_image: "",
+	ui_theme: "pixel",
   site_subtitle: "Subscription to API Conversion Platform",
   api_base_url: "",
   contact_info: "",
@@ -10057,6 +10071,7 @@ async function saveSettings() {
       site_name: form.site_name,
       site_logo: form.site_logo,
       community_group_image: form.community_group_image,
+		ui_theme: form.ui_theme,
       site_subtitle: form.site_subtitle,
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
@@ -10413,6 +10428,7 @@ async function saveSettings() {
     const wsOk = await saveWebSearchConfig();
     // Refresh cached settings so sidebar/header update immediately
     await appStore.fetchPublicSettings(true);
+    appStore.applyUITheme(updated.ui_theme);
     await adminSettingsStore.fetch(true);
     if (wsOk) {
       appStore.showSuccess(t("admin.settings.settingsSaved"));

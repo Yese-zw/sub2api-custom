@@ -11,6 +11,13 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+func normalizeUITheme(value string) string {
+	if strings.TrimSpace(value) == "original" {
+		return "original"
+	}
+	return "pixel"
+}
+
 type SystemSettings struct {
 	RegistrationEnabled              bool
 	EmailVerifyEnabled               bool
@@ -140,6 +147,7 @@ type SystemSettings struct {
 	SiteName                    string
 	SiteLogo                    string
 	CommunityGroupImage         string
+	UITheme                     string
 	SiteSubtitle                string
 	APIBaseURL                  string
 	ContactInfo                 string
@@ -301,6 +309,7 @@ type PublicSettings struct {
 	SiteName                         string
 	SiteLogo                         string
 	CommunityGroupImage              string
+	UITheme                          string
 	SiteSubtitle                     string
 	APIBaseURL                       string
 	ContactInfo                      string

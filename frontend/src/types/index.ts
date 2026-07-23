@@ -205,6 +205,7 @@ export interface PublicSettings {
 	site_name: string
 	site_logo: string
 	community_group_image: string
+	ui_theme?: 'pixel' | 'original'
 	site_subtitle: string
   api_base_url: string
   contact_info: string

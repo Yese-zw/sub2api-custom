@@ -961,6 +961,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	// OEM设置
 	updates[SettingKeySiteName] = settings.SiteName
 	updates[SettingKeySiteLogo] = settings.SiteLogo
+	updates[SettingKeyUITheme] = normalizeUITheme(settings.UITheme)
 	updates[SettingKeySiteSubtitle] = settings.SiteSubtitle
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
 	updates[SettingKeyContactInfo] = settings.ContactInfo
@@ -1936,6 +1937,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAPIKeyACLTrustForwardedIP:                 "false",
 		SettingKeySiteName:                                  "Sub2API",
 		SettingKeySiteLogo:                                  "",
+		SettingKeyUITheme:                                   "pixel",
 		SettingKeyPurchaseSubscriptionEnabled:               "false",
 		SettingKeyPurchaseSubscriptionURL:                   "",
 		SettingKeyTableDefaultPageSize:                      "20",
@@ -2156,6 +2158,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		APIKeyACLTrustForwardedIP:         apiKeyACLTrustForwardedIP,
 		SiteName:                          s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
 		SiteLogo:                          settings[SettingKeySiteLogo],
+		UITheme:                          normalizeUITheme(settings[SettingKeyUITheme]),
 		SiteSubtitle:                      s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
 		APIBaseURL:                        settings[SettingKeyAPIBaseURL],
 		ContactInfo:                       settings[SettingKeyContactInfo],

@@ -27,13 +27,14 @@
         <button
           v-if="user && communityGroupImage"
           type="button"
-          class="group flex h-9 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/50"
+          class="community-group-trigger group flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/50"
           :aria-label="t('common.communityGroupReward')"
+          :title="t('common.communityGroupReward')"
           @click="communityGroupDialogOpen = true"
         >
           <Icon name="users" size="sm" />
-          <span class="hidden lg:inline">{{ t('common.communityGroup') }}</span>
-          <span class="rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white transition-colors group-hover:bg-emerald-800 dark:bg-emerald-500 dark:text-emerald-950 dark:group-hover:bg-emerald-400">
+          <span class="community-group-name">{{ t('common.communityGroup') }}</span>
+          <span class="community-group-reward rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white transition-colors group-hover:bg-emerald-800 dark:bg-emerald-500 dark:text-emerald-950 dark:group-hover:bg-emerald-400">
             {{ t('common.communityGroupReward') }}
           </span>
         </button>
@@ -404,6 +405,40 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
+
+<style scoped>
+.community-group-trigger {
+  min-width: 36px;
+}
+
+.community-group-name,
+.community-group-reward {
+  white-space: nowrap;
+}
+
+.community-group-name {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .community-group-trigger {
+    width: 36px;
+    justify-content: center;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .community-group-reward {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .community-group-name {
+    display: inline;
+  }
+}
+</style>
 
 <style scoped>
 .dropdown-enter-active,
