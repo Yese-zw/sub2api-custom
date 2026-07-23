@@ -111,6 +111,7 @@ func provideCleanup(
 	channelMonitorRunner *service.ChannelMonitorRunner,
 	quotaFlusher *service.UserPlatformQuotaUsageFlusher,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
+	ollamaCloudUsage *service.OllamaCloudUsageService,
 	auditLog *service.AuditLogService,
 	promptAudit *securityaudit.PromptService,
 	upstreamBalanceRefresh *service.UpstreamBalanceRefreshService,
@@ -335,6 +336,12 @@ func provideCleanup(
 			{"UpstreamBalanceRefreshService", func() error {
 				if upstreamBalanceRefresh != nil {
 					upstreamBalanceRefresh.Stop()
+				}
+				return nil
+			}},
+			{"OllamaCloudUsageService", func() error {
+				if ollamaCloudUsage != nil {
+					ollamaCloudUsage.Stop()
 				}
 				return nil
 			}},
