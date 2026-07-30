@@ -893,3 +893,33 @@ func TestSettingService_StalePasskeyTrueWithoutConfigReportsDisabled(t *testing.
 	require.NoError(t, err)
 	require.False(t, settings.PasskeyEnabled)
 }
+
+func TestSettingService_GetAllSettingsMapsModelPlazaSettings(t *testing.T) {
+	repo := &settingGetAllRepoStub{values: map[string]string{
+		SettingKeyModelPlazaEnabled:     "true",
+		SettingKeyModelPlazaRequireAuth: "true",
+		SettingKeyModelPlazaDescription: "模型广场说明",
+	}}
+	service := NewSettingService(repo, &config.Config{})
+
+	settings, err := service.GetAllSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.ModelPlazaEnabled)
+	require.True(t, settings.ModelPlazaRequireAuth)
+	require.Equal(t, "模型广场说明", settings.ModelPlazaDescription)
+}
+
+func TestSettingService_UpdateSettingsPersistsModelPlazaSettings(t *testing.T) {
+	repo := &settingUpdateRepoStub{}
+	svc := NewSettingService(repo, &config.Config{})
+
+	err := svc.UpdateSettings(context.Background(), &SystemSettings{
+		ModelPlazaEnabled:     true,
+		ModelPlazaRequireAuth: true,
+		ModelPlazaDescription: "模型广场说明",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "true", repo.updates[SettingKeyModelPlazaEnabled])
+	require.Equal(t, "true", repo.updates[SettingKeyModelPlazaRequireAuth])
+	require.Equal(t, "模型广场说明", repo.updates[SettingKeyModelPlazaDescription])
+}
