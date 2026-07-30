@@ -131,6 +131,29 @@
         </button>
       </div>
 
+      <div
+        v-if="hasLatencyResult"
+        class="grid grid-cols-1 gap-2 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-sm dark:border-cyan-500/30 dark:bg-cyan-500/10 sm:grid-cols-2"
+        data-testid="account-test-latency-summary"
+      >
+        <div>
+          <div class="text-xs font-medium text-cyan-700 dark:text-cyan-300">
+            {{ t('admin.accounts.firstTokenLatency') }}
+          </div>
+          <div class="mt-1 font-mono text-base font-semibold text-cyan-900 dark:text-cyan-100" data-testid="account-test-token-latency">
+            {{ formatLatency(tokenLatencyMs) }}
+          </div>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-cyan-700 dark:text-cyan-300">
+            {{ t('admin.accounts.totalResponseLatency') }}
+          </div>
+          <div class="mt-1 font-mono text-base font-semibold text-cyan-900 dark:text-cyan-100" data-testid="account-test-total-latency">
+            {{ formatLatency(totalLatencyMs) }}
+          </div>
+        </div>
+      </div>
+
       <div v-if="generatedImages.length > 0" class="space-y-2">
         <div class="text-xs font-medium text-gray-600 dark:text-gray-300">
           {{ t('admin.accounts.imagePreview') }}
@@ -281,6 +304,9 @@ const status = ref<'idle' | 'connecting' | 'success' | 'error'>('idle')
 const outputLines = ref<OutputLine[]>([])
 const streamingContent = ref('')
 const errorMessage = ref('')
+const tokenLatencyMs = ref<number | null>(null)
+const totalLatencyMs = ref<number | null>(null)
+const hasLatencyResult = computed(() => tokenLatencyMs.value !== null || totalLatencyMs.value !== null)
 const availableModels = ref<ClaudeModel[]>([])
 const selectedModelId = ref('')
 const testPrompt = ref('')
@@ -377,6 +403,8 @@ const resetState = () => {
   outputLines.value = []
   streamingContent.value = ''
   errorMessage.value = ''
+  tokenLatencyMs.value = null
+  totalLatencyMs.value = null
   generatedImages.value = []
   previewImageUrl.value = ''
 }
@@ -398,14 +426,24 @@ const addLine = (text: string, className: string = 'text-gray-300') => {
   scrollToBottom()
 }
 
-const formatLatency = (value?: number): string => {
+const formatLatency = (value?: number | null): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '-'
   return `${Math.round(value)}ms`
 }
 
+const setLatencyResult = (event: TestEventPayload) => {
+  tokenLatencyMs.value = typeof event.token_latency_ms === 'number' && Number.isFinite(event.token_latency_ms) && event.token_latency_ms >= 0
+    ? event.token_latency_ms
+    : null
+  totalLatencyMs.value = typeof event.total_latency_ms === 'number' && Number.isFinite(event.total_latency_ms) && event.total_latency_ms >= 0
+    ? event.total_latency_ms
+    : null
+}
+
 const addLatencyLines = (event: TestEventPayload) => {
-  addLine(t('admin.accounts.tokenLatency', { latency: formatLatency(event.token_latency_ms) }), 'text-cyan-300')
-  addLine(t('admin.accounts.totalLatency', { latency: formatLatency(event.total_latency_ms) }), 'text-cyan-300')
+  setLatencyResult(event)
+  addLine(t('admin.accounts.tokenLatency', { latency: formatLatency(tokenLatencyMs.value) }), 'text-cyan-300')
+  addLine(t('admin.accounts.totalLatency', { latency: formatLatency(totalLatencyMs.value) }), 'text-cyan-300')
 }
 
 const scrollToBottom = async () => {
