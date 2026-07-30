@@ -122,6 +122,7 @@ const summary = ref<ProfitTrendResponse>({
   total_subscription_cost: 0,
   total_profit: 0,
   month_profit: 0,
+  today_revenue: 0,
   today_profit: 0,
   current_total_balance: 0
 })

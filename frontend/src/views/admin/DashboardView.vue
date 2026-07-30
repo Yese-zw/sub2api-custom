@@ -8,7 +8,7 @@
 
       <template v-else-if="stats">
         <!-- Row 1: Core Stats -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <!-- Total API Keys -->
           <div class="card p-4">
             <div class="flex items-center gap-3">
@@ -74,6 +74,56 @@
             </div>
           </div>
 
+          <!-- Today Balance Deduction -->
+          <div class="card p-4">
+            <div class="flex items-center gap-3">
+              <div class="rounded-lg bg-cyan-100 p-2 dark:bg-cyan-900/30">
+                <Icon name="dollar" size="md" class="text-cyan-600 dark:text-cyan-400" :stroke-width="2" />
+              </div>
+              <div>
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {{ t('admin.dashboard.todayBalanceDeduction') }}
+                </p>
+                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                  ${{ formatCost(profitSummary?.today_revenue) }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.dashboard.balanceBilling') }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Today Profit -->
+          <div class="card p-4">
+            <div class="flex items-center gap-3">
+              <div class="rounded-lg bg-lime-100 p-2 dark:bg-lime-900/30">
+                <Icon name="trendingUp" size="md" class="text-lime-600 dark:text-lime-400" :stroke-width="2" />
+              </div>
+              <div>
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {{ t('admin.dashboard.todayProfit') }}
+                </p>
+                <p
+                  class="text-xl font-bold"
+                  :class="
+                    toFiniteNumber(profitSummary?.today_profit) >= 0
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                  "
+                >
+                  ${{ formatCost(profitSummary?.today_profit) }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.dashboard.profitFormula') }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Token Stats -->
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <!-- New Users Today -->
           <div class="card p-4">
             <div class="flex items-center gap-3">
@@ -93,10 +143,7 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Row 2: Token Stats -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <!-- Today Tokens -->
           <div class="card p-4">
             <div class="flex items-center gap-3">
@@ -348,6 +395,7 @@ import { useAppStore } from '@/stores/app'
 
 const { t } = useI18n()
 import { adminAPI } from '@/api/admin'
+import type { ProfitTrendResponse } from '@/api/admin/dashboard'
 import type {
   DashboardStats,
   TrendDataPoint,
@@ -396,6 +444,7 @@ const chartsLoading = ref(false)
 const userTrendLoading = ref(false)
 const rankingLoading = ref(false)
 const rankingError = ref(false)
+const profitSummary = ref<ProfitTrendResponse | null>(null)
 
 // Chart data
 const trendData = ref<TrendDataPoint[]>([])
@@ -429,6 +478,7 @@ const granularity = ref<'day' | 'hour'>('hour')
 const defaultRange = getLast24HoursRangeDates()
 const startDate = ref(defaultRange.start)
 const endDate = ref(defaultRange.end)
+const dashboardTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 // Granularity options for Select component
 const granularityOptions = computed(() => [
@@ -732,11 +782,23 @@ const loadUserSpendingRanking = async () => {
   }
 }
 
+const loadProfitSummary = async () => {
+  try {
+    profitSummary.value = await adminAPI.dashboard.getProfitTrend({
+      timezone: dashboardTimezone
+    })
+  } catch (error) {
+    console.error('Error loading dashboard profit summary:', error)
+    profitSummary.value = null
+  }
+}
+
 const loadDashboardStats = async () => {
   await Promise.all([
     loadDashboardSnapshot(true),
     loadUsersTrend(),
-    loadUserSpendingRanking()
+    loadUserSpendingRanking(),
+    loadProfitSummary()
   ])
 }
 

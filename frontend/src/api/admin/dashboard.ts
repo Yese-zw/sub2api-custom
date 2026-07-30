@@ -84,6 +84,7 @@ export interface ProfitTrendResponse {
   total_subscription_cost: number
   total_profit: number
   month_profit: number
+  today_revenue: number
   today_profit: number
   current_total_balance: number
 }

@@ -122,6 +122,7 @@ type ProfitTrendResponse struct {
 	TotalSubscriptionCost  float64            `json:"total_subscription_cost"`
 	TotalProfit            float64            `json:"total_profit"`
 	MonthProfit            float64            `json:"month_profit"`
+	TodayRevenue           float64            `json:"today_revenue"`
 	TodayProfit            float64            `json:"today_profit"`
 	CurrentTotalBalance    float64            `json:"current_total_balance"`
 }

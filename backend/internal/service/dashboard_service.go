@@ -194,6 +194,7 @@ func (s *DashboardService) GetProfitTrend(ctx context.Context, startTime, endTim
 		TotalSubscriptionCost: totalSummary.SubscriptionCost,
 		TotalProfit:           totalSummary.Profit,
 		MonthProfit:           monthSummary.Profit,
+		TodayRevenue:          todaySummary.Revenue,
 		TodayProfit:           todaySummary.Profit,
 		CurrentTotalBalance:   currentTotalBalance,
 	}
