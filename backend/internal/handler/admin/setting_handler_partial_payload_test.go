@@ -78,6 +78,33 @@ func TestUpdateSettingsGrokDefaultBaseURLModeIsWritable(t *testing.T) {
 	require.Equal(t, service.GrokDefaultBaseURLModeEUWest1, repo.values[service.SettingKeyGrokDefaultBaseURLMode])
 }
 
+func TestUpdateSettingsChannelMonitorModeIsWritable(t *testing.T) {
+	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
+		service.SettingKeyChannelMonitorEnabled: "true",
+		service.SettingKeyChannelMonitorMode:    service.ChannelMonitorModeV1,
+	})
+
+	rec := doUpdateSettings(t, h, map[string]any{
+		"channel_monitor_mode": service.ChannelMonitorModeV2,
+	}, nil)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, service.ChannelMonitorModeV2, repo.values[service.SettingKeyChannelMonitorMode])
+}
+
+func TestUpdateSettingsChannelMonitorOptionsAreWritable(t *testing.T) {
+	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
+
+	rec := doUpdateSettings(t, h, map[string]any{
+		"channel_monitor_hide_throughput": true,
+		"channel_monitor_show_quota":      true,
+	}, nil)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "true", repo.values[service.SettingKeyChannelMonitorHideThroughput])
+	require.Equal(t, "true", repo.values[service.SettingKeyChannelMonitorShowQuota])
+}
+
 func TestUpdateSettingsRejectsTwoCaptchaProviders(t *testing.T) {
 	h, _ := newStepUpSwitchTestHandler(t, map[string]string{
 		service.SettingKeyTurnstileEnabled:   "true",
