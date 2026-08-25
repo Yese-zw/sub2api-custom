@@ -181,6 +181,7 @@ export default {
     upstreamBalances: '上游余额',
     profit: '利润明细',
     gptRadar: 'GPT 雷达',
+    plugins: '插件管理',
     proxies: 'IP管理',
     redeemCodes: '兑换码',
     ops: '运维监控',

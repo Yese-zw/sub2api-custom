@@ -7,7 +7,7 @@
 # =============================================================================
 
 ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine
-ARG GOLANG_IMAGE=public.ecr.aws/docker/library/golang:1.26.6-alpine
+ARG GOLANG_IMAGE=public.ecr.aws/docker/library/golang:1.27.0-alpine
 ARG ALPINE_IMAGE=public.ecr.aws/docker/library/alpine:3.21
 ARG POSTGRES_IMAGE=public.ecr.aws/docker/library/postgres:18-alpine
 ARG GOPROXY=https://goproxy.cn,direct

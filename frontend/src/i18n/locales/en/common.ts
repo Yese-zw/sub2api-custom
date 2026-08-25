@@ -181,6 +181,7 @@ export default {
     upstreamBalances: 'Upstream Balances',
     profit: 'Profit Details',
     gptRadar: 'GPT Radar',
+    plugins: 'Plugins',
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
