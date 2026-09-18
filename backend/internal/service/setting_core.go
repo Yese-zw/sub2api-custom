@@ -161,6 +161,12 @@ type DefaultPlatformQuotaSetting struct {
 	MonthlyLimitUSD *float64 `json:"monthly"`
 }
 
+// HasAnyLimit reports whether at least one quota tier is configured.
+// A non-nil zero value is still an explicit limit; a nil receiver has none.
+func (q *DefaultPlatformQuotaSetting) HasAnyLimit() bool {
+	return q != nil && (q.DailyLimitUSD != nil || q.WeeklyLimitUSD != nil || q.MonthlyLimitUSD != nil)
+}
+
 type ProviderDefaultGrantSettings struct {
 	Balance          float64
 	Concurrency      int
