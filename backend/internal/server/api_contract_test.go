@@ -957,6 +957,9 @@ func TestAPIContracts(t *testing.T) {
 					"openai_codex_client_version":       "",
 					"openai_codex_client_version_synced": "",
 					"openai_codex_version_auto_sync_enabled": true,
+					"claude_code_client_version": "",
+					"claude_code_client_version_synced": "",
+					"claude_code_version_auto_sync_enabled": true,
 					"openai_fast_policy_settings": {
 						"rules": []
 					},
@@ -1005,6 +1008,7 @@ func TestAPIContracts(t *testing.T) {
 					"model_plaza_description": "",
 					"plugin_management_enabled": false,
 					"risk_control_enabled": false,
+					"cyber_policy_user_allowlist": "",
 					"cyber_session_block_enabled": false,
 					"cyber_session_block_ttl_seconds": 3600,
 					"affiliate_enabled": false,
@@ -1278,6 +1282,9 @@ func TestAPIContracts(t *testing.T) {
 					"openai_codex_client_version":       "",
 					"openai_codex_client_version_synced": "",
 					"openai_codex_version_auto_sync_enabled": true,
+					"claude_code_client_version": "",
+					"claude_code_client_version_synced": "",
+					"claude_code_version_auto_sync_enabled": true,
 					"openai_fast_policy_settings": {
 						"rules": []
 					},
@@ -1324,6 +1331,7 @@ func TestAPIContracts(t *testing.T) {
 					"model_plaza_description": "",
 					"plugin_management_enabled": false,
 					"risk_control_enabled": false,
+					"cyber_policy_user_allowlist": "",
 					"cyber_session_block_enabled": false,
 					"cyber_session_block_ttl_seconds": 3600,
 					"affiliate_enabled": false,
@@ -2666,7 +2674,7 @@ func (r *stubUsageLogRepo) GetAPIKeyUsageTrend(ctx context.Context, startTime, e
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetUserUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int) ([]usagestats.UserUsageTrendPoint, error) {
+func (r *stubUsageLogRepo) GetUserUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int, metric string) ([]usagestats.UserUsageTrendPoint, error) {
 	return nil, errors.New("not implemented")
 }
 
