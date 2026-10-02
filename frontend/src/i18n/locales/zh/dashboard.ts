@@ -69,6 +69,15 @@ export default {
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
     searchPlaceholder: '搜索名称或Key...',
+    overview: {
+      total: '密钥总数',
+      active: '启用中',
+      disabled: '已禁用',
+      todaySpend: '今日消费',
+      pageScope: '本页',
+      quotaAlert: '配额告警',
+      healthy: '运行正常',
+    },
     endpoints: {
       title: 'API 端点',
       default: '默认',

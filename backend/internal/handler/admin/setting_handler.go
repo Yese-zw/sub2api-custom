@@ -803,6 +803,11 @@ type UpdateSettingsRequest struct {
 	// so the two must be persisted together to keep the selector round-trippable.
 	SubscriptionEnabled *bool `json:"subscription_enabled"`
 
+	// Plugin management feature switch (opt-in; controls sidebar/route visibility).
+	// Without this field the admin toggle would be silently dropped by json and
+	// the switch would revert to its previous value on every reload.
+	PluginManagementEnabled *bool `json:"plugin_management_enabled"`
+
 	// Affiliate (邀请返利) feature switch
 	AffiliateEnabled *bool `json:"affiliate_enabled"`
 
@@ -2055,6 +2060,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.AvailableChannelsEnabled
 		}(),
+		PluginManagementEnabled: func() bool {
+			if req.PluginManagementEnabled != nil {
+				return *req.PluginManagementEnabled
+			}
+			return previousSettings.PluginManagementEnabled
+		}(),
 		SubscriptionEnabled: func() bool {
 			if req.SubscriptionEnabled != nil {
 				return *req.SubscriptionEnabled
@@ -2901,6 +2912,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.SubscriptionEnabled != after.SubscriptionEnabled {
 		changed = append(changed, "subscription_enabled")
+	}
+	if before.PluginManagementEnabled != after.PluginManagementEnabled {
+		changed = append(changed, "plugin_management_enabled")
 	}
 	if before.TableDefaultPageSize != after.TableDefaultPageSize {
 		changed = append(changed, "table_default_page_size")

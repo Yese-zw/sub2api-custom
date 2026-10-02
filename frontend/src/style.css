@@ -565,16 +565,23 @@
     @apply text-sm font-medium;
     @apply text-gray-600 dark:text-dark-300;
     @apply transition-all duration-200;
-    @apply hover:bg-gray-100 dark:hover:bg-dark-800;
-    @apply hover:text-gray-900 dark:hover:text-white;
     padding-left: 1.0625rem;
     padding-right: 0.875rem;
+  }
+
+  .sidebar-link:hover:not(.sidebar-link-active) {
+    @apply bg-gray-100 dark:bg-dark-800;
+    @apply text-gray-900 dark:text-white;
   }
 
   .sidebar-link-active {
     @apply bg-primary-50 dark:bg-primary-900/20;
     @apply text-primary-600 dark:text-primary-400;
-    @apply hover:bg-primary-100 dark:hover:bg-primary-900/30;
+  }
+
+  .sidebar-link-active:hover {
+    @apply bg-primary-50 dark:bg-primary-900/20;
+    @apply text-primary-600 dark:text-primary-400;
   }
 
   .sidebar-section {
@@ -874,7 +881,8 @@ html.pixel-ui .sidebar { border-color: var(--pixel-line) !important; background:
 html.pixel-ui .sidebar-header { border-color: var(--pixel-line) !important; }
 html.pixel-ui .sidebar-logo { border: 1px solid var(--pixel-cyan); background: var(--pixel-surface-alt); box-shadow: 3px 3px 0 var(--pixel-shadow); }
 html.pixel-ui .sidebar-link { color: var(--pixel-muted) !important; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-html.pixel-ui .sidebar-link:hover { background: var(--pixel-surface-alt) !important; color: var(--pixel-cyan) !important; }
+html.pixel-ui .sidebar-link:hover:not(.sidebar-link-active) { background: var(--pixel-surface-alt) !important; color: var(--pixel-cyan) !important; }
+html.pixel-ui .sidebar-link:hover.sidebar-link-active { background: var(--pixel-surface-alt) !important; color: var(--pixel-cyan) !important; }
 html.pixel-ui .sidebar-link-active { border-left: 3px solid var(--pixel-cyan); background: var(--pixel-surface-alt) !important; color: var(--pixel-cyan) !important; }
 html.pixel-ui .sidebar-section-title { color: var(--pixel-muted) !important; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
@@ -915,4 +923,977 @@ html.pixel-ui .border-gray-200 { border-color: var(--pixel-line) !important; }
 
 @media (prefers-reduced-motion: reduce) {
   html.pixel-ui *, html.pixel-ui *::before, html.pixel-ui *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+
+/* ==========================================================================
+   Editorial card theme (灵思智域 / Pilio-inspired)
+   暖白画布 · 黑色高对比 · 超大编辑型标题 · 克制边框 · 大圆角产品卡片。
+   机制与 pixel-ui 一致：覆写全站共用的语义类与工具类，
+   因此 90 个视图 / 213 个组件无需逐个改写即可整体换肤。
+   ========================================================================== */
+
+html.editorial-ui {
+  --ed-canvas: #f5f3ee;
+  --ed-canvas-deep: #eeece6;
+  --ed-paper: #fbfaf7;
+  --ed-paper-2: #f0eee8;
+  --ed-surface: #ffffff;
+  --ed-surface-alt: #f0eee8;
+  --ed-input: #ffffff;
+  --ed-ink: #11110f;
+  --ed-ink-2: #2c2c28;
+  --ed-muted: #706f69;
+  --ed-faint: #96948d;
+  --ed-soft: #e8e5de;
+  --ed-line: rgba(17, 17, 15, 0.11);
+  --ed-line-soft: rgba(17, 17, 15, 0.06);
+  --ed-line-strong: rgba(17, 17, 15, 0.2);
+  --ed-black: #11110f;
+  --ed-accent: #dce9ff;
+  --ed-accent-2: #eef3ff;
+  --ed-accent-ink: #24405f;
+  --ed-shadow-sm: 0 2px 10px rgba(17, 17, 15, 0.04);
+  --ed-shadow: 0 14px 40px rgba(17, 17, 15, 0.06);
+  --ed-shadow-lg: 0 24px 64px rgba(17, 17, 15, 0.1);
+  --ed-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ed-radius: 26px;
+  --ed-radius-lg: 30px;
+  --ed-radius-md: 18px;
+  --ed-radius-sm: 12px;
+  --ed-serif: Georgia, 'Times New Roman', 'Songti SC', 'STSong', serif;
+  color-scheme: light;
+}
+
+html.editorial-ui.dark {
+  --ed-canvas: #121210;
+  --ed-canvas-deep: #0c0c0b;
+  --ed-paper: #1a1a17;
+  --ed-paper-2: #212120;
+  --ed-surface: #191917;
+  --ed-surface-alt: #232321;
+  --ed-input: #151513;
+  --ed-ink: #f4f2ec;
+  --ed-ink-2: #dedbd2;
+  --ed-muted: #96948d;
+  --ed-faint: #6f6d67;
+  --ed-soft: #2b2b28;
+  --ed-line: rgba(244, 242, 236, 0.12);
+  --ed-line-soft: rgba(244, 242, 236, 0.07);
+  --ed-line-strong: rgba(244, 242, 236, 0.22);
+  --ed-black: #f4f2ec;
+  --ed-accent: #1e2a3a;
+  --ed-accent-2: #232f40;
+  --ed-accent-ink: #cfe0f7;
+  --ed-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --ed-shadow: 0 14px 40px rgba(0, 0, 0, 0.38);
+  --ed-shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.5);
+  --ed-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+
+/* ---------- 画布 ---------- */
+html.editorial-ui body {
+  min-height: 100vh;
+  background-color: var(--ed-canvas) !important;
+  background-image: radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.9), transparent 45%);
+  color: var(--ed-ink) !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+}
+
+html.editorial-ui.dark body {
+  background-image: radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.05), transparent 45%);
+}
+
+/* ---------- 卡片 ---------- */
+html.editorial-ui .card,
+html.editorial-ui .glass-card,
+html.editorial-ui .card-glass {
+  background: var(--ed-surface) !important;
+  border: 1px solid var(--ed-line) !important;
+  border-radius: var(--ed-radius) !important;
+  box-shadow: var(--ed-shadow-sm) !important;
+  backdrop-filter: none !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+
+html.editorial-ui .card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--ed-line-strong) !important;
+  box-shadow: var(--ed-shadow) !important;
+}
+
+html.editorial-ui .glass,
+html.editorial-ui header.glass {
+  background: color-mix(in srgb, var(--ed-paper) 88%, transparent) !important;
+  backdrop-filter: blur(16px) saturate(1.2) !important;
+  border-color: var(--ed-line) !important;
+  box-shadow: 0 1px 0 var(--ed-line-soft) !important;
+}
+
+html.editorial-ui .card-header {
+  border-color: var(--ed-line-soft) !important;
+  padding: 1.375rem 1.75rem !important;
+}
+
+html.editorial-ui .card-body {
+  padding: 1.75rem !important;
+}
+
+html.editorial-ui .card-footer {
+  border-color: var(--ed-line-soft) !important;
+  background: var(--ed-paper) !important;
+  padding: 1.125rem 1.75rem !important;
+  border-radius: 0 0 var(--ed-radius) var(--ed-radius);
+}
+
+/* ---------- 统计卡片 ---------- */
+html.editorial-ui .stat-card {
+  background: var(--ed-surface) !important;
+  border: 1px solid var(--ed-line) !important;
+  border-radius: var(--ed-radius) !important;
+  box-shadow: var(--ed-shadow-sm) !important;
+  padding: 1.5rem !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+
+html.editorial-ui .stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ed-line-strong) !important;
+  box-shadow: var(--ed-shadow) !important;
+}
+
+html.editorial-ui .stat-icon {
+  border-radius: var(--ed-radius-sm) !important;
+  background: var(--ed-paper-2) !important;
+  color: var(--ed-ink) !important;
+  border: 1px solid var(--ed-line-soft) !important;
+}
+
+html.editorial-ui .stat-value {
+  color: var(--ed-ink) !important;
+  letter-spacing: -0.045em !important;
+  font-weight: 800 !important;
+}
+
+html.editorial-ui .stat-label {
+  color: var(--ed-muted) !important;
+}
+
+/* ---------- 按钮：胶囊 + 黑色高对比 ---------- */
+html.editorial-ui .btn {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+html.editorial-ui .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+html.editorial-ui .btn-primary {
+  background: var(--ed-black) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 26px rgba(17, 17, 15, 0.12) !important;
+}
+
+html.editorial-ui.dark .btn-primary {
+  color: #11110f !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45) !important;
+}
+
+html.editorial-ui .btn-primary:hover:not(:disabled) {
+  background: #282824 !important;
+  box-shadow: 0 14px 32px rgba(17, 17, 15, 0.16) !important;
+}
+
+html.editorial-ui .btn-secondary {
+  background: rgba(255, 255, 255, 0.58) !important;
+  border-color: var(--ed-line) !important;
+  color: var(--ed-ink) !important;
+}
+
+html.editorial-ui.dark .btn-secondary {
+  background: var(--ed-surface-alt) !important;
+}
+
+html.editorial-ui .btn-secondary:hover:not(:disabled) {
+  background: var(--ed-surface) !important;
+  border-color: var(--ed-line-strong) !important;
+}
+
+html.editorial-ui .btn-ghost {
+  background: transparent !important;
+  color: var(--ed-muted) !important;
+}
+
+html.editorial-ui .btn-ghost:hover:not(:disabled) {
+  background: var(--ed-paper-2) !important;
+  color: var(--ed-ink) !important;
+}
+
+html.editorial-ui .btn-danger,
+html.editorial-ui .btn-success,
+html.editorial-ui .btn-warning {
+  background: var(--ed-black) !important;
+  color: #fff !important;
+}
+
+html.editorial-ui.dark .btn-danger,
+html.editorial-ui.dark .btn-success,
+html.editorial-ui.dark .btn-warning {
+  color: #11110f !important;
+}
+
+html.editorial-ui .btn-sm { border-radius: 999px !important; }
+html.editorial-ui .btn-md { border-radius: 999px !important; }
+html.editorial-ui .btn-lg { border-radius: 999px !important; padding: 0.85rem 1.75rem !important; }
+html.editorial-ui .btn-icon { border-radius: 999px !important; }
+
+/* ---------- 表单 ---------- */
+html.editorial-ui .input,
+html.editorial-ui select,
+html.editorial-ui textarea {
+  background: var(--ed-input) !important;
+  border: 1px solid var(--ed-line) !important;
+  border-radius: var(--ed-radius-sm) !important;
+  color: var(--ed-ink) !important;
+  box-shadow: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+html.editorial-ui .input:focus,
+html.editorial-ui select:focus,
+html.editorial-ui textarea:focus {
+  border-color: var(--ed-ink) !important;
+  box-shadow: 0 0 0 3px var(--ed-line-soft) !important;
+}
+
+html.editorial-ui .input-label {
+  color: var(--ed-ink-2) !important;
+  font-weight: 650 !important;
+}
+
+html.editorial-ui .input-hint { color: var(--ed-muted) !important; }
+html.editorial-ui .input-error-text { color: #b91c1c !important; }
+
+html.editorial-ui .switch {
+  background: var(--ed-soft) !important;
+  border: 1px solid var(--ed-line) !important;
+}
+
+html.editorial-ui .switch-active {
+  background: var(--ed-black) !important;
+  border-color: var(--ed-black) !important;
+}
+
+html.editorial-ui .switch-thumb {
+  background: var(--ed-surface) !important;
+  box-shadow: 0 1px 3px rgba(17, 17, 15, 0.2) !important;
+}
+
+/* ---------- 表格 ---------- */
+html.editorial-ui .table-container {
+  border: 1px solid var(--ed-line) !important;
+  border-radius: var(--ed-radius-md) !important;
+  background: var(--ed-surface) !important;
+  box-shadow: var(--ed-shadow-sm) !important;
+}
+
+html.editorial-ui .table th {
+  background: var(--ed-paper) !important;
+  border-color: var(--ed-line-soft) !important;
+  color: var(--ed-muted) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+}
+
+html.editorial-ui .table td {
+  border-color: var(--ed-line-soft) !important;
+  color: var(--ed-ink-2) !important;
+}
+
+html.editorial-ui .table tbody tr:hover {
+  background: var(--ed-paper) !important;
+}
+
+html.editorial-ui .table-wrapper thead.sticky {
+  box-shadow: 0 1px 0 var(--ed-line) !important;
+}
+
+/* ---------- 徽章 ---------- */
+html.editorial-ui .badge {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  border: 1px solid transparent;
+}
+
+html.editorial-ui .badge-primary {
+  background: var(--ed-accent-2) !important;
+  color: var(--ed-accent-ink) !important;
+  border-color: var(--ed-line-soft) !important;
+}
+
+html.editorial-ui .badge-gray {
+  background: var(--ed-paper-2) !important;
+  color: var(--ed-muted) !important;
+  border-color: var(--ed-line-soft) !important;
+}
+
+/* ---------- 浮层：下拉 / 弹窗 / 对话框 / 轻提示 ---------- */
+html.editorial-ui .dropdown,
+html.editorial-ui .modal-content,
+html.editorial-ui .dialog-container {
+  background: var(--ed-surface) !important;
+  border: 1px solid var(--ed-line) !important;
+  border-radius: var(--ed-radius-md) !important;
+  box-shadow: var(--ed-shadow-lg) !important;
+}
+
+html.editorial-ui .dropdown-item {
+  color: var(--ed-ink-2) !important;
+  border-radius: var(--ed-radius-sm) !important;
+  margin: 0 0.375rem;
+  width: calc(100% - 0.75rem);
+}
+
+html.editorial-ui .dropdown-item:hover {
+  background: var(--ed-paper-2) !important;
+  color: var(--ed-ink) !important;
+}
+
+html.editorial-ui .modal-overlay,
+html.editorial-ui .dialog-overlay {
+  background: rgba(17, 17, 15, 0.34) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+html.editorial-ui .modal-content,
+html.editorial-ui .dialog-container {
+  border-radius: var(--ed-radius) !important;
+}
+
+html.editorial-ui .modal-header,
+html.editorial-ui .dialog-header,
+html.editorial-ui .modal-footer,
+html.editorial-ui .dialog-footer {
+  border-color: var(--ed-line-soft) !important;
+}
+
+html.editorial-ui .modal-title {
+  color: var(--ed-ink) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em !important;
+}
+
+html.editorial-ui .dialog-footer {
+  background: var(--ed-paper) !important;
+}
+
+html.editorial-ui .toast {
+  background: var(--ed-surface) !important;
+  border: 1px solid var(--ed-line) !important;
+  border-left-width: 3px !important;
+  border-radius: var(--ed-radius-md) !important;
+  box-shadow: var(--ed-shadow-lg) !important;
+  color: var(--ed-ink) !important;
+}
+
+/* ---------- 侧边导航 ---------- */
+html.editorial-ui .sidebar {
+  background: var(--ed-paper) !important;
+  border-color: var(--ed-line) !important;
+  box-shadow: none !important;
+}
+
+html.editorial-ui .sidebar-header {
+  border-color: var(--ed-line-soft) !important;
+  background: var(--ed-paper) !important;
+}
+
+html.editorial-ui .sidebar-nav {
+  padding: 1rem 0.75rem !important;
+}
+
+html.editorial-ui .sidebar-link {
+  border-radius: var(--ed-radius-sm) !important;
+  color: var(--ed-muted) !important;
+  font-weight: 650 !important;
+  transition: background 0.2s ease, color 0.2s ease !important;
+}
+
+html.editorial-ui .sidebar-link:hover:not(.sidebar-link-active) {
+  background: var(--ed-paper-2) !important;
+  color: var(--ed-ink) !important;
+}
+
+html.editorial-ui .sidebar-link:hover.sidebar-link-active {
+  background: var(--ed-black) !important;
+  color: #fff !important;
+}
+
+html.editorial-ui .sidebar-link-active {
+  background: var(--ed-black) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+html.editorial-ui.dark .sidebar-link-active {
+  color: #11110f !important;
+}
+
+html.editorial-ui.dark .sidebar-link:hover.sidebar-link-active {
+  color: #11110f !important;
+}
+
+html.editorial-ui .sidebar-section-title {
+  color: var(--ed-faint) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.16em !important;
+}
+
+/* ---------- 页面标题：超大编辑型 ---------- */
+html.editorial-ui .page-header {
+  margin-bottom: 2.25rem !important;
+}
+
+html.editorial-ui .page-title {
+  font-family: var(--ed-serif) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.055em !important;
+  line-height: 1 !important;
+  color: var(--ed-ink) !important;
+  font-size: 2.5rem !important;
+}
+
+html.editorial-ui .page-description {
+  color: var(--ed-muted) !important;
+  line-height: 1.85 !important;
+  max-width: 46rem;
+}
+
+/* ---------- 标签页 / 进度 / 分割线 / 代码 ---------- */
+html.editorial-ui .tabs {
+  background: var(--ed-paper-2) !important;
+  border: 1px solid var(--ed-line-soft) !important;
+  border-radius: 999px !important;
+  padding: 0.25rem !important;
+}
+
+html.editorial-ui .tab {
+  border-radius: 999px !important;
+  color: var(--ed-muted) !important;
+  font-weight: 650 !important;
+}
+
+html.editorial-ui .tab-active {
+  background: var(--ed-surface) !important;
+  color: var(--ed-ink) !important;
+  box-shadow: var(--ed-shadow-sm) !important;
+}
+
+html.editorial-ui .progress {
+  background: var(--ed-soft) !important;
+  border-radius: 999px !important;
+}
+
+html.editorial-ui .progress-bar {
+  background: var(--ed-black) !important;
+  border-radius: 999px !important;
+}
+
+html.editorial-ui .divider {
+  background: var(--ed-line-soft) !important;
+}
+
+html.editorial-ui .code,
+html.editorial-ui .code-block {
+  background: var(--ed-paper-2) !important;
+  color: var(--ed-accent-ink) !important;
+  border: 1px solid var(--ed-line-soft) !important;
+  border-radius: var(--ed-radius-sm) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+html.editorial-ui .code-block {
+  background: #171817 !important;
+  color: #d9dee8 !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  border-radius: 16px !important;
+}
+
+/* ---------- 空状态 / 骨架屏 ---------- */
+html.editorial-ui .empty-state {
+  padding: 3.5rem 1rem !important;
+}
+
+html.editorial-ui .empty-state-icon {
+  color: var(--ed-soft) !important;
+}
+
+html.editorial-ui .empty-state-title {
+  font-family: var(--ed-serif) !important;
+  color: var(--ed-ink) !important;
+  letter-spacing: -0.03em !important;
+}
+
+html.editorial-ui .empty-state-description {
+  color: var(--ed-muted) !important;
+  line-height: 1.8 !important;
+}
+
+html.editorial-ui .skeleton {
+  background: var(--ed-soft) !important;
+  border-radius: var(--ed-radius-sm) !important;
+}
+
+/* ---------- 通用工具类归一（对齐全站零散 Tailwind 用法） ---------- */
+html.editorial-ui .bg-white { background-color: var(--ed-surface) !important; }
+html.editorial-ui .bg-gray-50 { background-color: var(--ed-canvas) !important; }
+html.editorial-ui .bg-gray-100 { background-color: var(--ed-paper-2) !important; }
+html.editorial-ui .bg-gray-200 { background-color: var(--ed-soft) !important; }
+html.editorial-ui .text-gray-900,
+html.editorial-ui .text-gray-800,
+html.editorial-ui .text-gray-700 { color: var(--ed-ink) !important; }
+html.editorial-ui .text-gray-600,
+html.editorial-ui .text-gray-500 { color: var(--ed-muted) !important; }
+html.editorial-ui .text-gray-400 { color: var(--ed-faint) !important; }
+html.editorial-ui .border-gray-100,
+html.editorial-ui .border-gray-200,
+html.editorial-ui .border-gray-300 { border-color: var(--ed-line) !important; }
+html.editorial-ui .shadow,
+html.editorial-ui .shadow-sm,
+html.editorial-ui .shadow-md,
+html.editorial-ui .shadow-lg { box-shadow: var(--ed-shadow-sm) !important; }
+html.editorial-ui .rounded-2xl,
+html.editorial-ui .rounded-3xl { border-radius: var(--ed-radius-md) !important; }
+html.editorial-ui .rounded-xl,
+html.editorial-ui .rounded-lg { border-radius: var(--ed-radius-sm) !important; }
+
+html.editorial-ui.dark .dark\:bg-dark-950,
+html.editorial-ui.dark .dark\:bg-dark-900,
+html.editorial-ui.dark .dark\:bg-dark-800 { background-color: var(--ed-surface) !important; }
+html.editorial-ui.dark .dark\:bg-dark-700 { background-color: var(--ed-surface-alt) !important; }
+html.editorial-ui.dark .dark\:text-white,
+html.editorial-ui.dark .dark\:text-gray-100,
+html.editorial-ui.dark .dark\:text-gray-200 { color: var(--ed-ink) !important; }
+html.editorial-ui.dark .dark\:text-gray-300,
+html.editorial-ui.dark .dark\:text-gray-400 { color: var(--ed-muted) !important; }
+html.editorial-ui.dark .dark\:border-dark-700,
+html.editorial-ui.dark .dark\:border-dark-600 { border-color: var(--ed-line) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.editorial-ui *, html.editorial-ui *::before, html.editorial-ui *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+
+/* ==========================================================================
+   Editorial refinement pass — 高级感精修
+   手感与材质：分层环境光影、发丝高光边、弹性缓动、光学字距、
+   可见焦点环、状态反馈。叠加在 editorial-ui 基础层之上。
+   ========================================================================== */
+
+html.editorial-ui {
+  /* 精修令牌：更细腻的光影层次与弹性缓动 */
+  --ed-shadow-sm: 0 1px 2px rgba(17, 17, 15, 0.03), 0 4px 12px rgba(17, 17, 15, 0.035);
+  --ed-shadow: 0 2px 4px rgba(17, 17, 15, 0.03), 0 12px 32px rgba(17, 17, 15, 0.07);
+  --ed-shadow-lg: 0 4px 8px rgba(17, 17, 15, 0.03), 0 28px 70px rgba(17, 17, 15, 0.13);
+  --ed-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  --ed-hairline-dark: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --ed-lift: 0 2px 6px rgba(17, 17, 15, 0.05), 0 18px 44px rgba(17, 17, 15, 0.1);
+  --ed-ring: 0 0 0 1px var(--ed-line), 0 0 0 4px var(--ed-line-soft);
+  --ed-ring-accent: 0 0 0 1px var(--ed-ink), 0 0 0 4px var(--ed-line-soft);
+  --ed-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ed-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ed-t-fast: 0.16s;
+  --ed-t: 0.28s;
+  --ed-t-slow: 0.5s;
+  --ed-grad-surface: linear-gradient(180deg, #ffffff 0%, #fdfcfa 100%);
+  --ed-grad-paper: linear-gradient(180deg, #fbfaf7 0%, #f7f5f0 100%);
+  --ed-grad-sunken: linear-gradient(180deg, #f0eee8 0%, #f6f5f1 100%);
+  --ed-track-tight: -0.03em;
+  --ed-track-tightest: -0.045em;
+}
+
+html.editorial-ui.dark {
+  --ed-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --ed-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 0 14px 36px rgba(0, 0, 0, 0.42);
+  --ed-shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.45), 0 30px 76px rgba(0, 0, 0, 0.55);
+  --ed-lift: 0 2px 8px rgba(0, 0, 0, 0.5), 0 20px 50px rgba(0, 0, 0, 0.5);
+  --ed-grad-surface: linear-gradient(180deg, #1c1c1a 0%, #171715 100%);
+  --ed-grad-paper: linear-gradient(180deg, #1a1a18 0%, #161614 100%);
+  --ed-grad-sunken: linear-gradient(180deg, #131311 0%, #1b1b19 100%);
+}
+
+/* ---------- 画布：极轻的双向柔光，营造纵深而非装饰 ---------- */
+html.editorial-ui body {
+  background-image:
+    radial-gradient(1100px 520px at 12% -8%, rgba(255, 255, 255, 0.9), transparent 62%),
+    radial-gradient(900px 480px at 92% 4%, rgba(220, 233, 255, 0.34), transparent 66%);
+  background-attachment: fixed;
+}
+
+html.editorial-ui.dark body {
+  background-image:
+    radial-gradient(1100px 520px at 12% -8%, rgba(255, 255, 255, 0.05), transparent 62%),
+    radial-gradient(900px 480px at 92% 4%, rgba(120, 150, 200, 0.07), transparent 66%);
+}
+
+/* ---------- 卡片：发丝高光 + 分层阴影 ---------- */
+html.editorial-ui .card,
+html.editorial-ui .glass-card,
+html.editorial-ui .card-glass {
+  background: var(--ed-grad-surface) !important;
+  box-shadow: var(--ed-shadow-sm), var(--ed-hairline) !important;
+  transition:
+    transform var(--ed-t) var(--ed-ease),
+    box-shadow var(--ed-t) var(--ed-ease),
+    border-color var(--ed-t-fast) var(--ed-ease) !important;
+  will-change: transform;
+}
+
+html.editorial-ui.dark .card,
+html.editorial-ui.dark .glass-card,
+html.editorial-ui.dark .card-glass {
+  box-shadow: var(--ed-shadow-sm), var(--ed-hairline-dark) !important;
+}
+
+html.editorial-ui .card-hover,
+html.editorial-ui .stat-card {
+  transition:
+    transform var(--ed-t) var(--ed-ease),
+    box-shadow var(--ed-t) var(--ed-ease),
+    border-color var(--ed-t-fast) var(--ed-ease) !important;
+}
+
+html.editorial-ui .card-hover:hover,
+html.editorial-ui .stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ed-lift), var(--ed-hairline) !important;
+}
+
+html.editorial-ui.dark .card-hover:hover,
+html.editorial-ui.dark .stat-card:hover {
+  box-shadow: var(--ed-lift), var(--ed-hairline-dark) !important;
+}
+
+/* 卡片按下时轻微回弹，强化物理手感 */
+html.editorial-ui .card:active,
+html.editorial-ui .stat-card:active {
+  transform: translateY(-1px) scale(0.996);
+  transition-duration: var(--ed-t-fast);
+}
+
+/* ---------- 卡片头部：衬线标题 + 细分隔线 ---------- */
+html.editorial-ui .card-header {
+  background: linear-gradient(180deg, rgba(250, 249, 246, 0.9), rgba(250, 249, 246, 0)) !important;
+}
+
+html.editorial-ui.dark .card-header {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)) !important;
+}
+
+html.editorial-ui .card-footer {
+  background: var(--ed-grad-sunken) !important;
+}
+
+html.editorial-ui .card-header > h2,
+html.editorial-ui .card-header > h3,
+html.editorial-ui .card-title {
+  letter-spacing: var(--ed-track-tight) !important;
+  font-weight: 750 !important;
+}
+
+/* ---------- 统计卡片：数字用等宽字形，避免跳动 ---------- */
+html.editorial-ui .stat-value,
+html.editorial-ui .stat-card strong {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: var(--ed-track-tightest) !important;
+  line-height: 1.05 !important;
+}
+
+html.editorial-ui .stat-icon {
+  background: var(--ed-grad-sunken) !important;
+  box-shadow: var(--ed-hairline) !important;
+  transition: transform var(--ed-t) var(--ed-ease), box-shadow var(--ed-t) var(--ed-ease) !important;
+}
+
+html.editorial-ui .stat-card:hover .stat-icon {
+  transform: scale(1.04);
+}
+
+html.editorial-ui.dark .stat-icon {
+  box-shadow: var(--ed-hairline-dark) !important;
+}
+
+html.editorial-ui .stat-label {
+  letter-spacing: 0.02em !important;
+}
+
+/* ---------- 按钮：按压反馈 + 可见焦点环 ---------- */
+html.editorial-ui .btn {
+  transition:
+    transform var(--ed-t-fast) var(--ed-ease),
+    background var(--ed-t-fast) var(--ed-ease),
+    border-color var(--ed-t-fast) var(--ed-ease),
+    box-shadow var(--ed-t) var(--ed-ease),
+    color var(--ed-t-fast) var(--ed-ease) !important;
+  position: relative;
+}
+
+html.editorial-ui .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+html.editorial-ui .btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 80ms;
+}
+
+html.editorial-ui .btn:focus-visible {
+  outline: none !important;
+  box-shadow: var(--ed-ring-accent) !important;
+}
+
+html.editorial-ui .btn-primary {
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.16), 0 8px 22px rgba(17, 17, 15, 0.14), var(--ed-hairline) !important;
+}
+
+html.editorial-ui .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 4px rgba(17, 17, 15, 0.18), 0 14px 34px rgba(17, 17, 15, 0.2), var(--ed-hairline) !important;
+}
+
+html.editorial-ui.dark .btn-primary {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 22px rgba(0, 0, 0, 0.45) !important;
+}
+
+html.editorial-ui .btn-secondary {
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.03), var(--ed-hairline) !important;
+}
+
+html.editorial-ui .btn-secondary:hover:not(:disabled) {
+  box-shadow: var(--ed-shadow-sm), var(--ed-hairline) !important;
+}
+
+/* ---------- 表单：聚焦态更精确 ---------- */
+html.editorial-ui .input,
+html.editorial-ui select,
+html.editorial-ui textarea {
+  transition:
+    border-color var(--ed-t-fast) var(--ed-ease),
+    box-shadow var(--ed-t-fast) var(--ed-ease),
+    background var(--ed-t-fast) var(--ed-ease) !important;
+  box-shadow: var(--ed-hairline) !important;
+}
+
+html.editorial-ui.dark .input,
+html.editorial-ui.dark select,
+html.editorial-ui.dark textarea {
+  box-shadow: var(--ed-hairline-dark) !important;
+}
+
+html.editorial-ui .input:hover:not(:focus),
+html.editorial-ui select:hover:not(:focus),
+html.editorial-ui textarea:hover:not(:focus) {
+  border-color: var(--ed-line-strong) !important;
+}
+
+html.editorial-ui .input:focus,
+html.editorial-ui select:focus,
+html.editorial-ui textarea:focus {
+  box-shadow: 0 0 0 3px var(--ed-line-soft), var(--ed-hairline) !important;
+}
+
+/* ---------- 表格：表头下沉、行分隔更轻、首列锚定 ---------- */
+html.editorial-ui .table-container {
+  box-shadow: var(--ed-shadow-sm), var(--ed-hairline) !important;
+}
+
+html.editorial-ui .table th {
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase;
+  font-size: 0.6875rem !important;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+html.editorial-ui .table td {
+  font-variant-numeric: tabular-nums;
+}
+
+html.editorial-ui .table tbody tr {
+  transition: background var(--ed-t-fast) var(--ed-ease) !important;
+}
+
+html.editorial-ui .table tbody tr:active {
+  background: var(--ed-paper-2) !important;
+}
+
+/* ---------- 侧边导航：左侧指示条 + 悬浮微移 ---------- */
+html.editorial-ui .sidebar {
+  background: var(--ed-grad-paper) !important;
+}
+
+html.editorial-ui .sidebar-link {
+  position: relative;
+  transition:
+    background var(--ed-t-fast) var(--ed-ease),
+    color var(--ed-t-fast) var(--ed-ease),
+    transform var(--ed-t) var(--ed-ease) !important;
+}
+
+html.editorial-ui .sidebar-link:hover:not(.sidebar-link-active) {
+  transform: translateX(2px);
+}
+
+html.editorial-ui .sidebar-link:hover.sidebar-link-active {
+  transform: none !important;
+}
+
+html.editorial-ui .sidebar-link-active {
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 6px 18px rgba(17, 17, 15, 0.1) !important;
+  transform: none !important;
+}
+
+html.editorial-ui .sidebar-header {
+  box-shadow: 0 1px 0 var(--ed-line-soft) !important;
+}
+
+/* ---------- 浮层：更强的离屏感 ---------- */
+html.editorial-ui .dropdown,
+html.editorial-ui .modal-content,
+html.editorial-ui .dialog-container {
+  box-shadow: var(--ed-shadow-lg), var(--ed-hairline) !important;
+  transform-origin: top right;
+  animation: ed-pop var(--ed-t) var(--ed-ease) both;
+}
+
+html.editorial-ui.dark .dropdown,
+html.editorial-ui.dark .modal-content,
+html.editorial-ui.dark .dialog-container {
+  box-shadow: var(--ed-shadow-lg), var(--ed-hairline-dark) !important;
+}
+
+@keyframes ed-pop {
+  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+html.editorial-ui .dropdown-item {
+  transition:
+    background var(--ed-t-fast) var(--ed-ease),
+    color var(--ed-t-fast) var(--ed-ease) !important;
+}
+
+html.editorial-ui .toast {
+  box-shadow: var(--ed-shadow-lg), var(--ed-hairline) !important;
+  animation: ed-slide-in var(--ed-t-slow) var(--ed-ease) both;
+}
+
+@keyframes ed-slide-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---------- 开关：滑块更饱满、轨道更内凹 ---------- */
+html.editorial-ui .switch {
+  box-shadow: inset 0 1px 3px rgba(17, 17, 15, 0.12) !important;
+  transition: background var(--ed-t) var(--ed-ease), border-color var(--ed-t-fast) var(--ed-ease) !important;
+}
+
+html.editorial-ui .switch-thumb {
+  box-shadow: 0 1px 3px rgba(17, 17, 15, 0.22), 0 4px 10px rgba(17, 17, 15, 0.1) !important;
+  transition: transform var(--ed-t) var(--ed-ease) !important;
+}
+
+/* ---------- 徽章 / 进度 / 骨架 ---------- */
+html.editorial-ui .badge {
+  letter-spacing: 0.01em !important;
+  font-variant-numeric: tabular-nums;
+}
+
+html.editorial-ui .progress {
+  box-shadow: inset 0 1px 2px rgba(17, 17, 15, 0.08) !important;
+}
+
+html.editorial-ui .progress-bar {
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14) !important;
+  transition: width var(--ed-t-slow) var(--ed-ease) !important;
+}
+
+html.editorial-ui .skeleton {
+  background: linear-gradient(90deg, var(--ed-soft) 25%, var(--ed-paper-2) 50%, var(--ed-soft) 75%) !important;
+  background-size: 200% 100%;
+  animation: ed-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes ed-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ---------- 排版：光学字距与行高 ---------- */
+html.editorial-ui .page-title {
+  letter-spacing: -0.06em !important;
+  text-wrap: balance;
+}
+
+html.editorial-ui .page-description {
+  letter-spacing: 0.005em !important;
+}
+
+html.editorial-ui .empty-state-title {
+  letter-spacing: -0.04em !important;
+}
+
+html.editorial-ui .input-label {
+  letter-spacing: 0.01em !important;
+}
+
+html.editorial-ui .sidebar-section-title {
+  letter-spacing: 0.18em !important;
+}
+
+/* ---------- 选中文本：暖调高级感 ---------- */
+html.editorial-ui ::selection {
+  background: var(--ed-ink) !important;
+  color: var(--ed-canvas) !important;
+}
+
+/* ---------- 全局可见焦点环（键盘可达性） ---------- */
+html.editorial-ui :focus-visible {
+  outline: 2px solid var(--ed-ink);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+html.editorial-ui .card :focus-visible,
+html.editorial-ui .table-container :focus-visible {
+  outline-offset: -2px;
+}
+
+/* ---------- 滚动条：细窄、低存在 ---------- */
+html.editorial-ui ::-webkit-scrollbar { width: 8px; height: 8px; }
+html.editorial-ui ::-webkit-scrollbar-thumb {
+  background: rgba(17, 17, 15, 0.16) !important;
+  border-radius: 999px;
+}
+html.editorial-ui.dark ::-webkit-scrollbar-thumb {
+  background: rgba(244, 242, 236, 0.16) !important;
+}
+html.editorial-ui ::-webkit-scrollbar-thumb:hover {
+  background: rgba(17, 17, 15, 0.3) !important;
+}
+html.editorial-ui.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(244, 242, 236, 0.3) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.editorial-ui *, html.editorial-ui *::before, html.editorial-ui *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
 }

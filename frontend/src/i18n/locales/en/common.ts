@@ -225,6 +225,17 @@ export default {
   auth: {
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',
+    brandPanel: {
+      eyebrow: 'AI API Gateway',
+      headline: 'One endpoint, many models',
+      lede: 'Unified auth, metering and billing — scattered model providers collapsed into one stable upstream link.',
+      features: {
+        gateway: { title: 'Unified Gateway', desc: 'One Base URL covers many models, no client changes.' },
+        metering: { title: 'Visible Usage', desc: 'Model, tokens and cost recorded per request.' },
+        stable: { title: 'Stable Access', desc: 'Keys and quotas managed separately for long runs.' },
+      },
+      footnote: 'Create a key once, call it anywhere',
+    },
     signIn: 'Sign In',
     signingIn: 'Signing in...',
     passkeySignIn: 'Sign in with a passkey',

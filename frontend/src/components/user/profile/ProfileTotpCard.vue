@@ -11,7 +11,7 @@
     <div class="px-6 py-6">
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 dark:border-gray-500"></div>
       </div>
 
       <!-- Feature disabled globally -->

@@ -54,4 +54,14 @@ defineExpose({ replayTour })
 <style>
 html.pixel-ui .app-shell { background: var(--pixel-canvas); }
 html.pixel-ui .app-grid { background-image: linear-gradient(var(--pixel-grid) 1px, transparent 1px), linear-gradient(90deg, var(--pixel-grid) 1px, transparent 1px); background-size: 32px 32px; }
+
+/* 编辑型卡片风：暖白画布 + 顶部柔光，取代像素网格底纹 */
+html.editorial-ui .app-shell { background: var(--ed-canvas); }
+html.editorial-ui .app-grid {
+  background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.85), transparent 42%);
+  opacity: 1;
+}
+html.editorial-ui.dark .app-grid {
+  background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 42%);
+}
 </style>

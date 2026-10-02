@@ -2,7 +2,7 @@
   <AppLayout>
     <div
       data-testid="profile-shell"
-      class="mx-auto max-w-[950px] space-y-6"
+      class="mx-auto max-w-[1180px] space-y-6"
     >
       <ProfileInfoCard
         :user="user"
@@ -15,36 +15,39 @@
         :wechat-mp-enabled="wechatOAuthMPEnabled"
       />
 
-      <div
-        v-if="contactInfo"
-        class="card border-primary-200 bg-primary-50 p-6 dark:bg-primary-900/20"
-      >
-        <div class="flex items-center gap-4">
-          <div class="rounded-xl bg-primary-100 p-3 text-primary-600">
-            <Icon name="chat" size="lg" />
+      <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <div class="space-y-6">
+          <ProfilePasswordForm />
+          <ProfileTotpCard />
+          <ProfilePasskeyCard :enabled="passkeyEnabled" />
+        </div>
+
+        <div class="space-y-6">
+          <div
+            v-if="contactInfo"
+            class="card flex items-center gap-4 p-6"
+          >
+            <div class="shrink-0 rounded-xl bg-gray-100 p-3 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+              <Icon name="chat" size="lg" />
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-semibold text-gray-900 dark:text-white">
+                {{ t('common.contactSupport') }}
+              </h3>
+              <p class="truncate text-sm font-medium text-gray-600 dark:text-gray-300">{{ contactInfo }}</p>
+            </div>
           </div>
-          <div>
-            <h3 class="font-semibold text-primary-800 dark:text-primary-200">
-              {{ t('common.contactSupport') }}
-            </h3>
-            <p class="text-sm font-medium">{{ contactInfo }}</p>
-          </div>
+
+          <ProfileBalanceNotifyCard
+            v-if="user && balanceLowNotifyEnabled"
+            :enabled="user.balance_notify_enabled ?? true"
+            :threshold="user.balance_notify_threshold"
+            :extra-emails="user.balance_notify_extra_emails ?? []"
+            :system-default-threshold="systemDefaultThreshold"
+            :user-email="user.email"
+          />
         </div>
       </div>
-
-      <ProfilePasswordForm />
-
-      <ProfileBalanceNotifyCard
-        v-if="user && balanceLowNotifyEnabled"
-        :enabled="user.balance_notify_enabled ?? true"
-        :threshold="user.balance_notify_threshold"
-        :extra-emails="user.balance_notify_extra_emails ?? []"
-        :system-default-threshold="systemDefaultThreshold"
-        :user-email="user.email"
-      />
-
-      <ProfileTotpCard />
-      <ProfilePasskeyCard :enabled="passkeyEnabled" />
     </div>
   </AppLayout>
 </template>

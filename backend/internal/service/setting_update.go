@@ -347,6 +347,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeySiteName] = settings.SiteName
 	updates[SettingKeySiteLogo] = settings.SiteLogo
 	updates[SettingKeyCommunityGroupImage] = settings.CommunityGroupImage
+	updates[SettingKeyUITheme] = normalizeUITheme(settings.UITheme)
 	updates[SettingKeySiteSubtitle] = settings.SiteSubtitle
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
 	updates[SettingKeyContactInfo] = settings.ContactInfo

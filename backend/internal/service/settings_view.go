@@ -12,10 +12,15 @@ func firstNonEmpty(values ...string) string {
 }
 
 func normalizeUITheme(value string) string {
-	if strings.TrimSpace(value) == "original" {
+	switch strings.TrimSpace(value) {
+	case "original":
 		return "original"
+	case "pixel":
+		return "pixel"
+	case "editorial":
+		return "editorial"
 	}
-	return "pixel"
+	return "editorial"
 }
 
 type SystemSettings struct {

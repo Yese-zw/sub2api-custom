@@ -70,7 +70,7 @@
         </form>
 
         <div v-if="loading" class="flex justify-center py-6">
-          <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-500"></div>
+          <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-400 dark:border-gray-500"></div>
         </div>
 
         <div
@@ -88,7 +88,7 @@
           >
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <Icon name="key" size="md" class="shrink-0 text-primary-500" />
+                <Icon name="key" size="md" class="shrink-0 text-gray-500 dark:text-gray-400" />
                 <p class="truncate font-medium text-gray-900 dark:text-white">
                   {{ credential.name }}
                 </p>

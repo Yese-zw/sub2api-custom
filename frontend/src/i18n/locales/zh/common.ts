@@ -225,6 +225,17 @@ export default {
   auth: {
     welcomeBack: '欢迎回来',
     signInToAccount: '登录您的账户以继续',
+    brandPanel: {
+      eyebrow: 'AI API 中转',
+      headline: '一个入口，聚合多家模型',
+      lede: '统一鉴权、统一计费、统一账单。把分散的模型服务收敛成一条稳定的上游链路。',
+      features: {
+        gateway: { title: '统一网关', desc: '一个 Base URL 覆盖多家模型，客户端无需改动。' },
+        metering: { title: '用量可查', desc: '每笔请求的模型、Token 与费用都留痕。' },
+        stable: { title: '稳定接入', desc: '密钥与配额独立管理，适合长期运行。' },
+      },
+      footnote: 'API Key 一次创建，随处调用',
+    },
     signIn: '登录',
     signingIn: '登录中...',
     passkeySignIn: '使用 Passkey 登录',

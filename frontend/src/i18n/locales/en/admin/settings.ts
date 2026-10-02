@@ -646,7 +646,8 @@ export default {
 		uiTheme: 'Interface Theme',
 		uiThemePixel: 'Tech Pixel',
 		uiThemeOriginal: 'Original Theme',
-		uiThemeHint: 'Applied across all pages. You can switch back to the original theme at any time.',
+		uiThemeEditorial: 'Editorial Card',
+		uiThemeHint: 'Applied across all pages. You can switch themes at any time.',
         apiBaseUrl: 'API Base URL',
         apiBaseUrlPlaceholder: 'https://api.example.com',
         apiBaseUrlHint:

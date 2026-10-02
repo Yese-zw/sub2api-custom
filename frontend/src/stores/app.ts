@@ -305,8 +305,10 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function applyUITheme(theme: PublicSettings['ui_theme']): void {
-    const uiTheme = theme === 'original' ? 'original' : 'pixel'
-    document.documentElement.classList.toggle('pixel-ui', uiTheme === 'pixel')
+    const uiTheme = theme === 'original' || theme === 'pixel' ? theme : 'editorial'
+    const root = document.documentElement
+    root.classList.toggle('editorial-ui', uiTheme === 'editorial')
+    root.classList.toggle('pixel-ui', uiTheme === 'pixel')
     if (typeof window !== 'undefined' && window.__APP_CONFIG__) {
       window.__APP_CONFIG__ = { ...window.__APP_CONFIG__, ui_theme: uiTheme }
     }

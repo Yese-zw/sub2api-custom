@@ -23,8 +23,11 @@ function initIOSViewportZoomFix() {
 }
 
 function initThemeClass() {
-	const uiTheme = window.__APP_CONFIG__?.ui_theme || 'pixel'
-	document.documentElement.classList.toggle('pixel-ui', uiTheme !== 'original')
+	const raw = window.__APP_CONFIG__?.ui_theme
+	// 未配置或配置为未知值时启用编辑型卡片主题（当前默认皮肤）。
+	const uiTheme = raw === 'original' || raw === 'pixel' ? raw : 'editorial'
+	document.documentElement.classList.toggle('editorial-ui', uiTheme === 'editorial')
+	document.documentElement.classList.toggle('pixel-ui', uiTheme === 'pixel')
   const savedTheme = localStorage.getItem('theme')
   const shouldUseDark =
     savedTheme === 'dark' ||

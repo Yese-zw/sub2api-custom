@@ -2,12 +2,12 @@
   <div class="space-y-6">
     <section
       data-testid="profile-overview-hero"
-      class="card overflow-hidden border border-primary-100/80 bg-gradient-to-br from-primary-50 via-white to-amber-50/70 dark:border-primary-900/40 dark:from-primary-950/40 dark:via-dark-900 dark:to-dark-950"
+      class="card overflow-hidden border border-gray-100 bg-gradient-to-br from-gray-50 via-white to-gray-100/60 dark:border-dark-700 dark:from-dark-900 dark:via-dark-900 dark:to-black"
     >
       <div class="px-6 py-6 md:px-8">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div
-            class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-primary-500 to-primary-600 text-2xl font-bold text-white shadow-lg shadow-primary-500/20"
+            class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-gray-700 to-gray-950 text-2xl font-bold text-white shadow-lg shadow-black/20 dark:from-gray-600 dark:to-black"
           >
             <img
               v-if="avatarUrl"
@@ -49,7 +49,7 @@
                   <span
                     v-for="hint in sourceHints"
                     :key="hint.key"
-                    class="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 ring-1 ring-primary-100 dark:bg-dark-900/70 dark:ring-primary-900/40"
+                    class="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 ring-1 ring-gray-200 dark:bg-dark-900/70 dark:ring-dark-700"
                   >
                     <Icon name="link" size="sm" />
                     {{ hint.text }}

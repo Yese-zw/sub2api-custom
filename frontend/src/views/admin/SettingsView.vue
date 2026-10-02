@@ -6456,6 +6456,7 @@
                   {{ t("admin.settings.site.uiTheme") }}
                 </label>
                 <select v-model="form.ui_theme" class="input max-w-sm">
+                  <option value="editorial">{{ t("admin.settings.site.uiThemeEditorial") }}</option>
                   <option value="pixel">{{ t("admin.settings.site.uiThemePixel") }}</option>
                   <option value="original">{{ t("admin.settings.site.uiThemeOriginal") }}</option>
                 </select>

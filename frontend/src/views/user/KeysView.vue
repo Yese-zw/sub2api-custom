@@ -3,6 +3,33 @@
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
+          <section class="keys-overview" aria-label="API key overview">
+            <article class="keys-metric">
+              <span class="keys-metric-label">{{ t('keys.overview.total') }}</span>
+              <strong class="keys-metric-value">{{ pagination.total }}</strong>
+            </article>
+            <article class="keys-metric">
+              <span class="keys-metric-label">
+                {{ t('keys.overview.active') }}
+                <em class="keys-metric-scope">{{ t('keys.overview.pageScope') }}</em>
+              </span>
+              <strong class="keys-metric-value">{{ pageActiveCount }}</strong>
+            </article>
+            <article class="keys-metric">
+              <span class="keys-metric-label">
+                {{ t('keys.overview.todaySpend') }}
+                <em class="keys-metric-scope">{{ t('keys.overview.pageScope') }}</em>
+              </span>
+              <strong class="keys-metric-value">${{ pageTodaySpend.toFixed(4) }}</strong>
+            </article>
+            <article class="keys-metric" :class="{ 'is-alert': pageQuotaAlerts > 0 }">
+              <span class="keys-metric-label">{{ t('keys.overview.quotaAlert') }}</span>
+              <strong class="keys-metric-value">
+                {{ pageQuotaAlerts > 0 ? pageQuotaAlerts : t('keys.overview.healthy') }}
+              </strong>
+            </article>
+          </section>
+
           <div class="flex flex-wrap items-center gap-3">
             <SearchInput
               v-model="filterSearch"
@@ -70,20 +97,19 @@
             </button>
             <div
               v-if="showColumnDropdown"
-              class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+              class="dropdown right-0 top-full mt-1 max-h-80 w-48 overflow-y-auto"
             >
               <button
                 v-for="col in toggleableColumns"
                 :key="col.key"
                 @click="toggleColumn(col.key)"
-                class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="dropdown-item"
               >
                 <span>{{ col.label }}</span>
                 <Icon
                   v-if="isColumnVisible(col.key)"
                   name="check"
                   size="sm"
-                  class="text-primary-500"
                   :stroke-width="2"
                 />
               </button>
@@ -117,17 +143,10 @@
 
           <template #cell-key="{ value, row }">
             <div class="flex items-center gap-2">
-              <code class="code text-xs">
-                {{ maskApiKey(value) }}
-              </code>
+              <code class="keys-chip">{{ maskApiKey(value) }}</code>
               <button
                 @click="copyToClipboard(value, row.id)"
-                class="rounded-lg p-1 transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
-                :class="
-                  copiedKeyId === row.id
-                    ? 'text-green-500'
-                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                "
+                :class="['keys-copy', { 'is-done': copiedKeyId === row.id }]"
                 :title="copiedKeyId === row.id ? t('keys.copied') : t('keys.copyToClipboard')"
               >
                 <Icon
@@ -235,13 +254,12 @@
                     ${{ row.quota_used?.toFixed(2) || '0.00' }} / ${{ row.quota?.toFixed(2) }}
                   </span>
                 </div>
-                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+                <div class="mt-1.5 keys-bar">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
-                      row.quota_used >= row.quota ? 'bg-red-500' :
-                      row.quota_used >= row.quota * 0.8 ? 'bg-yellow-500' :
-                      'bg-primary-500'
+                      'keys-bar-fill',
+                      row.quota_used >= row.quota ? 'is-danger' :
+                      row.quota_used >= row.quota * 0.8 ? 'is-warn' : ''
                     ]"
                     :style="{ width: Math.min((row.quota_used / row.quota) * 100, 100) + '%' }"
                   />
@@ -265,13 +283,12 @@
                     ${{ row.usage_5h?.toFixed(2) || '0.00' }}/${{ row.rate_limit_5h?.toFixed(2) }}
                   </span>
                 </div>
-                <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+                <div class="keys-bar">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
-                      row.usage_5h >= row.rate_limit_5h ? 'bg-red-500' :
-                      row.usage_5h >= row.rate_limit_5h * 0.8 ? 'bg-yellow-500' :
-                      'bg-emerald-500'
+                      'keys-bar-fill',
+                      row.usage_5h >= row.rate_limit_5h ? 'is-danger' :
+                      row.usage_5h >= row.rate_limit_5h * 0.8 ? 'is-warn' : ''
                     ]"
                     :style="{ width: Math.min((row.usage_5h / row.rate_limit_5h) * 100, 100) + '%' }"
                   />
@@ -293,13 +310,12 @@
                     ${{ row.usage_1d?.toFixed(2) || '0.00' }}/${{ row.rate_limit_1d?.toFixed(2) }}
                   </span>
                 </div>
-                <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+                <div class="keys-bar">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
-                      row.usage_1d >= row.rate_limit_1d ? 'bg-red-500' :
-                      row.usage_1d >= row.rate_limit_1d * 0.8 ? 'bg-yellow-500' :
-                      'bg-emerald-500'
+                      'keys-bar-fill',
+                      row.usage_1d >= row.rate_limit_1d ? 'is-danger' :
+                      row.usage_1d >= row.rate_limit_1d * 0.8 ? 'is-warn' : ''
                     ]"
                     :style="{ width: Math.min((row.usage_1d / row.rate_limit_1d) * 100, 100) + '%' }"
                   />
@@ -321,13 +337,12 @@
                     ${{ row.usage_7d?.toFixed(2) || '0.00' }}/${{ row.rate_limit_7d?.toFixed(2) }}
                   </span>
                 </div>
-                <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+                <div class="keys-bar">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
-                      row.usage_7d >= row.rate_limit_7d ? 'bg-red-500' :
-                      row.usage_7d >= row.rate_limit_7d * 0.8 ? 'bg-yellow-500' :
-                      'bg-emerald-500'
+                      'keys-bar-fill',
+                      row.usage_7d >= row.rate_limit_7d ? 'is-danger' :
+                      row.usage_7d >= row.rate_limit_7d * 0.8 ? 'is-warn' : ''
                     ]"
                     :style="{ width: Math.min((row.usage_7d / row.rate_limit_7d) * 100, 100) + '%' }"
                   />
@@ -395,7 +410,7 @@
               <!-- Use Key Button -->
               <button
                 @click="openUseKeyModal(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
+                class="keys-action"
               >
                 <Icon name="terminal" size="sm" />
                 <span class="text-xs">{{ t('keys.useKey') }}</span>
@@ -404,7 +419,7 @@
               <button
                 v-if="!publicSettings?.hide_ccs_import_button"
                 @click="importToCcswitch(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="keys-action"
               >
                 <Icon name="upload" size="sm" />
                 <span class="text-xs">{{ t('keys.importToCcSwitch') }}</span>
@@ -412,12 +427,7 @@
               <!-- Toggle Status Button -->
               <button
                 @click="toggleKeyStatus(row)"
-                :class="[
-                  'flex flex-col items-center gap-0.5 rounded-lg p-1.5 transition-colors',
-                  row.status === 'active'
-                    ? 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400'
-                    : 'text-gray-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
-                ]"
+                class="keys-action"
               >
                 <Icon v-if="row.status === 'active'" name="ban" size="sm" />
                 <Icon v-else name="checkCircle" size="sm" />
@@ -426,7 +436,7 @@
               <!-- Edit Button -->
               <button
                 @click="editKey(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="keys-action"
               >
                 <Icon name="edit" size="sm" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
@@ -434,7 +444,7 @@
               <!-- Delete Button -->
               <button
                 @click="confirmDelete(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                class="keys-action is-danger"
               >
                 <Icon name="trash" size="sm" />
                 <span class="text-xs">{{ t('common.delete') }}</span>
@@ -1380,6 +1390,24 @@ let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
 const userGroupRates = ref<Record<number, number>>({})
 
+// 概览指标：服务端分页下只有当前页数据在内存中，
+// 因此除 total 外的指标均标注"本页"，避免与全量统计混淆。
+const pageActiveCount = computed(
+  () => apiKeys.value.filter((k) => k.status === 'active').length
+)
+const pageTodaySpend = computed(() =>
+  apiKeys.value.reduce(
+    (sum, k) => sum + (usageStats.value[k.id]?.today_actual_cost ?? 0),
+    0
+  )
+)
+const pageQuotaAlerts = computed(
+  () =>
+    apiKeys.value.filter(
+      (k) => k.quota > 0 && k.quota_used >= k.quota * 0.8
+    ).length
+)
+
 const pagination = ref({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -2093,3 +2121,168 @@ onUnmounted(() => {
   if (resetTimer) clearInterval(resetTimer)
 })
 </script>
+
+<style scoped>
+/* ==========================================================================
+   API 密钥页专属视觉层
+   概览指标 + 用量/配额进度条 + 操作按钮 + Key 芯片。
+   使用主题令牌(--ed-*)，未启用 editorial 主题时回落到中性灰阶。
+   ========================================================================== */
+
+.keys-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.keys-metric {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.125rem 1.25rem;
+  border-radius: 18px;
+  border: 1px solid var(--ed-line, rgba(17, 17, 15, 0.11));
+  background: var(--ed-grad-surface, linear-gradient(180deg, #fff, #fdfcfa));
+  box-shadow: var(--ed-shadow-sm, 0 1px 2px rgba(17, 17, 15, 0.03), 0 4px 12px rgba(17, 17, 15, 0.035));
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.16s ease;
+  overflow: hidden;
+}
+
+.keys-metric::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+}
+
+.keys-metric:hover {
+  transform: translateY(-2px);
+  border-color: var(--ed-line-strong, rgba(17, 17, 15, 0.2));
+  box-shadow: var(--ed-lift, 0 2px 6px rgba(17, 17, 15, 0.05), 0 18px 44px rgba(17, 17, 15, 0.1));
+}
+
+.keys-metric.is-alert {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: linear-gradient(180deg, #fffdf8, #fffaf0);
+}
+
+.keys-metric-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ed-muted, #706f69);
+}
+
+.keys-metric-scope {
+  font-style: normal;
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.1rem 0.375rem;
+  border-radius: 999px;
+  color: var(--ed-faint, #96948d);
+  background: var(--ed-grad-sunken, #f0eee8);
+}
+
+.keys-metric-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ed-ink, #11110f);
+}
+
+.keys-metric.is-alert .keys-metric-value {
+  color: #b45309;
+  font-size: 1.25rem;
+}
+
+/* ---------- 进度条：统一为编辑型细条 ---------- */
+.keys-bar {
+  height: 6px;
+  width: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--ed-soft, #e8e5de);
+  box-shadow: inset 0 1px 2px rgba(17, 17, 15, 0.08);
+}
+
+.keys-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  background: var(--ed-black, #11110f);
+}
+
+.keys-bar-fill.is-warn { background: #d97706; }
+.keys-bar-fill.is-danger { background: #dc2626; }
+
+/* ---------- Key 芯片 ---------- */
+.keys-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  letter-spacing: -0.01em;
+  color: var(--ed-ink-2, #2c2c28);
+  background: var(--ed-grad-sunken, #f0eee8);
+  border: 1px solid var(--ed-line-soft, rgba(17, 17, 15, 0.06));
+}
+
+.keys-copy {
+  display: grid;
+  place-items: center;
+  padding: 0.25rem;
+  border-radius: 8px;
+  color: var(--ed-faint, #96948d);
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.keys-copy:hover {
+  background: var(--ed-paper-2, #f0eee8);
+  color: var(--ed-ink, #11110f);
+  transform: translateY(-1px);
+}
+
+.keys-copy.is-done { color: #059669; }
+
+/* ---------- 行内操作按钮：去掉彩色噪点，统一为中性悬浮 ---------- */
+.keys-action {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0.375rem;
+  border-radius: 10px;
+  color: var(--ed-muted, #706f69);
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.keys-action:hover {
+  background: var(--ed-paper-2, #f0eee8);
+  color: var(--ed-ink, #11110f);
+  transform: translateY(-1px);
+}
+
+.keys-action.is-danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+/* ---------- 移动端 ---------- */
+@media (max-width: 640px) {
+  .keys-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>
