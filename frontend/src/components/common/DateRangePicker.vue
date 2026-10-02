@@ -20,63 +20,66 @@
       </span>
     </button>
 
-    <Transition name="date-picker-dropdown">
-      <div v-if="isOpen" class="date-picker-dropdown">
-        <!-- Quick presets -->
-        <div class="date-picker-presets">
-          <button
-            v-for="preset in presets"
-            :key="preset.value"
-            @click="selectPreset(preset)"
-            :class="['date-picker-preset', isPresetActive(preset) && 'date-picker-preset-active']"
-          >
-            {{ t(preset.labelKey) }}
-          </button>
-        </div>
-
-        <div class="date-picker-divider"></div>
-
-        <!-- Custom date range inputs -->
-        <div class="date-picker-custom">
-          <div class="date-picker-field">
-            <label class="date-picker-label">{{ t('dates.startDate') }}</label>
-            <input
-              type="date"
-              v-model="localStartDate"
-              :max="localEndDate || tomorrow()"
-              class="date-picker-input"
-              @change="onDateChange"
-            />
+    <!-- Teleport dropdown to body to escape card stacking / overflow contexts -->
+    <Teleport to="body">
+      <Transition name="date-picker-dropdown">
+        <div v-if="isOpen" ref="dropdownRef" class="date-picker-dropdown" :style="dropdownStyle">
+          <!-- Quick presets -->
+          <div class="date-picker-presets">
+            <button
+              v-for="preset in presets"
+              :key="preset.value"
+              @click="selectPreset(preset)"
+              :class="['date-picker-preset', isPresetActive(preset) && 'date-picker-preset-active']"
+            >
+              {{ t(preset.labelKey) }}
+            </button>
           </div>
-          <div class="date-picker-separator">
-            <Icon name="arrowRight" size="sm" class="text-gray-400" />
-          </div>
-          <div class="date-picker-field">
-            <label class="date-picker-label">{{ t('dates.endDate') }}</label>
-            <input
-              type="date"
-              v-model="localEndDate"
-              :min="localStartDate"
-              :max="tomorrow()"
-              class="date-picker-input"
-              @change="onDateChange"
-            />
-          </div>
-        </div>
 
-        <!-- Apply button -->
-        <div class="date-picker-actions">
-          <button @click="apply" class="date-picker-apply">
-            {{ t('dates.apply') }}
-          </button>
+          <div class="date-picker-divider"></div>
+
+          <!-- Custom date range inputs -->
+          <div class="date-picker-custom">
+            <div class="date-picker-field">
+              <label class="date-picker-label">{{ t('dates.startDate') }}</label>
+              <input
+                type="date"
+                v-model="localStartDate"
+                :max="localEndDate || tomorrow()"
+                class="date-picker-input"
+                @change="onDateChange"
+              />
+            </div>
+            <div class="date-picker-separator">
+              <Icon name="arrowRight" size="sm" class="text-gray-400" />
+            </div>
+            <div class="date-picker-field">
+              <label class="date-picker-label">{{ t('dates.endDate') }}</label>
+              <input
+                type="date"
+                v-model="localEndDate"
+                :min="localStartDate"
+                :max="tomorrow()"
+                class="date-picker-input"
+                @change="onDateChange"
+              />
+            </div>
+          </div>
+
+          <!-- Apply button -->
+          <div class="date-picker-actions">
+            <button @click="apply" class="date-picker-apply">
+              {{ t('dates.apply') }}
+            </button>
+          </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -104,9 +107,67 @@ const { t, locale } = useI18n()
 
 const isOpen = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
+const triggerRect = ref<DOMRect | null>(null)
+const dropdownPosition = ref<'bottom' | 'top'>('bottom')
 const localStartDate = ref(props.startDate)
 const localEndDate = ref(props.endDate)
 const activePreset = ref<string | null>('last24Hours')
+
+const dropdownViewportPadding = 8
+const dropdownMinimumWidth = 320
+
+// Teleport 到 body 后用 fixed 定位，必须依据视口计算，避免被卡片裁剪或遮挡
+const dropdownStyle = computed(() => {
+  const rect = triggerRect.value
+  if (!rect) return { minWidth: `${dropdownMinimumWidth}px`, zIndex: '100000020' }
+
+  const viewportRight = Math.max(dropdownViewportPadding, window.innerWidth - dropdownViewportPadding)
+  const preferredWidth = Math.max(dropdownMinimumWidth, rect.width)
+  const width = Math.min(preferredWidth, Math.max(0, viewportRight - dropdownViewportPadding))
+  const left = Math.min(Math.max(dropdownViewportPadding, rect.left), Math.max(dropdownViewportPadding, viewportRight - width))
+
+  const style: Record<string, string> = {
+    position: 'fixed',
+    left: `${left}px`,
+    minWidth: `${width}px`,
+    maxWidth: `${Math.max(0, viewportRight - dropdownViewportPadding)}px`,
+    zIndex: '100000020'
+  }
+
+  if (dropdownPosition.value === 'top') {
+    style.bottom = `${window.innerHeight - rect.top + 4}px`
+  } else {
+    style.top = `${rect.bottom + 4}px`
+  }
+
+  return style
+})
+
+const updateTriggerRect = () => {
+  if (containerRef.value) {
+    triggerRect.value = containerRef.value.getBoundingClientRect()
+  }
+}
+
+const calculateDropdownPosition = () => {
+  if (!containerRef.value) return
+  updateTriggerRect()
+
+  nextTick(() => {
+    const rect = triggerRect.value
+    if (!rect) return
+    const dropdownHeight = dropdownRef.value?.offsetHeight || 260
+    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = rect.top
+
+    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+      dropdownPosition.value = 'top'
+    } else {
+      dropdownPosition.value = 'bottom'
+    }
+  })
+}
 
 const today = () => formatDateToString(new Date())
 
@@ -257,7 +318,9 @@ const onDateChange = () => {
 }
 
 const toggle = () => {
-  isOpen.value = !isOpen.value
+  const next = !isOpen.value
+  if (next) updateTriggerRect()
+  isOpen.value = next
 }
 
 const apply = () => {
@@ -272,7 +335,11 @@ const apply = () => {
 }
 
 const handleClickOutside = (event: MouseEvent) => {
-  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+  const target = event.target as Node
+  // 下拉已 Teleport 到 body，需同时判断触发器与浮层本体
+  const inTrigger = containerRef.value?.contains(target) ?? false
+  const inDropdown = dropdownRef.value?.contains(target) ?? false
+  if (!inTrigger && !inDropdown) {
     isOpen.value = false
   }
 }
@@ -285,7 +352,15 @@ const handleEscape = (event: KeyboardEvent) => {
 
 // Restore the applied range after dismissal, including parent updates from Apply.
 watch(isOpen, (open) => {
-  if (open) return
+  if (open) {
+    // 打开时定位，并在滚动/缩放时跟随触发器
+    calculateDropdownPosition()
+    window.addEventListener('scroll', updateTriggerRect, { capture: true, passive: true })
+    window.addEventListener('resize', calculateDropdownPosition)
+    return
+  }
+  window.removeEventListener('scroll', updateTriggerRect, { capture: true })
+  window.removeEventListener('resize', calculateDropdownPosition)
   localStartDate.value = props.startDate
   localEndDate.value = props.endDate
   onDateChange()
@@ -318,6 +393,8 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('keydown', handleEscape)
+  window.removeEventListener('scroll', updateTriggerRect, { capture: true })
+  window.removeEventListener('resize', calculateDropdownPosition)
 })
 </script>
 
@@ -350,14 +427,15 @@ onUnmounted(() => {
   @apply text-gray-400 dark:text-dark-400;
 }
 
+/* Teleport 到 body，用 fixed 定位，位置由 dropdownStyle 计算 */
 .date-picker-dropdown {
-  @apply absolute left-0 z-[100] mt-2;
   @apply bg-white dark:bg-dark-800;
   @apply rounded-xl;
   @apply border border-gray-200 dark:border-dark-700;
   @apply shadow-lg shadow-black/10 dark:shadow-black/30;
   @apply overflow-hidden;
-  @apply min-w-[320px];
+  @apply w-max;
+  pointer-events: auto;
 }
 
 .date-picker-presets {
