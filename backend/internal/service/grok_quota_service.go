@@ -558,13 +558,23 @@ func grokQuotaProbeModel() string {
 }
 
 func buildGrokQuotaProbeBody(model string) ([]byte, error) {
+	return buildGrokProbeBody(model, "")
+}
+
+// buildGrokProbeBody builds the Grok Responses probe body. An empty prompt keeps
+// the quota-probe default; admin account tests pass the operator-supplied prompt.
+func buildGrokProbeBody(model string, prompt string) ([]byte, error) {
 	model = strings.TrimSpace(model)
 	if model == "" {
 		model = grokQuotaDefaultModel
 	}
+	input := strings.TrimSpace(prompt)
+	if input == "" {
+		input = grokQuotaProbeInput
+	}
 	return json.Marshal(map[string]any{
 		"model":  model,
-		"input":  grokQuotaProbeInput,
+		"input":  input,
 		"stream": true,
 	})
 }

@@ -1576,6 +1576,12 @@ export default {
       selectTestModel: 'Select Test Model',
       testModel: 'Test model',
       testPrompt: 'Prompt: "hi"',
+      textPromptLabel: 'Test prompt',
+      textPromptPlaceholder: 'Example: Introduce yourself in one sentence.',
+      textPromptDefault: 'hi',
+      textTestHint:
+        'The prompt is sent to the upstream model as-is so you can verify real conversation quality. Leave it empty to use the default prompt.',
+      textTestMode: 'Mode: Text test',
       imagePromptLabel: 'Image prompt',
       imagePromptPlaceholder: 'Example: Generate an orange cat astronaut sticker in pixel-art style on a solid background.',
       imagePromptDefault: 'Generate a cute orange cat astronaut sticker on a clean pastel background.',

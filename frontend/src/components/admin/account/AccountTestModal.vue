@@ -433,6 +433,19 @@ const hasLatencyResult = computed(() => tokenLatencyMs.value !== null || totalLa
 const availableModels = ref<ClaudeModel[]>([])
 const selectedModelId = ref('')
 const testPrompt = ref('')
+// 记录提示词是否仍为系统默认值：默认提示词会随测试模式/模型切换而刷新，
+// 管理员手动输入的内容则必须保留。
+let promptIsAutoDefault = false
+const promptDefaultValues = computed(
+  () =>
+    new Set([
+      t('admin.accounts.textPromptDefault'),
+      t('admin.accounts.imagePromptDefault'),
+      t('admin.accounts.videoPromptDefault'),
+      t('admin.accounts.grok.searchQueryDefault'),
+      t('admin.accounts.grok.ttsTextDefault')
+    ])
+)
 const loadingModels = ref(false)
 let abortController: AbortController | null = null
 const generatedImages = ref<PreviewMedia[]>([])
@@ -494,9 +507,6 @@ const isGrokTextModel = (id: string) => !isGrokImageModel(id) && !isGrokVideoMod
 const supportsGrokImageTest = computed(
   () => isGrokAccount.value && grokTestMode.value === 'image'
 )
-const supportsGrokVideoTest = computed(
-  () => isGrokAccount.value && grokTestMode.value === 'video'
-)
 
 const supportsImageTest = computed(
   () => supportsGeminiImageTest.value || supportsOpenAIImageTest.value || supportsGrokImageTest.value
@@ -523,15 +533,12 @@ const modelOptionsForMode = computed(() => {
 })
 
 const supportsPromptInput = computed(() => {
-  if (!isGrokAccount.value) {
-    return supportsImageTest.value
+  if (isGrokAccount.value) {
+    // stt/realtime 探测使用音频或 WS 握手，没有自由文本提示词字段。
+    return grokTestMode.value !== 'stt' && grokTestMode.value !== 'realtime'
   }
-  return (
-    grokTestMode.value === 'image' ||
-    grokTestMode.value === 'video' ||
-    grokTestMode.value === 'search' ||
-    grokTestMode.value === 'tts'
-  )
+  // 其余平台（Claude / Gemini / OpenAI / Antigravity / TypeSafe 等）都支持自定义提示词。
+  return true
 })
 
 const supportsImageUpload = computed(
@@ -623,10 +630,10 @@ const clearMediaUploads = () => {
 }
 
 const promptInputLabel = computed(() => {
-  if (supportsGrokVideoTest.value || grokTestMode.value === 'video') {
+  if (grokTestMode.value === 'video') {
     return t('admin.accounts.videoPromptLabel')
   }
-  if (supportsImageTest.value || grokTestMode.value === 'image') {
+  if (grokTestMode.value === 'image' || supportsImageTest.value) {
     return t('admin.accounts.imagePromptLabel')
   }
   if (grokTestMode.value === 'search') {
@@ -635,7 +642,7 @@ const promptInputLabel = computed(() => {
   if (grokTestMode.value === 'tts') {
     return t('admin.accounts.grok.ttsTextLabel')
   }
-  return t('admin.accounts.imagePromptLabel')
+  return t('admin.accounts.textPromptLabel')
 })
 
 const promptInputPlaceholder = computed(() => {
@@ -651,7 +658,7 @@ const promptInputPlaceholder = computed(() => {
   if (grokTestMode.value === 'tts') {
     return t('admin.accounts.grok.ttsTextPlaceholder')
   }
-  return ''
+  return t('admin.accounts.textPromptPlaceholder')
 })
 
 const promptInputHint = computed(() => {
@@ -673,7 +680,7 @@ const promptInputHint = computed(() => {
   if (grokTestMode.value === 'realtime') {
     return t('admin.accounts.grok.realtimeTestHint')
   }
-  return ''
+  return t('admin.accounts.textTestHint')
 })
 
 const testModeSummary = computed(() => {
@@ -696,7 +703,7 @@ const testModeSummary = computed(() => {
     }
   }
   if (supportsImageTest.value) return t('admin.accounts.imageTestMode')
-  return t('admin.accounts.testPrompt')
+  return t('admin.accounts.textTestMode')
 })
 
 const canStartTest = computed(() => {
@@ -729,7 +736,8 @@ const sortTestModels = (models: ClaudeModel[]) => {
 // Load available models when modal opens
 const applyDefaultPromptForMode = () => {
   if (!supportsPromptInput.value) return
-  if (testPrompt.value.trim()) return
+  // 仅覆盖"仍是系统默认值"的提示词，保留管理员已输入的自定义内容。
+  if (testPrompt.value.trim() && !promptIsAutoDefault) return
   if (grokTestMode.value === 'video') {
     testPrompt.value = t('admin.accounts.videoPromptDefault')
   } else if (grokTestMode.value === 'image' || supportsImageTest.value) {
@@ -738,8 +746,18 @@ const applyDefaultPromptForMode = () => {
     testPrompt.value = t('admin.accounts.grok.searchQueryDefault')
   } else if (grokTestMode.value === 'tts') {
     testPrompt.value = t('admin.accounts.grok.ttsTextDefault')
+  } else if (!isGrokAccount.value) {
+    testPrompt.value = t('admin.accounts.textPromptDefault')
   }
+  promptIsAutoDefault = true
 }
+
+// 管理员手动编辑后即视为自定义提示词，不再被默认值覆盖。
+watch(testPrompt, (value) => {
+  if (!promptDefaultValues.value.has(value)) {
+    promptIsAutoDefault = false
+  }
+})
 
 const pickDefaultModelForMode = () => {
   const opts = modelOptionsForMode.value
@@ -764,23 +782,30 @@ watch(
   async (newVal) => {
     if (newVal && props.account) {
       testPrompt.value = ''
+      promptIsAutoDefault = false
       testMode.value = 'default'
       grokTestMode.value = 'text'
       resetState()
       await loadAvailableModels()
       if (isGrokAccount.value) {
         pickDefaultModelForMode()
-        applyDefaultPromptForMode()
       }
+      applyDefaultPromptForMode()
     } else {
       abortStream()
     }
   }
 )
 
+watch(selectedModelId, () => {
+  if (isGrokAccount.value) return
+  applyDefaultPromptForMode()
+})
+
 watch(grokTestMode, () => {
   if (!isGrokAccount.value) return
   testPrompt.value = ''
+  promptIsAutoDefault = false
   clearMediaUploads()
   pickDefaultModelForMode()
   applyDefaultPromptForMode()

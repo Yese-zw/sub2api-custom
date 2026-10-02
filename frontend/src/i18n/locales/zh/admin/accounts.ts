@@ -1664,6 +1664,12 @@ export default {
       selectTestModel: '选择测试模型',
       testModel: '测试模型',
       testPrompt: '提示词："hi"',
+      textPromptLabel: '测试提示词',
+      textPromptPlaceholder: '例如：请用一句话介绍你自己。',
+      textPromptDefault: 'hi',
+      textTestHint:
+        '提示词会原样发送给上游模型，可用于验证账号的真实对话能力。留空则使用默认提示词。',
+      textTestMode: '模式：文本测试',
       imagePromptLabel: '生图提示词',
       imagePromptPlaceholder: '例如：生成一只戴宇航员头盔的橘猫，像素插画风格，纯色背景。',
       imagePromptDefault: 'Generate a cute orange cat astronaut sticker on a clean pastel background.',

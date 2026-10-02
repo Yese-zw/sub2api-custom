@@ -24,7 +24,8 @@ vi.mock('@/composables/useClipboard', () => ({
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   const messages: Record<string, string> = {
-    'admin.accounts.imagePromptDefault': 'Generate a cute orange cat astronaut sticker on a clean pastel background.'
+    'admin.accounts.imagePromptDefault': 'Generate a cute orange cat astronaut sticker on a clean pastel background.',
+    'admin.accounts.textPromptDefault': 'hi'
   }
   return {
     ...actual,
@@ -216,8 +217,92 @@ describe('AccountTestModal', () => {
     const [, request] = (global.fetch as any).mock.calls[0]
     expect(JSON.parse(request.body)).toMatchObject({
       model_id: 'gpt-5.4',
-      prompt: '',
+      prompt: 'hi',
       mode: 'compact'
     })
+  })
+
+  it('文本测试默认展示提示词输入框并回填默认提示词', async () => {
+    getAvailableModels.mockResolvedValue([
+      { id: 'claude-sonnet-4-6', display_name: 'Claude Sonnet 4.6' }
+    ])
+    global.fetch = vi.fn().mockResolvedValue(
+      createStreamResponse([
+        'data: {"type":"test_start","model":"claude-sonnet-4-6"}\n',
+        'data: {"type":"content","text":"hello"}\n',
+        'data: {"type":"test_complete","success":true}\n'
+      ])
+    ) as any
+
+    const wrapper = mountModal({
+      id: 7,
+      name: 'Claude Account',
+      platform: 'claude',
+      type: 'oauth',
+      status: 'active'
+    })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    const promptInput = wrapper.find('textarea.textarea-stub')
+    expect(promptInput.exists()).toBe(true)
+    expect((promptInput.element as HTMLTextAreaElement).value).toBe('hi')
+
+    await promptInput.setValue('请用一句话介绍你自己')
+
+    const buttons = wrapper.findAll('button')
+    const startButton = buttons.find((button) => button.text().includes('admin.accounts.startTest'))
+    expect(startButton).toBeTruthy()
+
+    await startButton!.trigger('click')
+    await flushPromises()
+
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+    const [, request] = (global.fetch as any).mock.calls[0]
+    expect(JSON.parse(request.body)).toEqual({
+      model_id: 'claude-sonnet-4-6',
+      prompt: '请用一句话介绍你自己'
+    })
+  })
+
+  it('切换测试模型时保留管理员输入的自定义提示词', async () => {
+    getAvailableModels.mockResolvedValue([
+      { id: 'claude-sonnet-4-6', display_name: 'Claude Sonnet 4.6' },
+      { id: 'claude-opus-4-1', display_name: 'Claude Opus 4.1' }
+    ])
+
+    const wrapper = mountModal({
+      id: 8,
+      name: 'Claude Account',
+      platform: 'claude',
+      type: 'oauth',
+      status: 'active'
+    })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    await wrapper.find('textarea.textarea-stub').setValue('自定义提示词')
+
+    ;(wrapper.vm as any).selectedModelId = 'claude-opus-4-1'
+    await flushPromises()
+
+    const promptInput = wrapper.find('textarea.textarea-stub')
+    expect((promptInput.element as HTMLTextAreaElement).value).toBe('自定义提示词')
+  })
+
+  it('切换到生图模型时把系统默认提示词刷新为生图提示词', async () => {
+    const wrapper = mountModal()
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    ;(wrapper.vm as any).selectedModelId = 'gemini-2.0-flash'
+    await flushPromises()
+    expect((wrapper.find('textarea.textarea-stub').element as HTMLTextAreaElement).value).toBe('hi')
+
+    ;(wrapper.vm as any).selectedModelId = 'gemini-2.5-flash-image'
+    await flushPromises()
+    expect((wrapper.find('textarea.textarea-stub').element as HTMLTextAreaElement).value).toBe(
+      'Generate a cute orange cat astronaut sticker on a clean pastel background.'
+    )
   })
 })
