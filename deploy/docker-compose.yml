@@ -248,6 +248,10 @@ services:
       -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}
       -c effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4GB}
       -c maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+    # 映射到宿主机，便于 Navicat 等本地客户端直连调试。
+    # 绑定 0.0.0.0 后同网段其他主机也可访问，请确保密码足够强健并配置防火墙。
+    ports:
+      - "${POSTGRES_EXPOSE_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:

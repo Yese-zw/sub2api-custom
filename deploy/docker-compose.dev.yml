@@ -128,6 +128,10 @@ services:
     image: postgres:18-alpine
     container_name: sub2api-postgres-dev
     restart: unless-stopped
+    # 映射到宿主机，便于 Navicat 等本地客户端直连调试。
+    # 绑定 0.0.0.0 后同网段其他主机也可访问，请确保密码足够强健并配置防火墙。
+    ports:
+      - "${POSTGRES_EXPOSE_PORT:-5433}:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data:Z
     environment:
