@@ -194,6 +194,19 @@ export async function getMyPlatformQuotas(): Promise<PlatformQuotasResponse> {
   return data
 }
 
+/**
+ * 当前用户为桌面 App 选择的分组；0 表示跟随系统设置中的 App 默认分组。
+ */
+export async function getAppGroup(): Promise<number> {
+  const { data } = await apiClient.get<{ group_id: number }>('/user/app-group')
+  return data.group_id || 0
+}
+
+export async function updateAppGroup(groupId: number): Promise<number> {
+  const { data } = await apiClient.put<{ group_id: number }>('/user/app-group', { group_id: groupId })
+  return data.group_id || 0
+}
+
 export const userAPI = {
   getProfile,
   updateProfile,
@@ -210,6 +223,8 @@ export const userAPI = {
   getAffiliateDetail,
   transferAffiliateQuota,
   getMyPlatformQuotas,
+  getAppGroup,
+  updateAppGroup,
 }
 
 export default userAPI

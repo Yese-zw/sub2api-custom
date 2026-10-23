@@ -235,6 +235,10 @@ export interface PublicSettings {
   site_name: string
   site_logo: string
   community_group_image: string
+  /** 桌面 App 名称（空 = App 使用内置名称） */
+  app_name?: string
+  /** 桌面 App 默认分组（0 = 未配置） */
+  app_default_group_id?: number
   ui_theme?: 'pixel' | 'original' | 'editorial'
   site_subtitle: string
   api_base_url: string

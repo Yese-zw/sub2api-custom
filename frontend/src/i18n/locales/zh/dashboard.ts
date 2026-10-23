@@ -894,6 +894,14 @@ export default {
       codeSent: '验证码已发送到您的邮箱',
       sendCodeFailed: '发送验证码失败'
     },
+    appGroup: {
+      title: '{app} 使用分组',
+      description: '选择 {app} 在本账号下创建和使用 API Key 的分组。修改后重新打开 {app} 即可生效。',
+      followDefault: '跟随系统默认（{group}）',
+      defaultUnavailable: '系统默认',
+      label: '分组',
+      saved: '{app} 分组已更新'
+    },
     passkey: {
       title: 'Passkey',
       description: '使用面容 ID、触控 ID、Windows Hello 或安全密钥免密码登录。',

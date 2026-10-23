@@ -38,6 +38,12 @@
             </div>
           </div>
 
+          <ProfileAppGroupCard
+            v-if="user && appDefaultGroupId > 0"
+            :app-name="appName"
+            :default-group-id="appDefaultGroupId"
+          />
+
           <ProfileBalanceNotifyCard
             v-if="user && balanceLowNotifyEnabled"
             :enabled="user.balance_notify_enabled ?? true"
@@ -57,6 +63,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ProfileAppGroupCard from '@/components/user/profile/ProfileAppGroupCard.vue'
 import ProfileBalanceNotifyCard from '@/components/user/profile/ProfileBalanceNotifyCard.vue'
 import ProfileInfoCard from '@/components/user/profile/ProfileInfoCard.vue'
 import ProfilePasswordForm from '@/components/user/profile/ProfilePasswordForm.vue'
@@ -82,6 +89,8 @@ const wechatOAuthMPEnabled = ref<boolean | undefined>(undefined)
 const oidcOAuthEnabled = ref(false)
 const oidcOAuthProviderName = ref('OIDC')
 const passkeyEnabled = ref(false)
+const appName = ref('')
+const appDefaultGroupId = ref(0)
 
 onMounted(async () => {
   const profileRefresh = authStore.refreshUser().catch((error) => {
@@ -108,6 +117,8 @@ onMounted(async () => {
       oidcOAuthEnabled.value = settings.oidc_oauth_enabled ?? false
       oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'
       passkeyEnabled.value = settings.passkey_enabled === true
+      appName.value = settings.app_name || ''
+      appDefaultGroupId.value = settings.app_default_group_id ?? 0
     })
     .catch((error) => {
       console.error('Failed to load settings:', error)

@@ -890,6 +890,14 @@ export default {
       codeSent: 'Verification code sent to your email',
       sendCodeFailed: 'Failed to send verification code'
     },
+    appGroup: {
+      title: '{app} group',
+      description: 'Choose the group {app} uses to create and use API keys for this account. Reopen {app} to apply the change.',
+      followDefault: 'Follow system default ({group})',
+      defaultUnavailable: 'system default',
+      label: 'Group',
+      saved: '{app} group updated'
+    },
     passkey: {
       title: 'Passkeys',
       description: 'Use Face ID, Touch ID, Windows Hello, or a security key to sign in without a password.',
