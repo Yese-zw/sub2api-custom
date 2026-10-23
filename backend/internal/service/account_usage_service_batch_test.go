@@ -52,6 +52,15 @@ func (r *usageBatchLogRepoStub) GetAccountTodayStats(context.Context, int64) (*u
 func (r *usageBatchLogRepoStub) GetDashboardStats(context.Context) (*usagestats.DashboardStats, error) {
 	return nil, nil
 }
+func (r *usageBatchLogRepoStub) GetCurrentTotalUserBalance(context.Context) (float64, error) {
+	return 0, nil
+}
+func (r *usageBatchLogRepoStub) GetProfitTrend(context.Context, time.Time, time.Time, string) ([]usagestats.ProfitTrendPoint, error) {
+	return nil, nil
+}
+func (r *usageBatchLogRepoStub) GetProfitSummary(context.Context, *time.Time, *time.Time) (*usagestats.ProfitSummary, error) {
+	return nil, nil
+}
 func (r *usageBatchLogRepoStub) GetUsageTrendWithFilters(context.Context, time.Time, time.Time, string, int64, int64, int64, int64, string, *int16, *bool, *int8) ([]usagestats.TrendDataPoint, error) {
 	return nil, nil
 }

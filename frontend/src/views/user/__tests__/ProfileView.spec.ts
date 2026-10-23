@@ -62,27 +62,32 @@ describe('ProfileView', () => {
     }
     fetchPublicSettingsMock.mockResolvedValue({
       contact_info: '',
-      balance_low_notify_enabled: false,
+      balance_low_notify_enabled: true,
       balance_low_notify_threshold: 0,
       linuxdo_oauth_enabled: true,
       wechat_oauth_enabled: true,
       wechat_oauth_open_enabled: true,
       wechat_oauth_mp_enabled: false,
       oidc_oauth_enabled: true,
-      oidc_oauth_provider_name: 'OIDC'
+      oidc_oauth_provider_name: 'OIDC',
+      app_name: 'LSAGENT',
+      app_default_group_id: 3
     })
   })
 
-  it('renders the simplified single-column profile shell without separate stat cards', async () => {
+  it('places login bindings below password, app group, balance alerts, and two-factor auth', async () => {
     const wrapper = mount(ProfileView, {
       global: {
         stubs: {
           AppLayout: { template: '<div><slot /></div>' },
           StatCard: { template: '<div class="stat-card" />' },
           ProfileInfoCard: { template: '<div data-testid="profile-info-card" />' },
+          ProfileAppGroupCard: { template: '<div data-testid="profile-app-group" />' },
           ProfileBalanceNotifyCard: { template: '<div data-testid="profile-balance-notify-card" />' },
           ProfilePasswordForm: { template: '<div data-testid="profile-password-form" />' },
           ProfileTotpCard: { template: '<div data-testid="profile-totp-card" />' },
+          ProfileAccountBindingsCard: { template: '<div data-testid="profile-auth-bindings" />' },
+          ProfilePasskeyCard: { template: '<div data-testid="profile-passkey" />' },
           Icon: true
         }
       }
@@ -90,10 +95,20 @@ describe('ProfileView', () => {
 
     await flushPromises()
 
+    const html = wrapper.get('[data-testid="profile-shell"]').html()
+    const order = [
+      'profile-info-card',
+      'profile-password-form',
+      'profile-app-group',
+      'profile-balance-notify-card',
+      'profile-totp-card',
+      'profile-auth-bindings',
+      'profile-passkey'
+    ].map((id) => html.indexOf(id))
+
     expect(wrapper.findAll('.stat-card')).toHaveLength(0)
-    expect(wrapper.get('[data-testid="profile-shell"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="profile-shell"]').html()).toContain('profile-info-card')
-    expect(wrapper.get('[data-testid="profile-shell"]').html()).toContain('profile-password-form')
-    expect(wrapper.get('[data-testid="profile-shell"]').html()).toContain('profile-totp-card')
+    expect(wrapper.get('[data-testid="profile-info-card"]').find('[data-testid="profile-auth-bindings"]').exists()).toBe(false)
+    expect(order.every((index) => index >= 0)).toBe(true)
+    expect(order).toEqual([...order].sort((a, b) => a - b))
   })
 })

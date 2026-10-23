@@ -1,27 +1,36 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-2xl space-y-6">
-      <!-- Current Balance Card -->
-      <div class="card overflow-hidden">
-        <div class="bg-gradient-to-br from-primary-500 to-primary-600 px-6 py-8 text-center">
-          <div
-            class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm"
-          >
-            <Icon name="creditCard" size="xl" class="text-white" />
+    <div class="mx-auto max-w-[1180px] space-y-6">
+      <section class="card overflow-hidden border border-gray-100 bg-gradient-to-br from-gray-50 via-white to-gray-100/70 dark:border-dark-700 dark:from-dark-900 dark:via-dark-900 dark:to-black">
+        <div class="flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center sm:justify-between md:px-8">
+          <div class="flex min-w-0 items-center gap-4">
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-900 text-white dark:bg-white dark:text-gray-900">
+              <Icon name="creditCard" size="lg" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('redeem.currentBalance') }}</p>
+              <p class="mt-1 text-3xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                ${{ user?.balance?.toFixed(2) || '0.00' }}
+              </p>
+            </div>
           </div>
-          <p class="text-sm font-medium text-primary-100">{{ t('redeem.currentBalance') }}</p>
-          <p class="mt-2 text-4xl font-bold text-white">
-            ${{ user?.balance?.toFixed(2) || '0.00' }}
-          </p>
-          <p class="mt-2 text-sm text-primary-100">
-            {{ t('redeem.concurrency') }}: {{ user?.concurrency || 0 }} {{ t('redeem.requests') }}
-          </p>
+          <div class="rounded-2xl bg-white/85 px-4 py-3 shadow-sm ring-1 ring-gray-200 dark:bg-dark-900/60 dark:ring-dark-700">
+            <p class="text-xs font-medium uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+              {{ t('redeem.concurrency') }}
+            </p>
+            <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+              {{ user?.concurrency || 0 }} {{ t('redeem.requests') }}
+            </p>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Redeem Form -->
+      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
       <div class="card">
         <div class="p-6">
+          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+            {{ t('redeem.description') }}
+          </p>
           <form @submit.prevent="handleRedeem" class="space-y-5">
             <div>
               <label for="code" class="input-label">
@@ -36,9 +45,11 @@
                   v-model="redeemCode"
                   type="text"
                   required
+                  autocomplete="off"
+                  spellcheck="false"
                   :placeholder="t('redeem.redeemCodePlaceholder')"
                   :disabled="submitting"
-                  class="input py-3 pl-12 text-lg"
+                  class="input py-3 pl-12 font-mono text-base tracking-wide"
                 />
               </div>
               <p class="input-hint">
@@ -76,6 +87,43 @@
             </button>
           </form>
         </div>
+      </div>
+
+      <!-- Information Card -->
+      <div
+        class="card border-primary-200 bg-primary-50 dark:border-primary-800/50 dark:bg-primary-900/20"
+      >
+        <div class="p-6">
+          <div class="flex items-start gap-4">
+            <div
+              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30"
+            >
+              <Icon name="infoCircle" size="md" class="text-primary-600 dark:text-primary-400" />
+            </div>
+            <div class="flex-1">
+              <h3 class="text-sm font-semibold text-primary-800 dark:text-primary-300">
+                {{ t('redeem.aboutCodes') }}
+              </h3>
+              <ul
+                class="mt-2 list-inside list-disc space-y-1 text-sm text-primary-700 dark:text-primary-400"
+              >
+                <li>{{ t('redeem.codeRule1') }}</li>
+                <li>{{ t('redeem.codeRule2') }}</li>
+                <li>
+                  {{ t('redeem.codeRule3') }}
+                  <span
+                    v-if="contactInfo"
+                    class="ml-1.5 inline-flex items-center rounded-md bg-primary-200/50 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-800/40 dark:text-primary-200"
+                  >
+                    {{ contactInfo }}
+                  </span>
+                </li>
+                <li>{{ t('redeem.codeRule4') }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
 
       <!-- Success Message -->
@@ -161,42 +209,6 @@
           </div>
         </div>
       </transition>
-
-      <!-- Information Card -->
-      <div
-        class="card border-primary-200 bg-primary-50 dark:border-primary-800/50 dark:bg-primary-900/20"
-      >
-        <div class="p-6">
-          <div class="flex items-start gap-4">
-            <div
-              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30"
-            >
-              <Icon name="infoCircle" size="md" class="text-primary-600 dark:text-primary-400" />
-            </div>
-            <div class="flex-1">
-              <h3 class="text-sm font-semibold text-primary-800 dark:text-primary-300">
-                {{ t('redeem.aboutCodes') }}
-              </h3>
-              <ul
-                class="mt-2 list-inside list-disc space-y-1 text-sm text-primary-700 dark:text-primary-400"
-              >
-                <li>{{ t('redeem.codeRule1') }}</li>
-                <li>{{ t('redeem.codeRule2') }}</li>
-                <li>
-                  {{ t('redeem.codeRule3') }}
-                  <span
-                    v-if="contactInfo"
-                    class="ml-1.5 inline-flex items-center rounded-md bg-primary-200/50 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-800/40 dark:text-primary-200"
-                  >
-                    {{ contactInfo }}
-                  </span>
-                </li>
-                <li>{{ t('redeem.codeRule4') }}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Recent Activity -->
       <div class="card">
@@ -335,29 +347,31 @@
               {{ t('redeem.historyWillAppear') }}
             </p>
           </div>
-          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-            <span>{{ t('common.total') }}: {{ historyTotal }} {{ t('pagination.results') }}</span>
-            <label>
-              {{ t('pagination.perPage') }}
-              <select
-                v-model="historyPageSize"
-                class="input w-20"
-                :disabled="loadingHistory || submitting"
-                @change="fetchHistory(1)"
-              >
-                <option v-for="size in [20, 50, 100]" :key="size" :value="size">{{ size }}</option>
-              </select>
-            </label>
-            <button
-              class="btn btn-secondary"
-              :disabled="loadingHistory || submitting || historyPage <= 1"
-              @click="fetchHistory(historyPage - 1)"
-            >{{ t('pagination.previous') }}</button>
-            <button
-              class="btn btn-secondary"
-              :disabled="loadingHistory || submitting || historyPage * historyPageSize >= historyTotal"
-              @click="fetchHistory(historyPage + 1)"
-            >{{ t('pagination.next') }}</button>
+          <div class="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-4 text-sm dark:border-dark-700 sm:flex-row sm:items-center sm:justify-between">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('common.total') }}: {{ historyTotal }} {{ t('pagination.results') }}</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                {{ t('pagination.perPage') }}
+                <select
+                  v-model="historyPageSize"
+                  class="input w-20"
+                  :disabled="loadingHistory || submitting"
+                  @change="fetchHistory(1)"
+                >
+                  <option v-for="size in [20, 50, 100]" :key="size" :value="size">{{ size }}</option>
+                </select>
+              </label>
+              <button
+                class="btn btn-secondary"
+                :disabled="loadingHistory || submitting || historyPage <= 1"
+                @click="fetchHistory(historyPage - 1)"
+              >{{ t('pagination.previous') }}</button>
+              <button
+                class="btn btn-secondary"
+                :disabled="loadingHistory || submitting || historyPage * historyPageSize >= historyTotal"
+                @click="fetchHistory(historyPage + 1)"
+              >{{ t('pagination.next') }}</button>
+            </div>
           </div>
         </div>
       </div>
