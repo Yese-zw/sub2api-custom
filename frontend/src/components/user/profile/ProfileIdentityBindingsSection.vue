@@ -1,16 +1,21 @@
 <template>
-  <div :class="props.embedded ? 'space-y-4' : 'card overflow-hidden'">
-    <div
+  <div :class="props.embedded ? 'space-y-4' : 'card rx-settings overflow-hidden'">
+    <header
       v-if="!props.embedded"
-      class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+      class="rx-settings__head"
     >
-      <h2 class="text-lg font-medium text-gray-900 dark:text-white">
-        {{ t('profile.authBindings.title') }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ t('profile.authBindings.description') }}
-      </p>
-    </div>
+      <span class="rx-settings__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+      </span>
+      <div>
+        <h2 class="rx-settings__title">
+          {{ t('profile.authBindings.title') }}
+        </h2>
+        <p class="rx-settings__desc">
+          {{ t('profile.authBindings.description') }}
+        </p>
+      </div>
+    </header>
 
     <div :class="props.embedded ? 'space-y-4' : 'divide-y divide-gray-100 dark:divide-dark-700'">
       <div v-if="props.embedded">

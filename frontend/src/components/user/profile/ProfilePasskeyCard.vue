@@ -1,11 +1,14 @@
 <template>
-  <div class="card">
-    <div class="flex items-start justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <div>
-        <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+  <div class="card rx-settings">
+    <header class="rx-settings__head">
+      <span class="rx-settings__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+      </span>
+      <div class="min-w-0 flex-1">
+        <h2 class="rx-settings__title">
           {{ t('profile.passkey.title') }}
         </h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p class="rx-settings__desc">
           {{ t('profile.passkey.description') }}
         </p>
       </div>
@@ -18,9 +21,9 @@
       >
         {{ t('profile.passkey.add') }}
       </button>
-    </div>
+    </header>
 
-    <div class="px-6 py-6">
+    <div>
       <div v-if="!enabled" class="mb-5 text-sm text-gray-500 dark:text-gray-400">
         {{ t('profile.passkey.featureDisabled') }}
       </div>

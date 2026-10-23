@@ -27,6 +27,10 @@
     <div class="usage-page space-y-6">
       <UsageKpiBento :stats="usageStats" :trend="trendData" :loading="loading || chartsLoading" />
 
+      <header class="rx-section-head">
+        <span class="rx-section-head__index">01</span>
+        <h2 class="rx-section-head__title">{{ t('usage.hero.chartsTitle') }}</h2>
+      </header>
       <div class="usage-charts rx-skin-rise grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ModelDistributionChart
           v-model:metric="modelDistributionMetric"
@@ -66,6 +70,10 @@
         <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
       </div>
 
+      <header class="rx-section-head">
+        <span class="rx-section-head__index">02</span>
+        <h2 class="rx-section-head__title">{{ t('usage.hero.ledgerTitle') }}</h2>
+      </header>
       <!-- 工具栏：用量 / 错误切换 + 折叠筛选 + 操作 -->
       <section class="rx-toolbar usage-toolbar">
         <div class="rx-toolbar__row">

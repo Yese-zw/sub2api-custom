@@ -33,7 +33,7 @@
 
     <div
       v-else
-      class="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      class="rx-monitor-grid grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       <MonitorCard
         v-for="item in items"
@@ -79,3 +79,26 @@ function resolveAvailability(item: UserMonitorView): number | null {
   return props.window === '15d' ? primary.availability_15d ?? null : primary.availability_30d ?? null
 }
 </script>
+
+<style scoped>
+.rx-monitor-grid {
+  counter-reset: monitor-idx;
+}
+
+.rx-monitor-grid :deep(.rx-monitor-card) {
+  counter-increment: monitor-idx;
+}
+
+.rx-monitor-grid :deep(.rx-monitor-card)::after {
+  content: counter(monitor-idx, decimal-leading-zero);
+  position: absolute;
+  right: 0.95rem;
+  bottom: 0.7rem;
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.82rem;
+  color: var(--rx-faint);
+  opacity: 0.5;
+  pointer-events: none;
+}
+</style>

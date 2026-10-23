@@ -61,12 +61,22 @@
             <div class="space-y-4">
               <div class="space-y-2">
                 <p class="rx-aff-field-label">{{ t('affiliate.yourCode') }}</p>
-                <div class="rx-aff-field flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-                  <code class="rx-aff-code min-w-0 break-all sm:flex-1 sm:truncate">{{ detail.aff_code }}</code>
-                  <button class="rx-aff-copy w-full sm:w-auto sm:shrink-0" @click="copyCode">
-                    <Icon name="copy" size="sm" />
-                    <span>{{ t('affiliate.copyCode') }}</span>
-                  </button>
+                <div class="rx-aff-ticket" :class="{ 'is-stamped': codeStamped }">
+                  <div class="rx-aff-ticket__stub" aria-hidden="true">
+                    <Icon name="gift" size="md" />
+                    <span>{{ t('affiliate.hero.ticketStub') }}</span>
+                  </div>
+                  <div class="rx-aff-ticket__body flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                    <code class="rx-aff-code min-w-0 break-all sm:flex-1 sm:truncate">{{ detail.aff_code }}</code>
+                    <span class="rx-aff-ticket__scan" aria-hidden="true"></span>
+                    <button class="rx-aff-copy w-full sm:w-auto sm:shrink-0" @click="copyCode">
+                      <Icon name="copy" size="sm" />
+                      <span>{{ t('affiliate.copyCode') }}</span>
+                    </button>
+                  </div>
+                  <Transition name="rx-stamp">
+                    <span v-if="codeStamped" class="rx-aff-stamp" aria-hidden="true">{{ t('affiliate.hero.stamped') }}</span>
+                  </Transition>
                 </div>
               </div>
 
@@ -184,6 +194,7 @@ const { copyToClipboard } = useClipboard()
 
 const loading = ref(true)
 const transferring = ref(false)
+const codeStamped = ref(false)
 const detail = ref<UserAffiliateDetail | null>(null)
 
 const inviteLink = computed(() => {
@@ -230,6 +241,8 @@ async function loadAffiliateDetail(silent = false): Promise<void> {
 async function copyCode(): Promise<void> {
   if (!detail.value?.aff_code) return
   await copyToClipboard(detail.value.aff_code, t('affiliate.codeCopied'))
+  codeStamped.value = true
+  window.setTimeout(() => { codeStamped.value = false }, 1600)
 }
 
 async function copyInviteLink(): Promise<void> {
@@ -426,6 +439,84 @@ html.dark .rx-aff-good {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--rx-faint);
+}
+
+.rx-aff-ticket {
+  --notch: 10px;
+  position: relative;
+  display: flex;
+  min-height: 5.1rem;
+  overflow: hidden;
+  border-radius: var(--rx-radius-md);
+  background: var(--rx-surface-hover);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight), var(--rx-shadow);
+}
+
+.rx-aff-ticket__stub {
+  display: flex;
+  width: 4.6rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.rx-aff-ticket__body {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.9rem;
+}
+
+.rx-aff-ticket__scan {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--rx-accent-soft) 50%, transparent 70%);
+  transform: translateX(-100%);
+}
+
+.rx-aff-ticket:hover .rx-aff-ticket__scan {
+  animation: rx-aff-scan 1.4s var(--rx-ease) 1;
+}
+
+@keyframes rx-aff-scan {
+  to { transform: translateX(100%); }
+}
+
+.rx-aff-stamp {
+  position: absolute;
+  right: 5.5rem;
+  top: 50%;
+  padding: 0.15rem 0.45rem;
+  border: 2px solid color-mix(in srgb, var(--rx-hot) 70%, white);
+  border-radius: 6px;
+  color: color-mix(in srgb, var(--rx-hot) 80%, white);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transform: translateY(-50%) rotate(-12deg);
+}
+
+.rx-stamp-enter-active { animation: rx-aff-stamp-in 0.45s var(--rx-spring); }
+.rx-stamp-leave-active { transition: opacity 0.25s ease; }
+.rx-stamp-leave-to { opacity: 0; }
+
+@keyframes rx-aff-stamp-in {
+  from { transform: translateY(-50%) rotate(-12deg) scale(1.6); opacity: 0; }
 }
 
 .rx-aff-field {

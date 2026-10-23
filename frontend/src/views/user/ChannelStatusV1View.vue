@@ -27,6 +27,10 @@
       />
     </div>
 
+    <header class="rx-section-head">
+      <span class="rx-section-head__index">01</span>
+      <h2 class="rx-section-head__title">{{ t('channelStatus.hero.gridTitle') }}</h2>
+    </header>
     <MonitorCardGrid
       :items="items"
       :window="currentWindow"

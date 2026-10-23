@@ -1,70 +1,60 @@
 <template>
-  <div class="card">
-    <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.quickActions') }}</h2>
-    </div>
-    <div class="space-y-3 p-4">
-      <button @click="router.push('/keys')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 transition-transform group-hover:scale-105 dark:bg-primary-900/30">
-          <Icon name="key" size="lg" class="text-primary-600 dark:text-primary-400" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.createApiKey') }}</p>
-          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('dashboard.generateNewKey') }}</p>
-        </div>
-        <Icon
-          name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-primary-500 dark:text-dark-500"
-        />
+  <section class="rx-glass dash-actions">
+    <header class="rx-section-head">
+      <span class="rx-section-head__index">05</span>
+      <h2 class="rx-section-head__title">{{ t('dashboard.quickActions') }}</h2>
+    </header>
+
+    <div class="dash-actions__list">
+      <button type="button" class="dash-action" @click="router.push('/keys')">
+        <span class="dash-action__idx"></span>
+        <span class="dash-action__icon" aria-hidden="true">
+          <Icon name="key" size="md" />
+        </span>
+        <span class="min-w-0 flex-1 text-left">
+          <span class="dash-action__title">{{ t('dashboard.createApiKey') }}</span>
+          <span class="dash-action__desc">{{ t('dashboard.generateNewKey') }}</span>
+        </span>
+        <Icon name="chevronRight" size="md" class="dash-action__go" />
       </button>
 
-      <button @click="router.push('/usage')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 transition-transform group-hover:scale-105 dark:bg-emerald-900/30">
-          <Icon name="chart" size="lg" class="text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.viewUsage') }}</p>
-          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('dashboard.checkDetailedLogs') }}</p>
-        </div>
-        <Icon
-          name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-emerald-500 dark:text-dark-500"
-        />
+      <button type="button" class="dash-action" @click="router.push('/usage')">
+        <span class="dash-action__idx"></span>
+        <span class="dash-action__icon" aria-hidden="true">
+          <Icon name="chart" size="md" />
+        </span>
+        <span class="min-w-0 flex-1 text-left">
+          <span class="dash-action__title">{{ t('dashboard.viewUsage') }}</span>
+          <span class="dash-action__desc">{{ t('dashboard.checkDetailedLogs') }}</span>
+        </span>
+        <Icon name="chevronRight" size="md" class="dash-action__go" />
       </button>
 
-      <button v-if="canUseBatchImage" @click="router.push('/batch-image')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-sky-100 transition-transform group-hover:scale-105 dark:bg-sky-900/30">
-          <Icon name="sparkles" size="lg" class="text-sky-600 dark:text-sky-400" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.batchImageAgent') }}</p>
-          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('dashboard.batchImageAgentDesc') }}</p>
-        </div>
-        <Icon
-          name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-sky-500 dark:text-dark-500"
-        />
+      <button v-if="canUseBatchImage" type="button" class="dash-action" @click="router.push('/batch-image')">
+        <span class="dash-action__idx"></span>
+        <span class="dash-action__icon" aria-hidden="true">
+          <Icon name="sparkles" size="md" />
+        </span>
+        <span class="min-w-0 flex-1 text-left">
+          <span class="dash-action__title">{{ t('dashboard.batchImageAgent') }}</span>
+          <span class="dash-action__desc">{{ t('dashboard.batchImageAgentDesc') }}</span>
+        </span>
+        <Icon name="chevronRight" size="md" class="dash-action__go" />
       </button>
 
-      <button @click="router.push('/redeem')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-100 transition-transform group-hover:scale-105 dark:bg-amber-900/30">
-          <Icon name="gift" size="lg" class="text-amber-600 dark:text-amber-400" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.redeemCode') }}</p>
-          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('dashboard.addBalanceWithCode') }}</p>
-        </div>
-        <Icon
-          name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-amber-500 dark:text-dark-500"
-        />
+      <button type="button" class="dash-action" @click="router.push('/redeem')">
+        <span class="dash-action__idx"></span>
+        <span class="dash-action__icon" aria-hidden="true">
+          <Icon name="gift" size="md" />
+        </span>
+        <span class="min-w-0 flex-1 text-left">
+          <span class="dash-action__title">{{ t('dashboard.redeemCode') }}</span>
+          <span class="dash-action__desc">{{ t('dashboard.addBalanceWithCode') }}</span>
+        </span>
+        <Icon name="chevronRight" size="md" class="dash-action__go" />
       </button>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -81,3 +71,87 @@ onMounted(() => {
   void refreshBatchImageAccess()
 })
 </script>
+
+<style scoped>
+.dash-actions {
+  padding: 1.25rem 1.25rem 1.15rem;
+}
+
+@media (min-width: 640px) {
+  .dash-actions {
+    padding: 1.5rem 1.45rem 1.3rem;
+  }
+}
+
+.dash-actions .rx-section-head {
+  margin-bottom: 0.85rem;
+}
+
+.dash-actions__list {
+  counter-reset: dash-a;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dash-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--rx-radius-md);
+  text-align: left;
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line-soft);
+  transition: transform 0.35s var(--rx-spring), border-color 0.2s ease, background 0.2s ease;
+}
+
+.dash-action:hover {
+  background: var(--rx-surface-hover);
+  border-color: var(--rx-line-strong);
+  transform: translateY(-1px);
+}
+
+.dash-action__idx::before {
+  counter-increment: dash-a;
+  content: counter(dash-a, decimal-leading-zero);
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.82rem;
+  color: var(--rx-faint);
+}
+
+.dash-action__icon {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex-shrink: 0;
+  border-radius: 12px;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+}
+
+.dash-action__title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+}
+
+.dash-action__desc {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.72rem;
+  color: var(--rx-faint);
+}
+
+.dash-action__go {
+  flex-shrink: 0;
+  color: var(--rx-faint);
+}
+
+.dash-action:hover .dash-action__go {
+  color: var(--rx-ink);
+}
+</style>

@@ -13,6 +13,7 @@
       </div>
       <p class="id-card__name">{{ displayName }}</p>
       <p v-if="email" class="id-card__email">{{ email }}</p>
+      <p class="id-card__serial">•••• {{ memberSerial }}</p>
       <div class="id-card__badges">
         <span>{{ user?.role === 'admin' ? t('profile.administrator') : t('profile.user') }}</span>
         <span :class="{ 'is-off': user?.status !== 'active' }">{{ user?.status === 'active' ? t('common.active') : t('common.disabled') }}</span>
@@ -77,6 +78,8 @@ const email = computed(() => {
   const raw = props.user?.email?.trim() || ''
   return raw.endsWith('.invalid') ? '' : raw
 })
+
+const memberSerial = computed(() => String(props.user?.id || 0).padStart(4, '0'))
 
 const memberSince = computed(() => {
   const raw = props.user?.created_at?.trim()
@@ -220,6 +223,15 @@ onBeforeUnmount(() => observer?.disconnect())
   font-size: 1.6rem;
   font-weight: var(--rx-display-weight);
   letter-spacing: -0.02em;
+}
+
+.id-card__serial {
+  position: relative;
+  margin-top: 0.45rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  opacity: 0.45;
 }
 
 .id-card__email {

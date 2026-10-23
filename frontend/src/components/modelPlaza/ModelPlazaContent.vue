@@ -52,7 +52,7 @@
       </div>
 
       <!-- 分组分节的模型清单(默认按生效倍率升序) -->
-      <TransitionGroup v-if="filteredGroups.length > 0" tag="div" name="plaza-list" class="relative space-y-5">
+      <TransitionGroup v-if="filteredGroups.length > 0" tag="div" name="plaza-list" class="plaza-catalog relative space-y-5">
         <PlazaGroupSection
           v-for="(g, index) in filteredGroups"
           :key="g.id"
@@ -269,6 +269,24 @@ const filteredGroups = computed(() => {
 @keyframes plaza-cell {
   0%, 11% { background: var(--rx-accent, #111827); }
   11.1%, 100% { background: var(--rx-line, #e5e7eb); }
+}
+
+.plaza-catalog {
+  counter-reset: plaza-cat;
+}
+
+.plaza-catalog :deep(.plaza-group)::after {
+  counter-increment: plaza-cat;
+  content: counter(plaza-cat, decimal-leading-zero);
+  position: absolute;
+  right: 1.15rem;
+  bottom: 0.85rem;
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.9rem;
+  color: var(--rx-faint);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

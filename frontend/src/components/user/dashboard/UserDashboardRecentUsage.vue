@@ -1,43 +1,39 @@
 <template>
-  <div class="card">
-    <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.recentUsage') }}</h2>
-      <span class="badge badge-gray">{{ t('dashboard.last7Days') }}</span>
-    </div>
-    <div class="p-6">
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
-      <div v-else-if="data.length === 0" class="py-8">
-        <EmptyState :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
-      </div>
-      <div v-else class="space-y-3">
-        <div v-for="log in data" :key="log.id" class="flex items-center justify-between rounded-xl bg-gray-50 p-4 transition-colors hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-          <div class="flex items-center gap-4">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
-              <Icon name="beaker" size="md" class="text-primary-600 dark:text-primary-400" />
-            </div>
-            <div>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ log.model }}</p>
-              <p class="text-xs text-gray-500 dark:text-dark-400">{{ formatDateTime(log.created_at) }}</p>
-            </div>
-          </div>
-          <div class="text-right">
-            <p class="text-sm font-semibold">
-              <span class="text-green-600 dark:text-green-400" :title="t('dashboard.actual')">${{ formatCost(log.actual_cost) }}</span>
-              <span class="font-normal text-gray-400 dark:text-gray-500" :title="t('dashboard.standard')"> / ${{ formatCost(log.total_cost) }}</span>
-            </p>
-            <p class="text-xs text-gray-500 dark:text-dark-400">{{ (log.input_tokens + log.output_tokens).toLocaleString() }} tokens</p>
-          </div>
-        </div>
+  <section class="rx-glass dash-ledger">
+    <header class="rx-section-head">
+      <span class="rx-section-head__index">04</span>
+      <h2 class="rx-section-head__title">{{ t('dashboard.recentUsage') }}</h2>
+      <span class="rx-section-head__hint">{{ t('dashboard.last7Days') }}</span>
+    </header>
 
-        <router-link to="/usage" class="flex items-center justify-center gap-2 py-3 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
-          {{ t('dashboard.viewAllUsage') }}
-          <Icon name="arrowRight" size="sm" />
-        </router-link>
-      </div>
+    <div v-if="loading" class="dash-ledger__busy">
+      <LoadingSpinner size="lg" />
     </div>
-  </div>
+    <div v-else-if="data.length === 0" class="py-6">
+      <EmptyState :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
+    </div>
+    <ol v-else class="dash-ledger__list">
+      <li v-for="log in data" :key="log.id" class="dash-ledger__row">
+        <span class="dash-ledger__mark" aria-hidden="true"></span>
+        <div class="min-w-0">
+          <p class="dash-ledger__model">{{ log.model }}</p>
+          <p class="dash-ledger__time">{{ formatDateTime(log.created_at) }}</p>
+        </div>
+        <div class="dash-ledger__sum">
+          <p>
+            <span :title="t('dashboard.actual')">${{ formatCost(log.actual_cost) }}</span>
+            <small :title="t('dashboard.standard')"> / ${{ formatCost(log.total_cost) }}</small>
+          </p>
+          <p>{{ (log.input_tokens + log.output_tokens).toLocaleString() }} tokens</p>
+        </div>
+      </li>
+    </ol>
+
+    <router-link v-if="!loading && data.length > 0" to="/usage" class="dash-ledger__more">
+      {{ t('dashboard.viewAllUsage') }}
+      <Icon name="arrowRight" size="sm" />
+    </router-link>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -55,3 +51,108 @@ defineProps<{
 const { t } = useI18n()
 const formatCost = (c: number) => c.toFixed(4)
 </script>
+
+<style scoped>
+.dash-ledger {
+  padding: 1.25rem 1.25rem 1.1rem;
+}
+
+@media (min-width: 640px) {
+  .dash-ledger {
+    padding: 1.5rem 1.6rem 1.25rem;
+  }
+}
+
+.dash-ledger .rx-section-head {
+  margin-bottom: 0.9rem;
+}
+
+.dash-ledger__busy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.dash-ledger__list {
+  counter-reset: dash-l;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dash-ledger__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem 0.85rem 1.15rem;
+  border-radius: var(--rx-radius-md);
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line-soft);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.dash-ledger__row:hover {
+  background: var(--rx-surface-hover);
+  border-color: var(--rx-line);
+}
+
+.dash-ledger__mark {
+  position: absolute;
+  left: 0;
+  top: 0.85rem;
+  bottom: 0.85rem;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--rx-accent);
+  opacity: 0.35;
+}
+
+.dash-ledger__model {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--rx-ink);
+}
+
+.dash-ledger__time {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--rx-faint);
+}
+
+.dash-ledger__sum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-ledger__sum p:first-child {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+}
+
+.dash-ledger__sum small,
+.dash-ledger__sum p:last-child {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--rx-faint);
+}
+
+.dash-ledger__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  padding: 0.7rem 0 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+}
+
+.dash-ledger__more:hover {
+  color: var(--rx-ink-2);
+}
+</style>

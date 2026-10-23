@@ -215,6 +215,19 @@ const tokenBars = computed(() => {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px var(--rx-card-line), var(--rx-shadow-lg);
 }
 
+.ub-tile--cost::after {
+  content: '';
+  position: absolute;
+  left: 1.1rem;
+  right: 1.1rem;
+  bottom: 0.7rem;
+  height: 6px;
+  background-image: radial-gradient(circle, var(--rx-card-line) 1.2px, transparent 1.4px);
+  background-size: 10px 6px;
+  background-repeat: repeat-x;
+  opacity: 0.7;
+}
+
 .ub-tile__sheen {
   pointer-events: none;
   position: absolute;

@@ -1,6 +1,7 @@
 <template>
   <!-- 整体状态球：同心环呼吸 + 四项汇总；颜色随整体状态切换 -->
   <div class="status-orb rx-glass" :class="`is-${overallStatus}`">
+    <span class="status-orb__sweep" aria-hidden="true"></span>
     <div class="status-orb__core" aria-hidden="true">
       <span class="status-orb__ring"></span>
       <span class="status-orb__ring status-orb__ring--2"></span>
@@ -65,10 +66,25 @@ const medianLatency = computed(() => {
 <style scoped>
 .status-orb {
   --orb: #16a34a;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 1.5rem;
   padding: 1.1rem 1.4rem 1.1rem 1.1rem;
+}
+
+.status-orb__sweep {
+  pointer-events: none;
+  position: absolute;
+  inset: -20%;
+  background: conic-gradient(from var(--rx-angle), transparent 0deg, color-mix(in srgb, var(--orb) 22%, transparent) 50deg, transparent 110deg);
+  mix-blend-mode: soft-light;
+  animation: orb-sweep 10s linear infinite;
+}
+
+@keyframes orb-sweep {
+  to { --rx-angle: 360deg; }
 }
 
 .status-orb.is-degraded {
@@ -160,7 +176,8 @@ html.dark .status-orb__stats dd.is-warn {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-orb__ring {
+  .status-orb__ring,
+  .status-orb__sweep {
     animation: none;
     opacity: 0.4;
   }

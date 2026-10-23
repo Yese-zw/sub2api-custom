@@ -1,41 +1,59 @@
 <template>
-  <div class="space-y-6">
-    <!-- Date Range Filter -->
-    <div class="card p-4">
-      <div class="flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('dashboard.timeRange') }}:</span>
-          <DateRangePicker :start-date="startDate" :end-date="endDate" @update:startDate="$emit('update:startDate', $event)" @update:endDate="$emit('update:endDate', $event)" @change="$emit('dateRangeChange', $event)" />
+  <div class="dash-charts space-y-4">
+    <header class="rx-section-head">
+      <span class="rx-section-head__index">03</span>
+      <h2 class="rx-section-head__title">{{ t('dashboard.hero.chartsTitle') }}</h2>
+    </header>
+
+    <section class="rx-toolbar">
+      <div class="rx-toolbar__row">
+        <div class="rx-toolbar__fields">
+          <label class="dash-filter">
+            <span class="dash-filter__label">{{ t('dashboard.timeRange') }}</span>
+            <DateRangePicker
+              :start-date="startDate"
+              :end-date="endDate"
+              @update:startDate="$emit('update:startDate', $event)"
+              @update:endDate="$emit('update:endDate', $event)"
+              @change="$emit('dateRangeChange', $event)"
+            />
+          </label>
+          <label class="dash-filter dash-filter--sm">
+            <span class="dash-filter__label">{{ t('dashboard.granularity') }}</span>
+            <Select
+              :model-value="granularity"
+              :options="[{value:'day', label:t('dashboard.day')}, {value:'hour', label:t('dashboard.hour')}]"
+              @update:model-value="$emit('update:granularity', $event)"
+              @change="$emit('granularityChange')"
+            />
+          </label>
         </div>
-        <button @click="$emit('refresh')" :disabled="loading" class="btn btn-secondary">
-          {{ t('common.refresh') }}
-        </button>
-        <div class="ml-auto flex items-center gap-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('dashboard.granularity') }}:</span>
-          <div class="w-28">
-            <Select :model-value="granularity" :options="[{value:'day', label:t('dashboard.day')}, {value:'hour', label:t('dashboard.hour')}]" @update:model-value="$emit('update:granularity', $event)" @change="$emit('granularityChange')" />
-          </div>
+        <div class="rx-toolbar__actions">
+          <button type="button" class="rx-icon-btn is-wide" :disabled="loading" @click="$emit('refresh')">
+            {{ t('common.refresh') }}
+          </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Charts Grid -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <!-- Model Distribution Chart -->
-      <div class="card relative overflow-hidden p-4">
-        <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-sm dark:bg-dark-800/50">
+      <div class="rx-glass dash-chart relative overflow-hidden">
+        <div v-if="loading" class="dash-chart__veil">
           <LoadingSpinner size="md" />
         </div>
-        <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.modelDistribution') }}</h3>
+        <header class="dash-chart__head">
+          <span class="dash-chart__idx">01</span>
+          <h3>{{ t('dashboard.modelDistribution') }}</h3>
+        </header>
         <div class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
           <div class="h-48 w-48 shrink-0">
             <Doughnut v-if="modelData" :data="modelData" :options="doughnutOptions" />
-            <div v-else class="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">{{ t('dashboard.noDataAvailable') }}</div>
+            <div v-else class="dash-chart__empty">{{ t('dashboard.noDataAvailable') }}</div>
           </div>
           <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
             <table class="w-full text-xs">
               <thead>
-                <tr class="text-gray-500 dark:text-gray-400">
+                <tr>
                   <th class="pb-2 text-left">{{ t('dashboard.model') }}</th>
                   <th class="pb-2 text-right">{{ t('dashboard.requests') }}</th>
                   <th class="pb-2 text-right">{{ t('dashboard.tokens') }}</th>
@@ -44,12 +62,12 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="model in models" :key="model.model" class="border-t border-gray-100 dark:border-dark-700">
-                  <td class="max-w-[100px] truncate py-1.5 font-medium text-gray-900 dark:text-white" :title="model.model">{{ model.model }}</td>
-                  <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">{{ formatNumber(model.requests) }}</td>
-                  <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">{{ formatTokens(model.total_tokens) }}</td>
-                  <td class="py-1.5 text-right text-green-600 dark:text-green-400">${{ formatCost(model.actual_cost) }}</td>
-                  <td class="py-1.5 text-right text-gray-400 dark:text-gray-500">${{ formatCost(model.cost) }}</td>
+                <tr v-for="model in models" :key="model.model">
+                  <td class="max-w-[100px] truncate py-1.5 font-medium" :title="model.model">{{ model.model }}</td>
+                  <td class="py-1.5 text-right">{{ formatNumber(model.requests) }}</td>
+                  <td class="py-1.5 text-right">{{ formatTokens(model.total_tokens) }}</td>
+                  <td class="py-1.5 text-right" :title="t('dashboard.actual')">${{ formatCost(model.actual_cost) }}</td>
+                  <td class="py-1.5 text-right dash-chart__dim" :title="t('dashboard.standard')">${{ formatCost(model.cost) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -57,8 +75,9 @@
         </div>
       </div>
 
-      <!-- Token Usage Trend Chart -->
-      <TokenUsageTrend :trend-data="trend" :loading="loading" />
+      <div class="dash-trend">
+        <TokenUsageTrend :trend-data="trend" :loading="loading" />
+      </div>
     </div>
   </div>
 </template>
@@ -84,7 +103,8 @@ const modelData = computed(() => !props.models?.length ? null : {
   labels: props.models.map((m: ModelStat) => m.model),
   datasets: [{
     data: props.models.map((m: ModelStat) => m.total_tokens),
-    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
+    backgroundColor: ['#1d1d1a', '#c2410c', '#0f766e', '#a16207', '#44403c', '#9a3412', '#57534e', '#78716c'],
+    borderWidth: 0,
   }]
 })
 
@@ -101,3 +121,95 @@ const doughnutOptions = {
   }
 }
 </script>
+
+<style scoped>
+.dash-filter {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.dash-filter--sm {
+  min-width: 7.5rem;
+}
+
+.dash-filter__label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+.dash-chart {
+  padding: 1.15rem 1.2rem 1.25rem;
+}
+
+.dash-chart__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.dash-chart__idx {
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.9rem;
+  color: var(--rx-faint);
+}
+
+.dash-chart__head h3 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+}
+
+.dash-chart__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--rx-surface) 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.dash-chart__empty {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  color: var(--rx-faint);
+}
+
+.dash-chart__dim {
+  color: var(--rx-faint);
+}
+
+.dash-trend :deep(.card) {
+  position: relative;
+  height: 100%;
+  padding: 1.15rem 1.2rem 1.25rem;
+}
+
+.dash-trend :deep(h3) {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+}
+
+.dash-trend :deep(h3)::before {
+  content: '02';
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--rx-faint);
+}
+</style>

@@ -157,6 +157,7 @@ const longContextNote = computed(() => {
 }
 
 .plaza-group__head {
+  position: relative;
   border-bottom: 1px solid var(--rx-line-soft, #f3f4f6);
   background: linear-gradient(90deg, color-mix(in srgb, var(--plaza-accent, transparent) 6%, transparent), transparent 55%);
 }

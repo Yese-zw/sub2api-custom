@@ -2,18 +2,23 @@
   <!-- 模型广场概览：平台 / 分组 / 模型数 + 最低生效倍率 -->
   <div class="plaza-stats" :class="{ 'is-loading': loading }">
     <div class="plaza-stats__cell plaza-stats__cell--ink">
+      <span class="plaza-stats__sheen" aria-hidden="true"></span>
+      <span class="plaza-stats__index">01</span>
       <span class="plaza-stats__label">{{ t('modelPlaza.hero.statModels') }}</span>
       <strong class="plaza-stats__value">{{ loading ? '—' : modelCount }}</strong>
     </div>
     <div class="plaza-stats__cell">
+      <span class="plaza-stats__index">02</span>
       <span class="plaza-stats__label">{{ t('modelPlaza.hero.statGroups') }}</span>
       <strong class="plaza-stats__value">{{ loading ? '—' : groupCount }}</strong>
     </div>
     <div class="plaza-stats__cell">
+      <span class="plaza-stats__index">03</span>
       <span class="plaza-stats__label">{{ t('modelPlaza.hero.statPlatforms') }}</span>
       <strong class="plaza-stats__value">{{ loading ? '—' : platformCount }}</strong>
     </div>
     <div class="plaza-stats__cell">
+      <span class="plaza-stats__index">04</span>
       <span class="plaza-stats__label">{{ t('modelPlaza.hero.statLowestRate') }}</span>
       <strong class="plaza-stats__value">{{ loading || lowestRate === null ? '—' : `${lowestRate}x` }}</strong>
     </div>
@@ -58,15 +63,46 @@ const lowestRate = computed(() => {
 }
 
 .plaza-stats__cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  overflow: hidden;
   padding: 0.9rem 1rem;
   border-radius: var(--rx-radius-md);
   background: var(--rx-surface);
   border: 1px solid var(--rx-line);
   box-shadow: var(--rx-highlight), var(--rx-shadow);
   transition: transform 0.35s var(--rx-spring);
+}
+
+.plaza-stats__index {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.78rem;
+  color: var(--rx-faint);
+  opacity: 0.7;
+}
+
+.plaza-stats__cell--ink .plaza-stats__index {
+  color: inherit;
+  opacity: 0.45;
+}
+
+.plaza-stats__sheen {
+  pointer-events: none;
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from var(--rx-angle), transparent 0deg, rgba(255,255,255,0.28) 70deg, transparent 140deg);
+  mix-blend-mode: soft-light;
+  animation: plaza-foil 14s linear infinite;
+}
+
+@keyframes plaza-foil {
+  to { --rx-angle: 360deg; }
 }
 
 .plaza-stats__cell:hover {

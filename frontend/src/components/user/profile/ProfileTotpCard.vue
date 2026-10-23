@@ -1,14 +1,19 @@
 <template>
-  <div class="card">
-    <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <h2 class="text-lg font-medium text-gray-900 dark:text-white">
-        {{ t('profile.totp.title') }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ t('profile.totp.description') }}
-      </p>
-    </div>
-    <div class="px-6 py-6">
+  <div class="card rx-settings">
+    <header class="rx-settings__head">
+      <span class="rx-settings__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+      </span>
+      <div>
+        <h2 class="rx-settings__title">
+          {{ t('profile.totp.title') }}
+        </h2>
+        <p class="rx-settings__desc">
+          {{ t('profile.totp.description') }}
+        </p>
+      </div>
+    </header>
+    <div>
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 dark:border-gray-500"></div>
