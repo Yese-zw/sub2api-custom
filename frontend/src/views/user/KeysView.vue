@@ -6,10 +6,12 @@
         <div class="flex flex-col gap-3">
           <section class="keys-overview" aria-label="API key overview">
             <article class="keys-metric">
+              <span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M15.5 7.5a3.5 3.5 0 11-4.95 3.18L4 17.25V20h2.75v-2h2v-2h2l1.07-1.07A3.5 3.5 0 0115.5 7.5z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
               <span class="keys-metric-label">{{ t('keys.overview.total') }}</span>
               <strong class="keys-metric-value">{{ pagination.total }}</strong>
             </article>
             <article class="keys-metric">
+              <span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v8m5.66-4.66a8 8 0 11-11.32 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>
               <span class="keys-metric-label">
                 {{ t('keys.overview.active') }}
                 <em class="keys-metric-scope">{{ t('keys.overview.pageScope') }}</em>
@@ -17,6 +19,7 @@
               <strong class="keys-metric-value">{{ pageActiveCount }}</strong>
             </article>
             <article class="keys-metric">
+              <span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6v12m3.5-9.5c0-1.38-1.57-2.5-3.5-2.5S8.5 7.12 8.5 8.5 10.07 11 12 11s3.5 1.12 3.5 2.5S13.93 16 12 16s-3.5-1.12-3.5-2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>
               <span class="keys-metric-label">
                 {{ t('keys.overview.todaySpend') }}
                 <em class="keys-metric-scope">{{ t('keys.overview.pageScope') }}</em>
@@ -24,6 +27,7 @@
               <strong class="keys-metric-value">${{ pageTodaySpend.toFixed(4) }}</strong>
             </article>
             <article class="keys-metric" :class="{ 'is-alert': pageQuotaAlerts > 0 }">
+<span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
               <span class="keys-metric-label">{{ t('keys.overview.quotaAlert') }}</span>
               <strong class="keys-metric-value">
                 {{ pageQuotaAlerts > 0 ? pageQuotaAlerts : t('keys.overview.healthy') }}
@@ -31,7 +35,7 @@
             </article>
           </section>
 
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="keys-filterbar flex flex-wrap items-center gap-3">
             <SearchInput
               v-model="filterSearch"
               :placeholder="t('keys.searchPlaceholder')"
@@ -162,7 +166,8 @@
           </template>
 
           <template #cell-name="{ value, row }">
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-2.5">
+              <span class="keys-avatar" :class="`is-${row.status}`" aria-hidden="true">{{ (value || '?').charAt(0).toUpperCase() }}</span>
               <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
               <Icon
                 v-if="row.ip_whitelist?.length > 0 || row.ip_blacklist?.length > 0"
@@ -382,8 +387,10 @@
               value === 'active' ? 'badge-success' :
               value === 'quota_exhausted' ? 'badge-warning' :
               value === 'expired' ? 'badge-danger' :
-              'badge-gray'
+              'badge-gray',
+              'keys-status'
             ]">
+              <span class="keys-status__dot" :class="{ 'is-live': value === 'active' }" aria-hidden="true"></span>
               {{ t('keys.status.' + value) }}
             </span>
           </template>
@@ -2323,6 +2330,124 @@ onUnmounted(() => {
 .keys-action.is-danger:hover {
   background: rgba(220, 38, 38, 0.08);
   color: #dc2626;
+}
+
+/* ---------- 指标图标 / 筛选条 / 名称头像 / 状态点 ---------- */
+.keys-metric-icon {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  color: var(--rx-muted, #706f69);
+  background: var(--rx-surface-2, #f0eee8);
+  transition: transform 0.45s var(--rx-spring, ease);
+}
+
+.keys-metric-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.keys-metric:hover .keys-metric-icon {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+.rx-stage .keys-metric:first-child .keys-metric-icon {
+  color: var(--rx-accent);
+  background: var(--rx-on-accent);
+}
+
+/* 告警：图标外圈脉冲 */
+.keys-metric.is-alert .keys-metric-icon {
+  color: #b45309;
+  background: rgba(217, 119, 6, 0.12);
+  animation: keys-alert 2s ease-out infinite;
+}
+
+@keyframes keys-alert {
+  0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.35); }
+  100% { box-shadow: 0 0 0 10px rgba(217, 119, 6, 0); }
+}
+
+.rx-stage .keys-filterbar {
+  padding: 0.55rem;
+  border-radius: var(--rx-radius-md);
+  background: var(--rx-surface);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight), var(--rx-shadow);
+  animation: rx-rise 0.7s var(--rx-ease) both 0.25s;
+}
+
+.keys-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--rx-on-accent, #fff);
+  background: var(--rx-accent, #11110f);
+  transition: transform 0.35s var(--rx-spring, ease);
+}
+
+.keys-avatar:not(.is-active) {
+  color: var(--rx-muted, #706f69);
+  background: var(--rx-surface-2, #f0eee8);
+}
+
+tr:hover .keys-avatar {
+  transform: rotate(-6deg) scale(1.06);
+}
+
+.keys-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.keys-status__dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.keys-status__dot.is-live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: keys-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes keys-ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* 复制成功：图标弹跳 */
+.keys-copy.is-done {
+  animation: keys-copied 0.45s var(--rx-spring, ease);
+}
+
+@keyframes keys-copied {
+  0% { transform: scale(0.6); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keys-metric.is-alert .keys-metric-icon,
+  .keys-status__dot.is-live::after {
+    animation: none;
+  }
 }
 
 /* ---------- 移动端 ---------- */

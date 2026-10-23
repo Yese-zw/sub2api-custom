@@ -35,12 +35,13 @@
               <h2 class="auth-headline">{{ t('auth.brandPanel.headline') }}</h2>
               <p class="auth-lede">{{ t('auth.brandPanel.lede') }}</p>
 
-              <!-- 流量脉冲：一道沿曲线流动的光，隐喻请求经由网关转发 -->
-              <svg class="auth-signal" viewBox="0 0 320 36" preserveAspectRatio="none" aria-hidden="true">
-                <path class="auth-signal__base" d="M0 18 C40 18 40 5 80 5 S120 31 160 31 S200 5 240 5 S280 18 320 18" />
-                <path class="auth-signal__pulse" d="M0 18 C40 18 40 5 80 5 S120 31 160 31 S200 5 240 5 S280 18 320 18" />
-                <path class="auth-signal__pulse auth-signal__pulse--late" d="M0 18 C40 18 40 5 80 5 S120 31 160 31 S200 5 240 5 S280 18 320 18" />
-              </svg>
+              <!-- 网关轨道：中心 API 内核，多个节点沿倾斜椭圆轨道绕行，隐喻「一个入口聚合多家模型」 -->
+              <div class="auth-orbit" aria-hidden="true">
+                <span class="auth-orbit__ring auth-orbit__ring--a"></span>
+                <span class="auth-orbit__ring auth-orbit__ring--b"></span>
+                <span class="auth-orbit__core">API</span>
+                <span v-for="n in 5" :key="n" class="auth-orbit__node" :style="{ '--n': n }"><i></i></span>
+              </div>
 
               <ul class="auth-features">
                 <li
@@ -162,8 +163,8 @@ html.pixel-ui .auth-intro-glow,
 html.pixel-ui .auth-intro-rule,
 html.pixel-ui .auth-intro-spot,
 html.pixel-ui .auth-hairline { display: none; }
-html.pixel-ui .auth-signal__base { stroke: var(--pixel-line); }
-html.pixel-ui .auth-signal__pulse { stroke: var(--pixel-cyan); }
+html.pixel-ui .auth-orbit__ring { border-color: var(--pixel-line); }
+html.pixel-ui .auth-orbit__node i { background: var(--pixel-cyan); box-shadow: none; }
 html.pixel-ui .auth-form-pane { background: var(--pixel-surface); }
 html.pixel-ui .auth-eyebrow { color: var(--pixel-cyan); }
 html.pixel-ui .auth-eyebrow-dot { background: var(--pixel-cyan); box-shadow: 0 0 0 4px var(--pixel-glow-soft); }
@@ -459,44 +460,105 @@ html:not(.pixel-ui):not(.editorial-ui) .auth-form-pane { background: transparent
   transition: opacity 0.4s ease;
 }
 
-.auth-signal {
-  display: block;
+/* 轨道尺寸固定：外环 19rem × 7.6rem，节点半径与纵向压缩比（0.4）与之严格对应 */
+.auth-orbit {
+  position: relative;
+  width: 19rem;
+  max-width: 100%;
+  height: 7.6rem;
+  margin: 0.1rem 0;
+}
+
+.auth-orbit__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transform: translate(-50%, -50%) rotate(-12deg);
+}
+
+.auth-orbit__ring--a {
   width: 100%;
-  max-width: 17rem;
-  height: 1.6rem;
-  margin: 0.2rem 0;
-  overflow: visible;
+  height: 100%;
 }
 
-.auth-signal path {
-  fill: none;
-  stroke-width: 1.2;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
+.auth-orbit__ring--b {
+  width: 62%;
+  height: 62%;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%) rotate(14deg);
 }
 
-.auth-signal__base {
-  stroke: rgba(255, 255, 255, 0.12);
+.auth-orbit__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #11110f;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #d8e3f3 70%);
+  box-shadow: 0 0 0 6px rgba(216, 227, 243, 0.08), 0 0 28px rgba(216, 227, 243, 0.35);
+  transform: translate(-50%, -50%);
+  animation: auth-core 3.4s ease-in-out infinite;
 }
 
-.auth-signal__pulse {
-  stroke: rgba(216, 227, 243, 0.85);
-  stroke-width: 1.8;
-  stroke-dasharray: 46 420;
-  stroke-dashoffset: 46;
-  filter: drop-shadow(0 0 4px rgba(216, 227, 243, 0.6));
-  animation: auth-pulse 3.2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+@keyframes auth-core {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(216, 227, 243, 0.08), 0 0 24px rgba(216, 227, 243, 0.3); }
+  50% { box-shadow: 0 0 0 10px rgba(216, 227, 243, 0.04), 0 0 36px rgba(216, 227, 243, 0.5); }
 }
 
-.auth-signal__pulse--late {
-  stroke-dasharray: 18 450;
-  opacity: 0.6;
-  animation-delay: 1.4s;
+/* 节点：外层沿椭圆旋转（压扁的圆周运动），内层反向缩放保持圆形 */
+.auth-orbit__node {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(-12deg) scaleY(0.4);
 }
 
-@keyframes auth-pulse {
-  from { stroke-dashoffset: 46; }
-  to { stroke-dashoffset: -420; }
+/* 偶数节点走内环 */
+.auth-orbit__node:nth-of-type(even) {
+  transform: rotate(14deg) scaleY(0.4);
+}
+
+.auth-orbit__node i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin: -0.275rem;
+  border-radius: 9999px;
+  background: #f4f2ec;
+  box-shadow: 0 0 10px rgba(244, 242, 236, 0.7);
+  offset-path: circle(9.5rem at 0 0);
+  offset-rotate: 0deg;
+  /* 抵消父级 scaleY(0.4)，保持节点为正圆 */
+  transform: scaleY(2.5);
+  animation: auth-orbit-move calc(9s + var(--n) * 2.2s) linear infinite;
+  animation-delay: calc(var(--n) * -2.7s);
+}
+
+.auth-orbit__node:nth-of-type(even) i {
+  width: 0.4rem;
+  height: 0.4rem;
+  margin: -0.2rem;
+  opacity: 0.7;
+  offset-path: circle(5.9rem at 0 0);
+}
+
+@keyframes auth-orbit-move {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
 }
 
 /* 表单区：输入聚焦时墨色描边，提交按钮轻抬 */
@@ -574,7 +636,8 @@ html:not(.pixel-ui):not(.editorial-ui) .auth-form-pane { background: transparent
 @media (prefers-reduced-motion: reduce) {
   .auth-feature,
   .auth-intro-inner,
-  .auth-signal__pulse,
+  .auth-orbit__core,
+  .auth-orbit__node i,
   .auth-form-scroll :deep(> *) { animation: none !important; }
 }
 </style>

@@ -6,75 +6,127 @@
       :lead="t('usage.hero.titleLead')"
       :accent="t('usage.hero.titleAccent')"
       :subtitle="t('usage.hero.subtitle')"
-    />
-    <div class="usage-page rx-skin-rise space-y-6">
-      <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
-
-      <div class="space-y-4">
-        <div class="card p-4">
-          <div class="flex flex-wrap items-center gap-4">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.timeRange') }}:</span>
-              <DateRangePicker
-                v-model:start-date="startDate"
-                v-model:end-date="endDate"
-                @change="onDateRangeChange"
-              />
-            </div>
-            <div class="ml-auto flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.granularity') }}:</span>
-              <div class="w-28">
-                <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
-              </div>
-            </div>
+    >
+      <template #aside>
+        <!-- 时间范围与粒度：从内容区上移到首屏右侧 -->
+        <div class="usage-range rx-glass">
+          <span class="usage-range__label">{{ t('admin.dashboard.timeRange') }}</span>
+          <DateRangePicker
+            v-model:start-date="startDate"
+            v-model:end-date="endDate"
+            @change="onDateRangeChange"
+          />
+          <span class="usage-range__divider" aria-hidden="true"></span>
+          <span class="usage-range__label">{{ t('admin.dashboard.granularity') }}</span>
+          <div class="w-28">
+            <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
           </div>
         </div>
+      </template>
+    </RxPageHero>
+    <div class="usage-page space-y-6">
+      <UsageKpiBento :stats="usageStats" :trend="trendData" :loading="loading || chartsLoading" />
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ModelDistributionChart
-            v-model:metric="modelDistributionMetric"
-            :model-stats="requestedModelStats"
-            :loading="modelStatsLoading"
-            :show-source-toggle="false"
-            :show-metric-toggle="true"
-            :enable-breakdown="false"
-            :show-account-cost="false"
-            :start-date="startDate"
-            :end-date="endDate"
-          />
-          <GroupDistributionChart
-            v-model:metric="groupDistributionMetric"
-            :group-stats="groupStats"
-            :loading="chartsLoading"
-            :show-metric-toggle="true"
-            :enable-breakdown="false"
-            :show-account-cost="false"
-            :start-date="startDate"
-            :end-date="endDate"
-          />
-        </div>
-
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <EndpointDistributionChart
-            v-model:source="endpointDistributionSource"
-            v-model:metric="endpointDistributionMetric"
-            :endpoint-stats="inboundEndpointStats"
-            :upstream-endpoint-stats="upstreamEndpointStats"
-            :endpoint-path-stats="endpointPathStats"
-            :loading="endpointStatsLoading"
-            :show-source-toggle="false"
-            :show-metric-toggle="true"
-            :enable-breakdown="false"
-            :title="t('usage.endpointDistribution')"
-            :start-date="startDate"
-            :end-date="endDate"
-          />
-          <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
-        </div>
+      <div class="usage-charts rx-skin-rise grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ModelDistributionChart
+          v-model:metric="modelDistributionMetric"
+          :model-stats="requestedModelStats"
+          :loading="modelStatsLoading"
+          :show-source-toggle="false"
+          :show-metric-toggle="true"
+          :enable-breakdown="false"
+          :show-account-cost="false"
+          :start-date="startDate"
+          :end-date="endDate"
+        />
+        <GroupDistributionChart
+          v-model:metric="groupDistributionMetric"
+          :group-stats="groupStats"
+          :loading="chartsLoading"
+          :show-metric-toggle="true"
+          :enable-breakdown="false"
+          :show-account-cost="false"
+          :start-date="startDate"
+          :end-date="endDate"
+        />
+        <EndpointDistributionChart
+          v-model:source="endpointDistributionSource"
+          v-model:metric="endpointDistributionMetric"
+          :endpoint-stats="inboundEndpointStats"
+          :upstream-endpoint-stats="upstreamEndpointStats"
+          :endpoint-path-stats="endpointPathStats"
+          :loading="endpointStatsLoading"
+          :show-source-toggle="false"
+          :show-metric-toggle="true"
+          :enable-breakdown="false"
+          :title="t('usage.endpointDistribution')"
+          :start-date="startDate"
+          :end-date="endDate"
+        />
+        <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
       </div>
 
-      <div class="card p-6">
-        <div class="flex flex-wrap items-end justify-between gap-4">
+      <!-- 工具栏：用量 / 错误切换 + 折叠筛选 + 操作 -->
+      <section class="usage-toolbar rx-glass">
+        <div class="usage-toolbar__row">
+          <div v-if="errorViewEnabled" class="usage-tabs" role="tablist" :class="{ 'is-errors': activeTab === 'errors' }">
+            <span class="usage-tabs__pill" aria-hidden="true"></span>
+            <button class="usage-tabs__tab" :class="{ 'is-active': activeTab === 'usage' }" @click="activeTab = 'usage'">{{ t('usage.tabs.usage') }}</button>
+            <button class="usage-tabs__tab" :class="{ 'is-active': activeTab === 'errors' }" @click="switchToErrors">{{ t('usage.tabs.errors') }}</button>
+          </div>
+          <button
+            type="button"
+            class="usage-filter-toggle"
+            :class="{ 'is-open': filtersOpen }"
+            :aria-expanded="filtersOpen"
+            @click="filtersOpen = !filtersOpen"
+          >
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5h14M6 10h8M9 15h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+            <span>{{ t('usage.hero.filters') }}</span>
+            <span v-if="activeFilterCount > 0" class="usage-filter-toggle__count">{{ activeFilterCount }}</span>
+            <svg class="usage-filter-toggle__chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <div class="usage-toolbar__actions">
+            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary">
+              {{ t('common.refresh') }}
+            </button>
+            <button type="button" @click="resetFilters" class="btn btn-secondary">
+              {{ t('common.reset') }}
+            </button>
+            <div class="relative" ref="columnDropdownRef">
+              <button
+                type="button"
+                data-testid="usage-column-settings"
+                @click="showColumnDropdown = !showColumnDropdown"
+                class="btn btn-secondary px-2 md:px-3"
+                :title="t('admin.users.columnSettings')"
+              >
+                <Icon name="grid" size="sm" />
+                <span class="hidden md:inline">{{ t('admin.users.columnSettings') }}</span>
+              </button>
+              <div
+                v-if="showColumnDropdown"
+                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+              >
+                <button
+                  v-for="col in currentToggleableColumns"
+                  :key="col.key"
+                  type="button"
+                  :data-testid="`usage-column-toggle-${col.key}`"
+                  @click="toggleCurrentColumn(col.key)"
+                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                >
+                  <span>{{ col.label }}</span>
+                  <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
+                </button>
+              </div>
+            </div>
+            <button v-if="activeTab !== 'errors'" type="button" @click="exportToCSV" :disabled="exporting" class="btn btn-primary">
+              {{ exporting ? t('usage.exporting') : t('usage.exportCsv') }}
+            </button>
+          </div>
+        </div>
+        <div v-show="filtersOpen" class="usage-toolbar__filters">
           <div v-if="activeTab === 'errors'" class="flex flex-1 flex-wrap items-end gap-4">
             <div class="w-full sm:w-auto sm:min-w-[220px]">
               <label class="input-label">{{ t('usage.errors.keyName') }}</label>
@@ -132,56 +184,8 @@
             </div>
           </div>
 
-          <div class="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
-            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary">
-              {{ t('common.refresh') }}
-            </button>
-            <button type="button" @click="resetFilters" class="btn btn-secondary">
-              {{ t('common.reset') }}
-            </button>
-            <div class="relative" ref="columnDropdownRef">
-              <button
-                type="button"
-                data-testid="usage-column-settings"
-                @click="showColumnDropdown = !showColumnDropdown"
-                class="btn btn-secondary px-2 md:px-3"
-                :title="t('admin.users.columnSettings')"
-              >
-                <Icon name="grid" size="sm" />
-                <span class="hidden md:inline">{{ t('admin.users.columnSettings') }}</span>
-              </button>
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-              >
-                <button
-                  v-for="col in currentToggleableColumns"
-                  :key="col.key"
-                  type="button"
-                  :data-testid="`usage-column-toggle-${col.key}`"
-                  @click="toggleCurrentColumn(col.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-                >
-                  <span>{{ col.label }}</span>
-                  <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
-                </button>
-              </div>
-            </div>
-            <button v-if="activeTab !== 'errors'" type="button" @click="exportToCSV" :disabled="exporting" class="btn btn-primary">
-              {{ exporting ? t('usage.exporting') : t('usage.exportCsv') }}
-            </button>
-          </div>
         </div>
-      </div>
-
-      <div v-if="errorViewEnabled" class="flex gap-2 border-b border-gray-200 dark:border-dark-700">
-        <button class="tab" :class="{ 'tab-active': activeTab === 'usage' }" @click="activeTab = 'usage'">
-          {{ t('usage.tabs.usage') }}
-        </button>
-        <button class="tab" :class="{ 'tab-active': activeTab === 'errors' }" @click="switchToErrors">
-          {{ t('usage.tabs.errors') }}
-        </button>
-      </div>
+      </section>
 
       <template v-if="activeTab === 'usage'">
         <UsageTable
@@ -238,7 +242,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
-import UsageStatsCards from '@/components/admin/usage/UsageStatsCards.vue'
+import UsageKpiBento from '@/components/user/usage/UsageKpiBento.vue'
 import UsageTable from '@/components/admin/usage/UsageTable.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
 import GroupDistributionChart from '@/components/charts/GroupDistributionChart.vue'
@@ -819,6 +823,18 @@ const toggleCurrentColumn = (key: string) => {
 }
 
 const showColumnDropdown = ref(false)
+
+// 筛选区默认收起；有生效条件时计数提示，首次进入若已有条件则自动展开
+const filtersOpen = ref(false)
+const activeFilterCount = computed(() => {
+  if (activeTab.value === 'errors') {
+    const e = errorFilter.value
+    return [e.api_key_id, e.model, e.category, e.status_code].filter((v) => v !== null && v !== undefined && v !== '').length
+  }
+  const f = filters.value
+  return [f.api_key_id, f.model, f.group_id, f.request_type, f.native_compaction_v2, f.billing_type, f.billing_mode]
+    .filter((v) => v !== null && v !== undefined && v !== '').length
+})
 const columnDropdownRef = ref<HTMLElement | null>(null)
 const handleColumnClickOutside = (event: MouseEvent) => {
   if (columnDropdownRef.value && !columnDropdownRef.value.contains(event.target as HTMLElement)) {
@@ -925,3 +941,177 @@ watch(endpointDistributionSource, () => {
   // Endpoint source switching is handled by the chart component using already loaded stats.
 })
 </script>
+
+<style scoped>
+/* ---------- 首屏右侧：时间范围胶囊 ---------- */
+.usage-range {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  border-radius: 9999px;
+}
+
+.usage-range__label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+.usage-range__divider {
+  width: 1px;
+  height: 1.4rem;
+  background: var(--rx-line);
+}
+
+@media (max-width: 639px) {
+  .usage-range {
+    border-radius: var(--rx-radius-lg);
+  }
+
+  .usage-range__divider {
+    display: none;
+  }
+}
+
+/* ---------- 工具栏 ---------- */
+.usage-toolbar {
+  position: relative;
+  z-index: 5;
+  padding: 0.65rem;
+}
+
+.usage-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.usage-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.usage-toolbar__filters {
+  display: block;
+  margin-top: 0.65rem;
+  padding: 1rem 0.6rem 0.4rem;
+  border-top: 1px dashed var(--rx-line-strong);
+  animation: usage-unfold 0.4s var(--rx-ease) both;
+}
+
+@keyframes usage-unfold {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 用量 / 错误：滑动墨色胶囊 */
+.usage-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0.25rem;
+  border-radius: 9999px;
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line-soft);
+}
+
+.usage-tabs__pill {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: calc((100% - 0.5rem) / 2);
+  border-radius: 9999px;
+  background: var(--rx-accent);
+  transition: transform 0.5s var(--rx-spring);
+}
+
+.usage-tabs.is-errors .usage-tabs__pill {
+  transform: translateX(100%);
+}
+
+.usage-tabs__tab {
+  position: relative;
+  z-index: 1;
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+  color: var(--rx-muted);
+  transition: color 0.3s ease;
+}
+
+.usage-tabs__tab.is-active {
+  color: var(--rx-on-accent);
+}
+
+.usage-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.4rem;
+  padding: 0 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rx-ink-2);
+  background: var(--rx-surface-hover);
+  border: 1px solid var(--rx-line);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.usage-filter-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.usage-filter-toggle:hover,
+.usage-filter-toggle.is-open {
+  border-color: var(--rx-line-strong);
+}
+
+.usage-filter-toggle__count {
+  display: grid;
+  place-items: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 9999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  animation: usage-pop 0.4s var(--rx-spring);
+}
+
+@keyframes usage-pop {
+  from { transform: scale(0.4); }
+  to { transform: scale(1); }
+}
+
+.usage-filter-toggle__chevron {
+  transition: transform 0.35s var(--rx-ease);
+}
+
+.usage-filter-toggle.is-open .usage-filter-toggle__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .usage-toolbar__filters,
+  .usage-filter-toggle__count {
+    animation: none;
+  }
+}
+</style>

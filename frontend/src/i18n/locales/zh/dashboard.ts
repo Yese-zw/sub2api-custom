@@ -346,6 +346,7 @@ export default {
   // Usage
   usage: {
     hero: {
+      filters: '筛选',
       eyebrow: '用量 · 分析',
       titleLead: '每一次调用，',
       titleAccent: '都清晰可见',
@@ -586,6 +587,11 @@ export default {
   // Channel Status (user-facing read-only view)
   channelStatus: {
     hero: {
+      healthy: '正常渠道',
+      issues: '异常渠道',
+      avgAvailability: '平均可用率 · 7天',
+      medianLatency: '延迟中位数',
+      window: '时间窗',
       eyebrow: '渠道 · 实时监控',
       titleLead: '各渠道健康状况',
       accent: {
@@ -856,6 +862,10 @@ export default {
   // Profile
   profile: {
     hero: {
+      sections: '资料分区',
+      secBasics: '基本资料',
+      secSecurity: '安全与偏好',
+      secLogin: '登录方式',
       eyebrow: '账户 · 安全',
       titleLead: '你的账户与安全，',
       titleAccent: '尽在掌握',

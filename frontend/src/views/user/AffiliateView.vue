@@ -477,37 +477,74 @@ html.dark .rx-aff-good {
   transform: scale(0.96);
 }
 
+/* 使用说明：竖向步骤条，序号为墨色圆点，连接线入场时自上而下描出 */
 .rx-aff-tips {
+  position: relative;
   counter-reset: tip;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.rx-aff-tips::before {
+  content: '';
+  position: absolute;
+  left: 0.85rem;
+  top: 0.9rem;
+  bottom: 0.9rem;
+  width: 1.5px;
+  background: linear-gradient(var(--rx-line-strong), var(--rx-line-soft));
+  transform-origin: top;
+  animation: rx-aff-line 1.2s var(--rx-ease) both 0.4s;
+}
+
+@keyframes rx-aff-line {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
 
 .rx-aff-tips li {
   position: relative;
   counter-increment: tip;
-  padding: 0.75rem 0 0.75rem 2.3rem;
+  min-height: 1.75rem;
+  padding-left: 2.6rem;
   font-size: 0.86rem;
   line-height: 1.6;
   color: var(--rx-ink-2);
-  border-top: 1px solid var(--rx-line-soft);
+  animation: rx-aff-step 0.5s var(--rx-ease) both;
 }
 
-.rx-aff-tips li:first-child {
-  padding-top: 0.15rem;
-  border-top: 0;
+.rx-aff-tips li:nth-child(1) { animation-delay: 0.45s; }
+.rx-aff-tips li:nth-child(2) { animation-delay: 0.6s; }
+.rx-aff-tips li:nth-child(3) { animation-delay: 0.75s; }
+.rx-aff-tips li:nth-child(4) { animation-delay: 0.9s; }
+
+@keyframes rx-aff-step {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: none; }
 }
 
 .rx-aff-tips li::before {
-  content: counter(tip, decimal-leading-zero);
+  content: counter(tip);
   position: absolute;
   left: 0;
-  top: 0.74rem;
-  font-family: var(--rx-display);
-  font-style: var(--rx-display-style);
-  color: var(--rx-faint);
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 0 0 4px var(--rx-surface-hover);
 }
 
-.rx-aff-tips li:first-child::before {
-  top: 0.14rem;
+.rx-aff-tips li:last-child::before {
+  color: var(--rx-accent);
+  background: var(--rx-surface-hover);
+  border: 1.5px solid var(--rx-accent);
 }
 
 /* ---------- 转入 ---------- */

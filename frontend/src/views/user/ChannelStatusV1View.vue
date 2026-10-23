@@ -9,17 +9,23 @@
       :subtitle="t('channelStatus.hero.subtitle')"
     >
       <template #aside>
-    <MonitorHero
-      :overall-status="overallStatus"
-      :interval-seconds="DEFAULT_INTERVAL_SECONDS"
-      :window="currentWindow"
-      :loading="loading"
-      :auto-refresh="autoRefresh"
-      @update:window="handleWindowChange"
-      @refresh="refresh()"
-    />
+        <MonitorStatusOrb :items="items" :overall-status="overallStatus" />
       </template>
     </RxPageHero>
+
+    <!-- 控制条：时间窗 / 刷新 / 自动刷新 -->
+    <div class="monitor-toolbar-shell rx-glass">
+      <span class="monitor-toolbar-shell__label">{{ t('channelStatus.hero.window') }}</span>
+      <MonitorHero
+        :overall-status="overallStatus"
+        :interval-seconds="DEFAULT_INTERVAL_SECONDS"
+        :window="currentWindow"
+        :loading="loading"
+        :auto-refresh="autoRefresh"
+        @update:window="handleWindowChange"
+        @refresh="refresh()"
+      />
+    </div>
 
     <MonitorCardGrid
       :items="items"
@@ -59,6 +65,7 @@ import MonitorHero, {
   type OverallStatus,
 } from '@/components/user/monitor/MonitorHero.vue'
 import MonitorCardGrid from '@/components/user/monitor/MonitorCardGrid.vue'
+import MonitorStatusOrb from '@/components/user/monitor/MonitorStatusOrb.vue'
 import MonitorDetailDialog from '@/components/user/MonitorDetailDialog.vue'
 import { DEFAULT_INTERVAL_SECONDS, STATUS_OPERATIONAL } from '@/constants/channelMonitor'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
@@ -185,3 +192,40 @@ onBeforeUnmount(() => {
   if (abortController) abortController.abort()
 })
 </script>
+
+<style scoped>
+.monitor-toolbar-shell {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.3rem 0.5rem 0.3rem 1.2rem;
+  border-radius: 9999px;
+}
+
+.monitor-toolbar-shell__label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+/* MonitorHero 自带上下留白与右对齐，嵌入工具条后撑满剩余宽度 */
+.monitor-toolbar-shell :deep(> section) {
+  flex: 1;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 639px) {
+  .monitor-toolbar-shell {
+    border-radius: var(--rx-radius-lg);
+  }
+
+  .monitor-toolbar-shell__label {
+    display: none;
+  }
+}
+</style>

@@ -1,6 +1,7 @@
 <template>
   <div class="space-y-6">
     <section
+      v-if="!hideOverview"
       data-testid="profile-overview-hero"
       class="card overflow-hidden border border-gray-100 bg-gradient-to-br from-gray-50 via-white to-gray-100/60 dark:border-dark-700 dark:from-dark-900 dark:via-dark-900 dark:to-black"
     >
@@ -176,8 +177,11 @@ import type { User, UserAuthBindingStatus, UserAuthProvider, UserProfileSourceCo
 const props = withDefaults(defineProps<{
   user: User | null
   oidcProviderName?: string
+  /** 页面另有身份栏时隐藏顶部概览，避免重复展示头像与余额 */
+  hideOverview?: boolean
 }>(), {
   oidcProviderName: 'OIDC',
+  hideOverview: false,
 })
 
 const { t } = useI18n()

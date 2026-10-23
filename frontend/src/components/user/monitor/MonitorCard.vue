@@ -2,6 +2,7 @@
   <button
     type="button"
     class="rx-monitor-card group text-left p-5 min-h-[280px] w-full flex flex-col"
+    :class="{ 'is-issue': item.primary_status !== STATUS_OPERATIONAL }"
     @click="emit('click')"
   >
     <!-- Header: icon + name/model + status chip -->
@@ -85,6 +86,7 @@ import {
   providerGradient,
 } from '@/composables/useChannelMonitorFormat'
 import { isChannelMonitorQuotaVisible } from '@/utils/featureFlags'
+import { STATUS_OPERATIONAL } from '@/constants/channelMonitor'
 import ProviderIcon from './ProviderIcon.vue'
 import MonitorMetricPair from './MonitorMetricPair.vue'
 import MonitorAvailabilityRow from './MonitorAvailabilityRow.vue'
@@ -155,6 +157,34 @@ const extraModelsCountLabel = computed(() => {
   box-shadow: var(--rx-highlight, 0 0 0 transparent), var(--rx-shadow, 0 1px 3px rgba(0, 0, 0, 0.04));
   transition: transform 0.4s var(--rx-spring, ease), box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
   animation: rx-monitor-in 0.6s var(--rx-ease, ease) both;
+}
+
+/* 顶部一抹状态色晕：正常为淡绿，异常为琥珀并缓慢呼吸 */
+.rx-monitor-card::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 60% at 100% 0%, rgba(22, 163, 74, 0.1), transparent 55%);
+}
+
+.rx-monitor-card.is-issue::before {
+  background: radial-gradient(120% 70% at 100% 0%, rgba(217, 119, 6, 0.18), transparent 60%);
+  animation: rx-monitor-alert 3s ease-in-out infinite;
+}
+
+@keyframes rx-monitor-alert {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.rx-monitor-card.is-issue {
+  border-color: rgba(217, 119, 6, 0.28);
+}
+
+.rx-monitor-card > * {
+  position: relative;
 }
 
 .rx-monitor-card:hover {

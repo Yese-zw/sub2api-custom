@@ -341,6 +341,7 @@ export default {
   // Usage
   usage: {
     hero: {
+      filters: 'Filters',
       eyebrow: 'Usage · Insights',
       titleLead: 'Every request,',
       titleAccent: 'in plain sight',
@@ -581,6 +582,11 @@ export default {
   // Channel Status (user-facing read-only view)
   channelStatus: {
     hero: {
+      healthy: 'Healthy',
+      issues: 'Issues',
+      avgAvailability: 'Avg availability · 7d',
+      medianLatency: 'Median latency',
+      window: 'Window',
       eyebrow: 'Channels · Live',
       titleLead: 'Channel health',
       accent: {
@@ -852,6 +858,10 @@ export default {
   // Profile
   profile: {
     hero: {
+      sections: 'Profile sections',
+      secBasics: 'Basics',
+      secSecurity: 'Security & preferences',
+      secLogin: 'Sign-in methods',
       eyebrow: 'Account · Security',
       titleLead: 'Your account and security,',
       titleAccent: 'under control',

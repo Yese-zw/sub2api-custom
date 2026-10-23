@@ -13,11 +13,11 @@
     >
       {{ t('monitorCommon.maintenancePaused') }}
     </div>
-    <div v-else class="flex items-end gap-[2px] h-5 w-full">
+    <div v-else class="monitor-bars flex items-end gap-[2px] h-7 w-full">
       <div
         v-for="(bar, idx) in displayBars"
         :key="idx"
-        class="flex-1 min-w-0 rounded-sm"
+        class="monitor-bar flex-1 min-w-0 rounded-sm"
         :class="bar.colorClass"
         :style="{ height: bar.heightPct + '%' }"
         :title="bar.title"
@@ -113,3 +113,32 @@ const displayBars = computed<Bar[]>(() => {
   return bars
 })
 </script>
+
+<style scoped>
+/* 时间线柱：入场长起，悬浮时单柱抬高、其余淡出 */
+.monitor-bar {
+  transform-origin: bottom;
+  animation: monitor-bar-in 0.5s var(--rx-ease, ease) both;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.monitor-bars:hover .monitor-bar {
+  opacity: 0.45;
+}
+
+.monitor-bars .monitor-bar:hover {
+  opacity: 1;
+  transform: scaleY(1.25);
+}
+
+@keyframes monitor-bar-in {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monitor-bar {
+    animation: none;
+  }
+}
+</style>
