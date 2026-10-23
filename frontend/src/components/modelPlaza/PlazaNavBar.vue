@@ -1,6 +1,6 @@
 <template>
   <header
-    class="glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50"
+    class="rx-theme glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50"
   >
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
       <!-- 左:站点 logo + 名称 -->
@@ -25,14 +25,14 @@
       <RouterLink
         v-if="isAuthenticated"
         :to="backTarget"
-        class="inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary-500/25 transition-all duration-200 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/30 active:scale-[0.98] dark:shadow-primary-500/20"
+        class="inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl plaza-nav-cta px-4 py-2 text-sm font-semibold active:scale-[0.98]"
       >
         {{ t('modelPlaza.nav.backToDashboard') }}
       </RouterLink>
       <RouterLink
         v-else
         :to="{ path: '/login', query: { redirect: '/model-plaza' } }"
-        class="inline-flex flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary-500/25 transition-all duration-200 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/30 active:scale-[0.98] dark:shadow-primary-500/20"
+        class="inline-flex flex-shrink-0 items-center justify-center rounded-xl plaza-nav-cta px-4 py-2 text-sm font-semibold active:scale-[0.98]"
       >
         {{ t('modelPlaza.nav.login') }}
       </RouterLink>
@@ -41,6 +41,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/styles/recharge-glass.css'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sanitizeUrl } from '@/utils/url'
@@ -59,3 +60,18 @@ const siteLogo = computed(() =>
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const backTarget = computed(() => (authStore.isAdmin ? '/admin/dashboard' : '/dashboard'))
 </script>
+
+<style scoped>
+/* 与后台顶栏一致的墨色主按钮 */
+.plaza-nav-cta {
+  border-radius: 9999px;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 8px 20px -10px rgba(17, 17, 15, 0.45);
+  transition: transform 0.35s var(--rx-spring), box-shadow 0.25s ease;
+}
+
+.plaza-nav-cta:hover {
+  transform: translateY(-1px);
+}
+</style>
