@@ -1,8 +1,15 @@
 <template>
   <AppLayout>
+    <RxStage>
+    <RxPageHero
+      :eyebrow="t('profile.hero.eyebrow')"
+      :lead="t('profile.hero.titleLead')"
+      :accent="t('profile.hero.titleAccent')"
+      :subtitle="t('profile.description')"
+    />
     <div
       data-testid="profile-shell"
-      class="mx-auto max-w-[1180px] space-y-6"
+      class="rx-skin-rise space-y-6"
     >
       <ProfileInfoCard
         :user="user"
@@ -13,7 +20,7 @@
         v-if="contactInfo"
         class="card flex items-center gap-4 p-6"
       >
-        <div class="shrink-0 rounded-xl bg-gray-100 p-3 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+        <div class="rx-profile-contact-icon shrink-0 p-3">
           <Icon name="chat" size="lg" />
         </div>
         <div class="min-w-0">
@@ -58,6 +65,7 @@
 
       <ProfilePasskeyCard :enabled="passkeyEnabled" />
     </div>
+    </RxStage>
   </AppLayout>
 </template>
 
@@ -66,6 +74,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import RxStage from '@/components/common/RxStage.vue'
+import RxPageHero from '@/components/common/RxPageHero.vue'
 import ProfileAccountBindingsCard from '@/components/user/profile/ProfileAccountBindingsCard.vue'
 import ProfileAppGroupCard from '@/components/user/profile/ProfileAppGroupCard.vue'
 import ProfileBalanceNotifyCard from '@/components/user/profile/ProfileBalanceNotifyCard.vue'
@@ -131,3 +141,11 @@ onMounted(async () => {
   await Promise.all([profileRefresh, settingsLoad])
 })
 </script>
+
+<style scoped>
+.rx-profile-contact-icon {
+  border-radius: var(--rx-radius-sm);
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+}
+</style>

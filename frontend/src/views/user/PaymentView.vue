@@ -1,15 +1,51 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-[1180px] space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+    <div class="rx-stage mx-auto max-w-[1180px]">
+      <!-- 极光背景层 -->
+      <div class="rx-aurora" aria-hidden="true">
+        <span class="rx-aurora__blob rx-aurora__blob--1"></span>
+        <span class="rx-aurora__blob rx-aurora__blob--2"></span>
+        <span class="rx-aurora__blob rx-aurora__blob--3"></span>
+        <span class="rx-aurora__grid"></span>
+        <span class="rx-aurora__grain"></span>
+      </div>
+
+      <div class="space-y-6 pb-8">
+      <div v-if="loading" class="rx-skeleton" aria-busy="true">
+        <div class="rx-skeleton__hero">
+          <div class="space-y-4">
+            <span class="rx-skeleton__bar w-28"></span>
+            <span class="rx-skeleton__bar h-10 w-3/4"></span>
+            <span class="rx-skeleton__bar w-1/2"></span>
+          </div>
+          <span class="rx-skeleton__card"></span>
+        </div>
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <span class="rx-skeleton__panel h-80"></span>
+          <span class="rx-skeleton__panel h-80"></span>
+        </div>
       </div>
       <template v-else>
+        <!-- 首屏：全息余额卡 -->
+        <RechargeHero
+          v-if="paymentPhase === 'select' && !selectedPlan && tabs.length > 0"
+          :username="user?.username || ''"
+          :user-id="user?.id || 0"
+          :brand="appStore.siteName"
+          :balance="user?.balance || 0"
+          :credit="heroCredit"
+          :step="heroStep"
+          :show-steps="activeTab === 'recharge' && enabledMethods.length > 0"
+        />
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="rx-tabs" role="tablist" :style="tabPillStyle">
+          <span class="rx-tabs__pill" aria-hidden="true"></span>
           <button v-for="tab in tabs" :key="tab.key"
-            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
-            :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === tab.key"
+            class="rx-tabs__tab"
+            :class="{ 'is-active': activeTab === tab.key }"
             @click="activeTab = tab.key">{{ tab.label }}</button>
         </div>
         <!-- Payment in progress (shared by recharge and subscription) -->
@@ -34,34 +70,36 @@
         <!-- Tab content (select phase) -->
         <template v-else>
           <!-- Neither top-up nor subscriptions available (balance recharge disabled via API while subscriptions are off) -->
-          <div v-if="tabs.length === 0" class="card py-16 text-center">
-            <p class="text-gray-500 dark:text-gray-400">{{ t('payment.billingUnavailable') }}</p>
+          <div v-if="tabs.length === 0" class="rx-glass rx-empty">
+            <span class="rx-empty__orb" aria-hidden="true"></span>
+            <p>{{ t('payment.billingUnavailable') }}</p>
           </div>
           <!-- Top-up Tab -->
           <template v-else-if="activeTab === 'recharge'">
-            <div class="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div class="min-w-0">
-                <p class="text-xs font-medium uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
-                <p class="mt-1 truncate text-lg font-semibold text-gray-900 dark:text-white">{{ user?.username || '' }}</p>
-              </div>
-              <div class="rounded-2xl bg-gray-50 px-4 py-3 dark:bg-dark-900/50 sm:min-w-40 sm:text-right">
-                <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.currentBalance') }}</p>
-                <p class="mt-0.5 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">${{ user?.balance?.toFixed(2) || '0.00' }}</p>
-              </div>
+            <div v-if="enabledMethods.length === 0" class="rx-glass rx-empty">
+              <span class="rx-empty__orb" aria-hidden="true"></span>
+              <p>{{ t('payment.notAvailable') }}</p>
+              <p class="rx-empty__meta">{{ t('payment.rechargeAccount') }} · {{ user?.username || '' }}</p>
             </div>
-            <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
-              <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
-            </div>
-            <div v-else class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <div v-else class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
               <div class="min-w-0 space-y-6">
-                <div class="card p-6">
+                <section class="rx-glass rx-panel rx-rise" style="--rx-i: 2">
+                  <header class="rx-section-head">
+                    <span class="rx-section-head__index">01</span>
+                    <h2 class="rx-section-head__title">{{ t('payment.rechargeHero.stepAmount') }}</h2>
+                    <span v-if="amountRangeHint" class="rx-section-head__hint">{{ amountRangeHint }}</span>
+                  </header>
                   <!-- 充值赠送活动文案（后台 Markdown 配置，空则不渲染） -->
-                  <div
-                    v-if="renderedBonusNotice"
-                    class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100 [&_a]:font-medium [&_a]:underline [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc"
-                    data-testid="recharge-bonus-notice"
-                    v-html="renderedBonusNotice"
-                  ></div>
+                  <div v-if="renderedBonusNotice" class="rx-notice">
+                    <span class="rx-notice__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4L12 3zM18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1z" fill="currentColor" /></svg>
+                    </span>
+                    <div
+                      class="rx-notice__body [&_a]:font-medium [&_a]:underline [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc"
+                      data-testid="recharge-bonus-notice"
+                      v-html="renderedBonusNotice"
+                    ></div>
+                  </div>
                   <AmountInput
                     v-model="amount"
                     :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
@@ -72,56 +110,102 @@
                     :multiplier="balanceRechargeMultiplier"
                     :currency="selectedCurrency"
                   />
-                  <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
-                </div>
-                <div v-if="enabledMethods.length >= 1" class="card p-6">
+                  <Transition name="rx-fade">
+                    <p v-if="amountError" class="rx-error">
+                      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 6.5v4m0 3h.01M8.6 3.2L2.3 14.1A1.6 1.6 0 003.7 16.5h12.6a1.6 1.6 0 001.4-2.4L11.4 3.2a1.6 1.6 0 00-2.8 0z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                      {{ amountError }}
+                    </p>
+                  </Transition>
+                </section>
+                <section v-if="enabledMethods.length >= 1" class="rx-glass rx-panel rx-rise" style="--rx-i: 3">
+                  <header class="rx-section-head">
+                    <span class="rx-section-head__index">02</span>
+                    <h2 class="rx-section-head__title">{{ t('payment.paymentMethod') }}</h2>
+                  </header>
                   <PaymentMethodSelector
                     :methods="methodOptions"
                     :selected="selectedMethod"
                     @select="selectedMethod = $event"
                   />
-                </div>
+                </section>
               </div>
               <aside class="lg:sticky lg:top-6">
-                <div class="card overflow-hidden">
-                  <div v-if="validAmount > 0" class="space-y-2 p-6 text-sm">
-                    <div class="flex justify-between gap-3">
-                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
-                      <span :class="discountAmount > 0 ? 'text-gray-400 line-through dark:text-gray-500' : 'font-medium text-gray-900 dark:text-white'">{{ formatSelectedPaymentAmount(validAmount) }}</span>
+                <div class="rx-glass rx-receipt rx-rise" style="--rx-i: 4">
+                  <header class="rx-receipt__head">
+                    <span class="rx-section-head__index">03</span>
+                    <div class="min-w-0 flex-1">
+                      <p class="rx-receipt__eyebrow">{{ t('payment.rechargeAccount') }}</p>
+                      <p class="rx-receipt__account">{{ user?.username || '' }}</p>
                     </div>
-                    <div v-if="discountAmount > 0" class="flex justify-between gap-3" data-testid="recharge-discount-row">
-                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.discountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
-                      <span class="font-medium text-red-600 dark:text-red-400">-{{ formatSelectedPaymentAmount(discountAmount) }}</span>
+                  </header>
+
+                  <!-- 能量舱：液面高度随到账金额（对数）上涨 -->
+                  <div class="rx-meter" :class="{ 'is-empty': validAmount <= 0 }" :style="{ '--rx-fill': meterFill }">
+                    <div class="rx-meter__liquid" aria-hidden="true">
+                      <svg class="rx-meter__wave rx-meter__wave--back" viewBox="0 0 120 12" preserveAspectRatio="none"><path d="M0 6 Q15 0 30 6 T60 6 T90 6 T120 6 V12 H0z" /></svg>
+                      <svg class="rx-meter__wave rx-meter__wave--front" viewBox="0 0 120 12" preserveAspectRatio="none"><path d="M0 6 Q15 12 30 6 T60 6 T90 6 T120 6 V12 H0z" /></svg>
+                      <span class="rx-meter__bubble" style="--b: 0"></span>
+                      <span class="rx-meter__bubble" style="--b: 1"></span>
+                      <span class="rx-meter__bubble" style="--b: 2"></span>
                     </div>
-                    <div v-if="feeRate > 0" class="flex justify-between gap-3">
-                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
-                      <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
+                    <div class="rx-meter__readout">
+                      <template v-if="validAmount > 0">
+                        <span class="rx-meter__label">{{ t('payment.creditedBalance') }}</span>
+                        <span class="rx-meter__value">+${{ creditedTweenText }}</span>
+                      </template>
+                      <span v-else class="rx-meter__hint">{{ t('payment.rechargeHero.emptyHint') }}</span>
                     </div>
-                    <div v-if="showActualPay" class="flex justify-between gap-3 border-t border-gray-200 pt-2 dark:border-dark-600">
-                      <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
-                      <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                  </div>
+
+                  <div v-if="validAmount > 0" class="rx-receipt__rows">
+                    <div class="rx-row">
+                      <span>{{ t('payment.paymentAmount') }}</span>
+                      <span :class="discountAmount > 0 ? 'rx-row__strike' : 'rx-row__strong'">{{ formatSelectedPaymentAmount(validAmount) }}</span>
                     </div>
-                    <div v-if="showBonusRow" class="flex justify-between gap-3" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay }" data-testid="recharge-bonus-row">
-                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.amountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
-                      <span class="font-medium text-red-600 dark:text-red-400">+${{ bonusQuote.bonus.toFixed(2) }}</span>
+                    <div v-if="discountAmount > 0" class="rx-row" data-testid="recharge-discount-row">
+                      <span>{{ t('payment.rechargeBonus.discountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
+                      <span class="rx-row__hot">-{{ formatSelectedPaymentAmount(discountAmount) }}</span>
                     </div>
-                    <div v-if="showCreditedBalance" class="flex justify-between gap-3" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay && !showBonusRow }" data-testid="recharge-credited-row">
-                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
-                      <span :class="bonusQuote.percent > 0 ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'">${{ creditedAmount.toFixed(2) }}</span>
+                    <div v-if="feeRate > 0" class="rx-row">
+                      <span>{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                      <span class="rx-row__strong">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
                     </div>
-                    <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
+                    <div v-if="showBonusRow" class="rx-row" data-testid="recharge-bonus-row">
+                      <span>{{ t('payment.rechargeBonus.amountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
+                      <span class="rx-row__hot">+${{ bonusQuote.bonus.toFixed(2) }}</span>
+                    </div>
+                    <div v-if="showCreditedBalance" class="rx-row" data-testid="recharge-credited-row">
+                      <span>{{ t('payment.creditedBalance') }}</span>
+                      <span class="rx-row__strong">${{ creditedAmount.toFixed(2) }}</span>
+                    </div>
+                    <div v-if="showActualPay" class="rx-row rx-row--total">
+                      <span>{{ t('payment.actualPay') }}</span>
+                      <span class="rx-row__total">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                    </div>
+                    <p v-if="balanceRechargeMultiplier !== 1" class="rx-receipt__note">
                       {{ t('payment.rechargeRatePreview', { currency: selectedCurrency, usd: balanceRechargeMultiplier.toFixed(2) }) }}
                     </p>
                   </div>
-                  <div :class="validAmount > 0 ? 'border-t border-gray-100 p-6 dark:border-dark-700' : 'p-6'">
-                    <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
-                      <span v-if="submitting" class="flex items-center justify-center gap-2">
-                        <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                        {{ t('common.processing') }}
-                      </span>
-                      <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}</span>
-                    </button>
-                  </div>
+
+                  <div class="rx-receipt__perf" aria-hidden="true"></div>
+
+                  <button
+                    type="button"
+                    class="rx-cta"
+                    :style="{ '--rx-brand': paymentBrandColor }"
+                    :disabled="!canSubmit || submitting"
+                    @click="handleSubmitRecharge"
+                  >
+                    <span class="rx-cta__shine" aria-hidden="true"></span>
+                    <span v-if="submitting" class="rx-cta__content">
+                      <span class="rx-cta__spinner" aria-hidden="true"></span>
+                      {{ t('common.processing') }}
+                    </span>
+                    <span v-else class="rx-cta__content">
+                      {{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}
+                      <svg class="rx-cta__arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m0 0l-4.5-4.5M15 10l-4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                    </span>
+                  </button>
                 </div>
               </aside>
             </div>
@@ -132,7 +216,7 @@
             <template v-if="selectedPlan">
               <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
                 <div class="min-w-0 space-y-6">
-                  <div class="card p-6">
+                  <div class="rx-glass rx-panel rx-rise">
                     <div class="mb-3 flex flex-wrap items-center gap-2">
                       <span :class="['rounded-md border px-2 py-0.5 text-xs font-medium', planBadgeClass]">
                         {{ platformLabel(selectedPlan.group_platform || '') }}
@@ -150,37 +234,41 @@
                       {{ selectedPlan.description }}
                     </p>
                     <div class="mt-4 grid grid-cols-2 gap-3">
-                      <div class="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-dark-900/40">
+                      <div class="rx-chip">
                         <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.rate') }}</span>
                         <div class="flex items-baseline">
                           <span :class="['text-lg font-bold', planTextClass]">×{{ selectedPlan.rate_multiplier ?? 1 }}</span>
                         </div>
                       </div>
-                      <div v-if="planHasPeakRate(selectedPlan)" class="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-dark-900/40">
+                      <div v-if="planHasPeakRate(selectedPlan)" class="rx-chip">
                         <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.peakRate') }}</span>
                         <div class="text-sm font-semibold text-amber-700 dark:text-amber-300">
                           {{ planPeakRateLabel(selectedPlan) }}
                         </div>
                       </div>
-                      <div v-if="selectedPlan.daily_limit_usd != null" class="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-dark-900/40">
+                      <div v-if="selectedPlan.daily_limit_usd != null" class="rx-chip">
                         <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.dailyLimit') }}</span>
                         <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.daily_limit_usd }}</div>
                       </div>
-                      <div v-if="selectedPlan.weekly_limit_usd != null" class="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-dark-900/40">
+                      <div v-if="selectedPlan.weekly_limit_usd != null" class="rx-chip">
                         <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.weeklyLimit') }}</span>
                         <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.weekly_limit_usd }}</div>
                       </div>
-                      <div v-if="selectedPlan.monthly_limit_usd != null" class="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-dark-900/40">
+                      <div v-if="selectedPlan.monthly_limit_usd != null" class="rx-chip">
                         <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.monthlyLimit') }}</span>
                         <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.monthly_limit_usd }}</div>
                       </div>
-                      <div v-if="selectedPlan.daily_limit_usd == null && selectedPlan.weekly_limit_usd == null && selectedPlan.monthly_limit_usd == null" class="rounded-2xl bg-gray-50 px-3 py-2 dark:bg-dark-900/40">
+                      <div v-if="selectedPlan.daily_limit_usd == null && selectedPlan.weekly_limit_usd == null && selectedPlan.monthly_limit_usd == null" class="rx-chip">
                         <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.quota') }}</span>
                         <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t('payment.planCard.unlimited') }}</div>
                       </div>
                     </div>
                   </div>
-                  <div v-if="enabledMethods.length >= 1" class="card p-6">
+                  <div v-if="enabledMethods.length >= 1" class="rx-glass rx-panel rx-rise" style="--rx-i: 1">
+                    <header class="rx-section-head">
+                      <span class="rx-section-head__index">02</span>
+                      <h2 class="rx-section-head__title">{{ t('payment.paymentMethod') }}</h2>
+                    </header>
                     <PaymentMethodSelector
                       :methods="subMethodOptions"
                       :selected="selectedMethod"
@@ -189,30 +277,32 @@
                   </div>
                 </div>
                 <aside class="lg:sticky lg:top-6">
-                  <div class="card overflow-hidden">
-                    <div v-if="feeRate > 0 && selectedPlan.price > 0" class="space-y-2 p-6 text-sm">
-                      <div class="flex justify-between gap-3">
-                        <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
-                        <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subPaymentAmount) }}</span>
+                  <div class="rx-glass rx-receipt rx-rise" style="--rx-i: 2">
+                    <div v-if="feeRate > 0 && selectedPlan.price > 0" class="rx-receipt__rows">
+                      <div class="rx-row">
+                        <span>{{ t('payment.amountLabel') }}</span>
+                        <span class="rx-row__strong">{{ formatSelectedPaymentAmount(subPaymentAmount) }}</span>
                       </div>
-                      <div class="flex justify-between gap-3">
-                        <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
-                        <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subFeeAmount) }}</span>
+                      <div class="rx-row">
+                        <span>{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                        <span class="rx-row__strong">{{ formatSelectedPaymentAmount(subFeeAmount) }}</span>
                       </div>
-                      <div class="flex justify-between gap-3 border-t border-gray-200 pt-2 dark:border-dark-600">
-                        <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
-                        <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
+                      <div class="rx-row rx-row--total">
+                        <span>{{ t('payment.actualPay') }}</span>
+                        <span class="rx-row__total">{{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
                       </div>
                     </div>
-                    <div :class="feeRate > 0 && selectedPlan.price > 0 ? 'space-y-3 border-t border-gray-100 p-6 dark:border-dark-700' : 'space-y-3 p-6'">
-                      <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
-                        <span v-if="submitting" class="flex items-center justify-center gap-2">
-                          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    <div v-if="feeRate > 0 && selectedPlan.price > 0" class="rx-receipt__perf" aria-hidden="true"></div>
+                    <div class="space-y-3">
+                      <button type="button" class="rx-cta" :style="{ '--rx-brand': paymentBrandColor }" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
+                        <span class="rx-cta__shine" aria-hidden="true"></span>
+                        <span v-if="submitting" class="rx-cta__content">
+                          <span class="rx-cta__spinner" aria-hidden="true"></span>
                           {{ t('common.processing') }}
                         </span>
-                        <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
+                        <span v-else class="rx-cta__content">{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
                       </button>
-                      <button class="btn btn-secondary w-full" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
+                      <button type="button" class="rx-ghost" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
                     </div>
                   </div>
                 </aside>
@@ -220,9 +310,9 @@
             </template>
             <!-- Plan list -->
             <template v-else>
-              <div v-if="checkout.plans.length === 0" class="card py-16 text-center">
+              <div v-if="checkout.plans.length === 0" class="rx-glass rx-empty">
                 <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
-                <p class="text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
+                <p>{{ t('payment.noPlans') }}</p>
               </div>
               <div v-else :class="planGridClass">
                 <SubscriptionPlanCard v-for="plan in checkout.plans" :key="plan.id" :plan="plan" :active-subscriptions="activeSubscriptions" @select="selectPlan" />
@@ -232,7 +322,7 @@
                 <p class="mb-2 text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.activeSubscription') }}</p>
                 <div class="space-y-2">
                   <div v-for="sub in activeSubscriptions" :key="sub.id"
-                    class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2 dark:border-dark-700 dark:bg-dark-800">
+                    class="rx-glass flex items-center gap-3 !rounded-2xl px-3 py-2">
                     <div :class="['h-6 w-1 shrink-0 rounded-full', platformAccentBarClass(sub.group?.platform || '')]" />
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-1.5">
@@ -254,7 +344,7 @@
             </template>
           </template>
         </template>
-        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
+        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="rx-glass rx-panel rx-help">
           <div class="flex flex-col items-center gap-3">
             <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
               class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
@@ -263,6 +353,7 @@
           </div>
         </div>
       </template>
+      </div>
     </div>
     <!-- Renewal Plan Selection Modal -->
     <Teleport to="body">
@@ -298,6 +389,7 @@ import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import '@/styles/announcement-markdown.css'
+import '@/styles/recharge-glass.css'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePaymentStore } from '@/stores/payment'
@@ -312,6 +404,8 @@ import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderTy
 import { formatRechargeBonusNumber, normalizeRechargeBonusMode, normalizeRechargeBonusTiers, quoteRechargeBonus } from '@/utils/rechargeBonus'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AmountInput from '@/components/payment/AmountInput.vue'
+import RechargeHero from '@/components/payment/RechargeHero.vue'
+import { useTweenedNumber } from '@/composables/useTweenedNumber'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
 import { METHOD_ORDER, getPaymentPopupFeatures, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import {
@@ -783,15 +877,52 @@ watch(() => [payBaseAmount.value, selectedMethod.value] as const, ([amt, method]
   if (available) selectedMethod.value = available
 })
 
-// Payment button class: follows selected payment method color
-const paymentButtonClass = computed(() => {
+// CTA 品牌色：跟随所选支付方式
+const paymentBrandColor = computed(() => {
   const m = selectedMethod.value
-  if (!m) return 'btn-primary'
-  if (isBuiltInAlipayMethod(m)) return 'btn-alipay'
-  if (isBuiltInWxpayMethod(m)) return 'btn-wxpay'
-  if (m === 'stripe') return 'btn-stripe'
-  if (m === 'airwallex') return 'btn-airwallex'
-  return 'btn-primary'
+  if (!m) return '#14b8a6'
+  if (isBuiltInAlipayMethod(m)) return '#00AEEF'
+  if (isBuiltInWxpayMethod(m)) return '#2BB741'
+  if (m === 'stripe') return '#635bff'
+  if (m === 'airwallex') return '#FF6B3D'
+  return '#14b8a6'
+})
+
+// ---------- 首屏与能量舱的派生状态 ----------
+const amountReady = computed(() => validAmount.value > 0 && !amountError.value)
+// 首屏卡片「充值后」预览：仅在充值 tab 且金额有效时出现
+const heroCredit = computed(() => (activeTab.value === 'recharge' && amountReady.value ? creditedAmount.value : 0))
+const heroStep = computed(() => {
+  if (submitting.value) return 3
+  if (!amountReady.value) return 0
+  if (!selectedMethod.value || !canSubmit.value) return 1
+  return 2
+})
+
+const creditedTween = useTweenedNumber(creditedAmount, 600)
+const creditedTweenText = computed(() => creditedTween.value.toFixed(2))
+
+// 液面高度按对数映射，小额也能看到明显变化；上限取渠道最大额或最大快捷金额
+const meterFill = computed(() => {
+  if (validAmount.value <= 0) return '0.06'
+  const ceiling = globalMaxAmount.value > 0 ? globalMaxAmount.value : 5000
+  const ratio = Math.log1p(validAmount.value) / Math.log1p(ceiling)
+  return Math.min(0.94, Math.max(0.16, ratio)).toFixed(3)
+})
+
+const amountRangeHint = computed(() => {
+  const min = globalMinAmount.value
+  const max = globalMaxAmount.value
+  if (min > 0 && max > 0) return `${formatSelectedPaymentAmount(min)} – ${formatSelectedPaymentAmount(max)}`
+  if (min > 0) return `≥ ${formatSelectedPaymentAmount(min)}`
+  if (max > 0) return `≤ ${formatSelectedPaymentAmount(max)}`
+  return ''
+})
+
+const tabPillStyle = computed(() => {
+  const count = Math.max(1, tabs.value.length)
+  const index = Math.max(0, tabs.value.findIndex(tab => tab.key === activeTab.value))
+  return { '--rx-tab-count': String(count), '--rx-tab-index': String(index) }
 })
 
 // Subscription confirm: platform accent colors (clean card, no gradient)
@@ -1238,3 +1369,582 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+/* ---------- 加载骨架 ---------- */
+.rx-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-top: 1.5rem;
+}
+
+.rx-skeleton__hero {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .rx-skeleton__hero {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    padding: 1rem 0.5rem;
+  }
+}
+
+.rx-skeleton__bar,
+.rx-skeleton__card,
+.rx-skeleton__panel {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--rx-radius-sm);
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line-soft);
+}
+
+.rx-skeleton__bar {
+  height: 0.9rem;
+}
+
+.rx-skeleton__card {
+  aspect-ratio: 1.586;
+  border-radius: var(--rx-radius-lg);
+}
+
+.rx-skeleton__panel {
+  border-radius: var(--rx-radius-lg);
+}
+
+.rx-skeleton__bar::after,
+.rx-skeleton__card::after,
+.rx-skeleton__panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, var(--rx-surface-hover) 50%, transparent 80%);
+  opacity: 0.7;
+  transform: translateX(-100%);
+  animation: rx-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes rx-shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* ---------- Tab 切换：滑动墨色胶囊（同侧边栏激活项） ---------- */
+.rx-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--rx-tab-count), minmax(0, 1fr));
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.3rem;
+  border-radius: 9999px;
+  background: var(--rx-surface);
+  border: 1px solid var(--rx-line);
+  -webkit-backdrop-filter: var(--rx-blur);
+  backdrop-filter: var(--rx-blur);
+  box-shadow: var(--rx-highlight), var(--rx-shadow);
+}
+
+html.pixel-ui .rx-tabs,
+html.pixel-ui .rx-tabs__pill,
+html.pixel-ui .rx-tabs__tab {
+  border-radius: var(--rx-radius-sm);
+}
+
+.rx-tabs__pill {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 0.3rem;
+  width: calc((100% - 0.6rem) / var(--rx-tab-count));
+  border-radius: 9999px;
+  background: var(--rx-accent);
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 6px 18px rgba(17, 17, 15, 0.1);
+  transform: translateX(calc(var(--rx-tab-index) * 100%));
+  transition: transform 0.55s var(--rx-spring);
+}
+
+.rx-tabs__tab {
+  position: relative;
+  z-index: 1;
+  padding: 0.55rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--rx-muted);
+  transition: color 0.35s ease;
+}
+
+.rx-tabs__tab:hover {
+  color: var(--rx-ink);
+}
+
+.rx-tabs__tab.is-active {
+  font-weight: 700;
+  color: var(--rx-on-accent);
+}
+
+.rx-tabs__tab:focus-visible {
+  outline: 2px solid var(--rx-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 面板 ---------- */
+.rx-panel {
+  padding: 1.4rem;
+}
+
+@media (min-width: 640px) {
+  .rx-panel {
+    padding: 1.75rem;
+  }
+}
+
+.rx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  color: var(--rx-muted);
+}
+
+.rx-empty__orb {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--rx-line-strong);
+  background: radial-gradient(circle at 32% 30%, var(--rx-surface-hover), var(--rx-surface-2) 60%);
+  box-shadow: var(--rx-shadow);
+  animation: rx-orb 6s ease-in-out infinite;
+}
+
+@keyframes rx-orb {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.rx-empty__meta {
+  font-size: 0.78rem;
+  color: var(--rx-faint);
+}
+
+/* 活动文案：与主题强调色同调的浅色便签 */
+.rx-notice {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--rx-radius-md);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--rx-tint-ink);
+  background: var(--rx-tint);
+  border: 1px solid var(--rx-line-soft);
+}
+
+.rx-notice__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: var(--rx-radius-sm);
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+}
+
+.rx-notice__icon svg {
+  width: 1rem;
+  height: 1rem;
+  animation: rx-twinkle 2.6s ease-in-out infinite;
+}
+
+@keyframes rx-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(0.86) rotate(12deg); }
+}
+
+.rx-notice__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.rx-error {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--rx-warn);
+}
+
+.rx-error svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* ---------- 订单小票 ---------- */
+.rx-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.4rem;
+}
+
+.rx-receipt__head {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.rx-receipt__eyebrow {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+.rx-receipt__account {
+  overflow: hidden;
+  margin-top: 0.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rx-ink);
+}
+
+.rx-receipt__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.rx-receipt__note {
+  padding-top: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--rx-faint);
+  border-top: 1px dashed var(--rx-line-strong);
+}
+
+.rx-receipt__perf {
+  height: 1px;
+  margin: 0 -0.25rem;
+  background-image: linear-gradient(90deg, var(--rx-line-strong) 50%, transparent 50%);
+  background-size: 8px 1px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+.rx-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--rx-muted);
+  font-variant-numeric: tabular-nums;
+  animation: rx-row-in 0.45s var(--rx-ease) both;
+}
+
+@keyframes rx-row-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rx-row__strong {
+  font-weight: 650;
+  color: var(--rx-ink);
+}
+
+.rx-row__strike {
+  color: var(--rx-faint);
+  text-decoration: line-through;
+}
+
+.rx-row__hot {
+  font-weight: 700;
+  color: var(--rx-hot);
+}
+
+.rx-row--total {
+  margin-top: 0.2rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--rx-line);
+  color: var(--rx-ink-2);
+  font-weight: 650;
+}
+
+.rx-row__total {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--rx-ink);
+}
+
+/* ---------- 能量舱 ---------- */
+.rx-meter {
+  --rx-fill: 0.06;
+  position: relative;
+  height: 8.5rem;
+  overflow: hidden;
+  border-radius: var(--rx-radius-md);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 calc(25% - 1px), var(--rx-line-soft) calc(25% - 1px) 25%),
+    var(--rx-surface-2);
+  border: 1px solid var(--rx-line);
+  box-shadow: inset 0 2px 10px rgba(17, 17, 15, 0.04);
+}
+
+.rx-meter__liquid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--rx-fill) * 100%);
+  background: var(--rx-liquid);
+  transition: height 1.1s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.rx-meter.is-empty .rx-meter__liquid {
+  background: var(--rx-line-soft);
+}
+
+.rx-meter__wave {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% - 1px);
+  width: 200%;
+  height: 10px;
+}
+
+.rx-meter__wave path {
+  fill: var(--rx-liquid-top);
+}
+
+.rx-meter.is-empty .rx-meter__wave path {
+  fill: var(--rx-line-soft);
+}
+
+.rx-meter__wave--back {
+  opacity: 0.5;
+  animation: rx-wave 6s linear infinite reverse;
+}
+
+.rx-meter__wave--front {
+  animation: rx-wave 3.6s linear infinite;
+}
+
+@keyframes rx-wave {
+  to { transform: translateX(-50%); }
+}
+
+.rx-meter__bubble {
+  position: absolute;
+  bottom: 0;
+  left: calc(20% + var(--b) * 28%);
+  width: calc(4px + var(--b) * 2px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  border: 1px solid var(--rx-surface-hover);
+  opacity: 0;
+  animation: rx-bubble calc(3.2s + var(--b) * 0.9s) ease-in infinite;
+  animation-delay: calc(var(--b) * 0.8s);
+}
+
+.rx-meter.is-empty .rx-meter__bubble {
+  display: none;
+}
+
+@keyframes rx-bubble {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translateY(-6rem); opacity: 0; }
+}
+
+.rx-meter__readout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.rx-meter__label {
+  padding: 0.12rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rx-muted);
+  background: var(--rx-surface-hover);
+  border: 1px solid var(--rx-line-soft);
+}
+
+.rx-meter__value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--rx-ink);
+}
+
+.rx-meter__hint {
+  max-width: 13rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--rx-faint);
+}
+
+/* ---------- 主按钮：墨色实底（同侧边栏激活项），左侧圆点提示所选渠道 ---------- */
+.rx-cta {
+  --rx-brand: #14b8a6;
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 3.3rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--rx-radius-md);
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 10px 24px -10px rgba(17, 17, 15, 0.35);
+  transition: transform 0.4s var(--rx-spring), box-shadow 0.4s ease, opacity 0.3s ease;
+}
+
+.rx-cta:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(17, 17, 15, 0.14), 0 16px 32px -12px rgba(17, 17, 15, 0.45);
+}
+
+.rx-cta:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.rx-cta:focus-visible {
+  outline: 2px solid var(--rx-accent);
+  outline-offset: 3px;
+}
+
+.rx-cta:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+  box-shadow: none;
+}
+
+.rx-cta__content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rx-cta__content::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background: var(--rx-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rx-brand) 25%, transparent);
+}
+
+.rx-cta__arrow {
+  width: 1.05rem;
+  height: 1.05rem;
+  transition: transform 0.4s var(--rx-spring);
+}
+
+.rx-cta:not(:disabled):hover .rx-cta__arrow {
+  transform: translateX(4px);
+}
+
+.rx-cta__shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+
+html.dark .rx-cta__shine {
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+}
+
+.rx-cta:not(:disabled) .rx-cta__shine {
+  animation: rx-sweep 4.5s ease-in-out infinite 1.2s;
+}
+
+@keyframes rx-sweep {
+  0%, 65% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+.rx-cta__spinner {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  border: 2px solid color-mix(in srgb, var(--rx-on-accent) 35%, transparent);
+  border-top-color: var(--rx-on-accent);
+  animation: rx-spin-cta 0.8s linear infinite;
+}
+
+@keyframes rx-spin-cta {
+  to { transform: rotate(360deg); }
+}
+
+.rx-ghost {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--rx-radius-md);
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--rx-muted);
+  border: 1px solid var(--rx-line-strong);
+  transition: color 0.3s ease, background 0.3s ease;
+}
+
+.rx-ghost:hover {
+  color: var(--rx-ink);
+  background: var(--rx-surface-2);
+}
+
+/* ---------- 订阅确认指标 ---------- */
+.rx-chip {
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--rx-radius-sm);
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line-soft);
+}
+
+.rx-help {
+  padding: 1.25rem;
+}
+
+.rx-fade-enter-active,
+.rx-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.rx-fade-enter-from,
+.rx-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>

@@ -1,5 +1,6 @@
 <template>
   <AppLayout>
+    <RxStage wide bare>
     <div class="space-y-6 pb-12">
       <!-- Ops-style elevated shell: title toolbar + filters (mirrors OpsDashboardHeader) -->
       <section
@@ -8,7 +9,7 @@
         <header class="page-header mb-0 flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-dark-700 sm:px-6">
           <div class="min-w-0">
             <h1 class="page-title flex items-center gap-2 text-xl font-black text-gray-900 dark:text-white">
-              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">
+              <span class="rx-v2-icon inline-flex h-8 w-8 items-center justify-center">
                 <Icon name="chart" size="sm" />
               </span>
               {{ t('channelMonitorV2.title') }}
@@ -454,10 +455,12 @@
         </div>
       </section>
     </div>
+    </RxStage>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import RxStage from '@/components/common/RxStage.vue'
 import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -932,6 +935,17 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.rx-v2-icon {
+  border-radius: var(--rx-radius-sm);
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+}
+
+/* 吸顶工具栏需要更实的底色，避免滚动内容透出 */
+html .rx-stage .card.card.sticky {
+  background: var(--rx-surface-hover) !important;
+}
+
 .status-dot {
   display: inline-block;
   height: 0.5rem;

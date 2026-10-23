@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="group text-left p-5 rounded-2xl min-h-[280px] w-full bg-white/70 backdrop-blur-xl border border-gray-200/80 shadow-card dark:bg-dark-800/60 dark:border-dark-700/70 hover:-translate-y-1 hover:shadow-card-hover dark:hover:border-primary-500/30 hover:border-gray-300 transition-all duration-300 ease-out flex flex-col"
+    class="rx-monitor-card group text-left p-5 min-h-[280px] w-full flex flex-col"
     @click="emit('click')"
   >
     <!-- Header: icon + name/model + status chip -->
@@ -144,3 +144,39 @@ const extraModelsCountLabel = computed(() => {
   return t('monitorCommon.extraModelsCount', { n: count })
 })
 </script>
+
+<style scoped>
+/* 玻璃卡：在充值风舞台内取主题令牌，独立使用时回落到原白卡配色 */
+.rx-monitor-card {
+  position: relative;
+  border-radius: var(--rx-radius-lg, 1rem);
+  background: var(--rx-surface, rgba(255, 255, 255, 0.7));
+  border: 1px solid var(--rx-line, rgba(229, 231, 235, 0.8));
+  box-shadow: var(--rx-highlight, 0 0 0 transparent), var(--rx-shadow, 0 1px 3px rgba(0, 0, 0, 0.04));
+  transition: transform 0.4s var(--rx-spring, ease), box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+  animation: rx-monitor-in 0.6s var(--rx-ease, ease) both;
+}
+
+.rx-monitor-card:hover {
+  transform: translateY(-3px);
+  background: var(--rx-surface-hover, #fff);
+  border-color: var(--rx-line-strong, #d1d5db);
+  box-shadow: var(--rx-shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.08));
+}
+
+.rx-monitor-card:focus-visible {
+  outline: 2px solid var(--rx-accent, #14b8a6);
+  outline-offset: 3px;
+}
+
+@keyframes rx-monitor-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rx-monitor-card {
+    animation: none;
+  }
+}
+</style>

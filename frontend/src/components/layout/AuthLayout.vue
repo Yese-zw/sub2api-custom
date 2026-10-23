@@ -1,6 +1,14 @@
 <template>
-  <div class="auth-shell relative min-h-screen overflow-hidden">
+  <div class="auth-shell rx-stage relative min-h-screen overflow-hidden">
     <div class="auth-grid absolute inset-0"></div>
+    <!-- 与充值页同源的羽化背景层：缓慢漂移的柔光 + 细网格 -->
+    <div class="rx-aurora auth-aurora" aria-hidden="true">
+      <span class="rx-aurora__blob rx-aurora__blob--1"></span>
+      <span class="rx-aurora__blob rx-aurora__blob--2"></span>
+      <span class="rx-aurora__blob rx-aurora__blob--3"></span>
+      <span class="rx-aurora__grid"></span>
+      <span class="rx-aurora__grain"></span>
+    </div>
     <div class="auth-scanline pointer-events-none absolute inset-x-0 top-0"></div>
 
     <!-- 单一卡片：左侧介绍 + 右侧表单，高度固定不随登录/注册切换跳动 -->
@@ -8,8 +16,14 @@
       <div class="auth-card">
         <div class="auth-card-grid">
           <!-- 左：系统介绍 -->
-          <aside class="auth-intro">
+          <aside
+            ref="introRef"
+            class="auth-intro"
+            @pointermove="onIntroPointer"
+            @pointerleave="onIntroLeave"
+          >
             <div class="auth-intro-glow" aria-hidden="true"></div>
+            <div class="auth-intro-spot" aria-hidden="true"></div>
             <div class="auth-intro-rule" aria-hidden="true"></div>
 
             <div class="auth-intro-inner">
@@ -21,7 +35,12 @@
               <h2 class="auth-headline">{{ t('auth.brandPanel.headline') }}</h2>
               <p class="auth-lede">{{ t('auth.brandPanel.lede') }}</p>
 
-              <span class="auth-hairline" aria-hidden="true"></span>
+              <!-- 流量脉冲：一道沿曲线流动的光，隐喻请求经由网关转发 -->
+              <svg class="auth-signal" viewBox="0 0 320 36" preserveAspectRatio="none" aria-hidden="true">
+                <path class="auth-signal__base" d="M0 18 C40 18 40 5 80 5 S120 31 160 31 S200 5 240 5 S280 18 320 18" />
+                <path class="auth-signal__pulse" d="M0 18 C40 18 40 5 80 5 S120 31 160 31 S200 5 240 5 S280 18 320 18" />
+                <path class="auth-signal__pulse auth-signal__pulse--late" d="M0 18 C40 18 40 5 80 5 S120 31 160 31 S200 5 240 5 S280 18 320 18" />
+              </svg>
 
               <ul class="auth-features">
                 <li
@@ -59,9 +78,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
+import '@/styles/recharge-glass.css'
 
 const { t } = useI18n()
 
@@ -81,6 +101,22 @@ const brandFeatures = computed(() => [
     desc: t('auth.brandPanel.features.stable.desc'),
   },
 ])
+
+// 左侧面板的指针聚光：写入 CSS 变量，不触发组件重渲染
+const introRef = ref<HTMLElement | null>(null)
+
+function onIntroPointer(e: PointerEvent) {
+  const el = introRef.value
+  if (!el || e.pointerType === 'touch') return
+  const rect = el.getBoundingClientRect()
+  el.style.setProperty('--spot-x', `${e.clientX - rect.left}px`)
+  el.style.setProperty('--spot-y', `${e.clientY - rect.top}px`)
+  el.style.setProperty('--spot-o', '1')
+}
+
+function onIntroLeave() {
+  introRef.value?.style.setProperty('--spot-o', '0')
+}
 
 onMounted(() => {
   appStore.fetchPublicSettings()
@@ -124,7 +160,10 @@ html.pixel-ui .auth-intro {
 }
 html.pixel-ui .auth-intro-glow,
 html.pixel-ui .auth-intro-rule,
+html.pixel-ui .auth-intro-spot,
 html.pixel-ui .auth-hairline { display: none; }
+html.pixel-ui .auth-signal__base { stroke: var(--pixel-line); }
+html.pixel-ui .auth-signal__pulse { stroke: var(--pixel-cyan); }
 html.pixel-ui .auth-form-pane { background: var(--pixel-surface); }
 html.pixel-ui .auth-eyebrow { color: var(--pixel-cyan); }
 html.pixel-ui .auth-eyebrow-dot { background: var(--pixel-cyan); box-shadow: 0 0 0 4px var(--pixel-glow-soft); }
@@ -405,6 +444,80 @@ html:not(.pixel-ui):not(.editorial-ui) .auth-form-pane { background: transparent
   font-size: 0.875rem;
 }
 
+/* ---------- 背景层与面板动效 ---------- */
+.auth-aurora {
+  z-index: 1;
+  inset: 0;
+}
+
+.auth-intro-spot {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(320px circle at var(--spot-x, 50%) var(--spot-y, 30%), rgba(255, 255, 255, 0.09), transparent 65%);
+  opacity: var(--spot-o, 0);
+  transition: opacity 0.4s ease;
+}
+
+.auth-signal {
+  display: block;
+  width: 100%;
+  max-width: 17rem;
+  height: 1.6rem;
+  margin: 0.2rem 0;
+  overflow: visible;
+}
+
+.auth-signal path {
+  fill: none;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.auth-signal__base {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.auth-signal__pulse {
+  stroke: rgba(216, 227, 243, 0.85);
+  stroke-width: 1.8;
+  stroke-dasharray: 46 420;
+  stroke-dashoffset: 46;
+  filter: drop-shadow(0 0 4px rgba(216, 227, 243, 0.6));
+  animation: auth-pulse 3.2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+.auth-signal__pulse--late {
+  stroke-dasharray: 18 450;
+  opacity: 0.6;
+  animation-delay: 1.4s;
+}
+
+@keyframes auth-pulse {
+  from { stroke-dashoffset: 46; }
+  to { stroke-dashoffset: -420; }
+}
+
+/* 表单区：输入聚焦时墨色描边，提交按钮轻抬 */
+.auth-form-scroll :deep(.input) {
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, background 0.2s ease;
+}
+
+.auth-form-scroll :deep(.input:focus) {
+  border-color: var(--rx-line-strong) !important;
+  box-shadow: 0 0 0 4px var(--rx-accent-soft) !important;
+}
+
+.auth-form-scroll :deep(.btn-primary:not(:disabled):hover) {
+  transform: translateY(-1px);
+}
+
+.auth-form-scroll :deep(> *) {
+  animation: auth-rise 0.6s var(--rx-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: 160ms;
+}
+
 @keyframes auth-rise {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -460,6 +573,8 @@ html:not(.pixel-ui):not(.editorial-ui) .auth-form-pane { background: transparent
 
 @media (prefers-reduced-motion: reduce) {
   .auth-feature,
-  .auth-intro-inner { animation: none !important; }
+  .auth-intro-inner,
+  .auth-signal__pulse,
+  .auth-form-scroll :deep(> *) { animation: none !important; }
 }
 </style>

@@ -12,6 +12,8 @@ vi.mock('vue-i18n', async () => ({
 const mountView = () => shallowMount(ChannelStatusV1View, {
   global: { stubs: {
     AppLayout: { template: '<div><slot /></div>' },
+    RxStage: { template: '<div><slot /></div>' },
+    RxPageHero: { template: '<div><slot /><slot name="aside" /></div>' },
     MonitorHero: { props: ['autoRefresh'], emits: ['refresh'], template: `<div>
       <button class="interval" @click="autoRefresh.setInterval(120)">120 seconds</button>
       <button class="refresh" @click="$emit('refresh')">Refresh</button>

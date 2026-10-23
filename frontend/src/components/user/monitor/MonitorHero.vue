@@ -3,7 +3,7 @@
     <div class="flex items-center justify-end gap-3 flex-wrap">
       <div
         role="tablist"
-        class="inline-flex p-0.5 rounded-xl bg-gray-100 dark:bg-dark-800 border border-gray-200/60 dark:border-dark-700/60 text-xs"
+        class="rx-mh-tabs inline-flex text-xs"
       >
         <button
           v-for="opt in windowOptions"
@@ -11,10 +11,8 @@
           type="button"
           role="tab"
           :aria-selected="window === opt.value"
-          class="px-3 py-1 rounded-lg transition-colors"
-          :class="window === opt.value
-            ? 'bg-white dark:bg-dark-700 shadow-sm text-gray-900 dark:text-white font-semibold'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+          class="rx-mh-tab"
+          :class="{ 'is-active': window === opt.value }"
           @click="emit('update:window', opt.value)"
         >
           {{ opt.label }}
@@ -114,3 +112,33 @@ const overallDotClass = computed(() => {
 })
 
 </script>
+
+<style scoped>
+/* 时间窗切换：与侧边栏激活项同色的墨色胶囊；令牌缺省时回落到原配色 */
+.rx-mh-tabs {
+  gap: 0.15rem;
+  padding: 0.25rem;
+  border-radius: 9999px;
+  background: var(--rx-surface, #f3f4f6);
+  border: 1px solid var(--rx-line, rgba(0, 0, 0, 0.06));
+  box-shadow: var(--rx-shadow, none);
+}
+
+.rx-mh-tab {
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-weight: 650;
+  color: var(--rx-muted, #6b7280);
+  transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.rx-mh-tab:hover {
+  color: var(--rx-ink, #111827);
+}
+
+.rx-mh-tab.is-active {
+  color: var(--rx-on-accent, #111827);
+  background: var(--rx-accent, #ffffff);
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 6px 16px -8px rgba(17, 17, 15, 0.35);
+}
+</style>

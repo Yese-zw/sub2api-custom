@@ -1,5 +1,6 @@
 <template>
   <AppLayout>
+    <RxStage wide bare>
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
@@ -474,6 +475,7 @@
         />
       </template>
     </TablePageLayout>
+    </RxStage>
 
     <!-- Create/Edit Modal -->
     <BaseDialog
@@ -1214,6 +1216,7 @@
 	import { useAppStore } from '@/stores/app'
 	import { useOnboardingStore } from '@/stores/onboarding'
 	import { useClipboard } from '@/composables/useClipboard'
+import RxStage from '@/components/common/RxStage.vue'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 
 const { t } = useI18n()
@@ -2130,6 +2133,7 @@ onUnmounted(() => {
    ========================================================================== */
 
 .keys-overview {
+  counter-reset: keys-metric;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
@@ -2157,6 +2161,48 @@ onUnmounted(() => {
   inset: 0 0 auto 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+}
+
+/* 玻璃舞台内：取 --rx 令牌，入场错峰，右上角衬线序号 */
+.rx-stage .keys-metric {
+  counter-increment: keys-metric;
+  border-radius: var(--rx-radius-md);
+  border-color: var(--rx-line);
+  background: var(--rx-surface);
+  box-shadow: var(--rx-highlight), var(--rx-shadow);
+  animation: rx-rise 0.7s var(--rx-ease) both;
+}
+
+.rx-stage .keys-metric:nth-child(2) { animation-delay: 70ms; }
+.rx-stage .keys-metric:nth-child(3) { animation-delay: 140ms; }
+.rx-stage .keys-metric:nth-child(4) { animation-delay: 210ms; }
+
+.rx-stage .keys-metric::after {
+  content: counter(keys-metric, decimal-leading-zero);
+  position: absolute;
+  top: 0.8rem;
+  right: 1rem;
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 0.9rem;
+  color: var(--rx-faint);
+  opacity: 0.7;
+}
+
+/* 第一块（密钥总数）翻为墨色，与侧边栏激活项呼应 */
+.rx-stage .keys-metric:first-child {
+  border-color: var(--rx-accent);
+  background: var(--rx-accent);
+}
+
+.rx-stage .keys-metric:first-child .keys-metric-label,
+.rx-stage .keys-metric:first-child .keys-metric-value,
+.rx-stage .keys-metric:first-child::after {
+  color: var(--rx-on-accent);
+}
+
+.rx-stage .keys-metric:first-child .keys-metric-label {
+  opacity: 0.7;
 }
 
 .keys-metric:hover {

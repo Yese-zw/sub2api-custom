@@ -1,6 +1,13 @@
 <template>
   <AppLayout>
-    <div class="usage-page space-y-6">
+    <RxStage wide>
+    <RxPageHero
+      :eyebrow="t('usage.hero.eyebrow')"
+      :lead="t('usage.hero.titleLead')"
+      :accent="t('usage.hero.titleAccent')"
+      :subtitle="t('usage.hero.subtitle')"
+    />
+    <div class="usage-page rx-skin-rise space-y-6">
       <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
 
       <div class="space-y-4">
@@ -214,11 +221,14 @@
         @ipGeoBatchFailed="handleIpGeoBatchFailed"
       />
     </div>
+    </RxStage>
   </AppLayout>
 
 </template>
 
 <script setup lang="ts">
+import RxStage from '@/components/common/RxStage.vue'
+import RxPageHero from '@/components/common/RxPageHero.vue'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

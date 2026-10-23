@@ -345,6 +345,12 @@ export default {
 
   // Usage
   usage: {
+    hero: {
+      eyebrow: '用量 · 分析',
+      titleLead: '每一次调用，',
+      titleAccent: '都清晰可见',
+      subtitle: '按时间、模型、分组与端点拆解 Token 用量和费用。',
+    },
     title: '使用记录',
     description: '查看和分析您的 API 使用历史',
     costDetails: '费用明细',
@@ -579,6 +585,15 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    hero: {
+      eyebrow: '渠道 · 实时监控',
+      titleLead: '各渠道健康状况',
+      accent: {
+        operational: '运行平稳',
+        degraded: '部分降级',
+      },
+      subtitle: '延迟、可用率与端点连通性按时间窗汇总，点击卡片查看详情。',
+    },
     title: '渠道状态',
     description: '查看渠道可用性、延迟和近期状态',
     searchPlaceholder: '搜索渠道...',
@@ -664,6 +679,16 @@ export default {
 
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
+    hero: {
+      eyebrow: '模型 · 价目',
+      titleLead: '所有可用模型，',
+      titleAccent: '价格一目了然',
+      statModels: '模型',
+      statGroups: '分组',
+      statPlatforms: '平台',
+      statLowestRate: '最低倍率',
+      modelCount: '{count} 个模型',
+    },
     title: '模型广场',
     description: '按分组浏览可用模型与价格',
     loading: '加载中...',
@@ -725,6 +750,11 @@ export default {
   },
 
   affiliate: {
+    hero: {
+      eyebrow: '邀请 · 返利',
+      titleLead: '分享你的专属入口，',
+      titleAccent: '一起获得回馈',
+    },
     title: '邀请返利',
     description: '邀请新用户注册，并将返利额度转入账户余额',
     yourCode: '我的邀请码',
@@ -773,6 +803,13 @@ export default {
 
   // Redeem
   redeem: {
+    hero: {
+      eyebrow: '兑换中心',
+      titleLead: '一串兑换码，',
+      titleAccent: '即刻生效',
+      ticketStub: '兑换券',
+      stamp: '已兑换',
+    },
     title: '兑换码',
     description: '输入兑换码以充值余额或增加并发数',
     currentBalance: '当前余额',
@@ -818,6 +855,11 @@ export default {
 
   // Profile
   profile: {
+    hero: {
+      eyebrow: '账户 · 安全',
+      titleLead: '你的账户与安全，',
+      titleAccent: '尽在掌握',
+    },
     title: '个人设置',
     description: '管理您的账户信息和设置',
     accountBalance: '账户余额',

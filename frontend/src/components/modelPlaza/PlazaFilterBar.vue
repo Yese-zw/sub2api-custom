@@ -170,13 +170,45 @@ function rateEnabled(r: number): boolean {
 }
 
 function chipClass(active: boolean): string {
-  return active
-    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm shadow-primary-500/30'
-    : 'bg-white text-gray-600 ring-1 ring-inset ring-gray-200 enabled:hover:bg-gray-50 enabled:hover:text-gray-900 enabled:hover:ring-gray-300 dark:bg-dark-800/60 dark:text-dark-300 dark:ring-dark-700 dark:enabled:hover:bg-dark-800 dark:enabled:hover:text-white'
+  // 激活态与侧边栏激活项同为墨色；非激活为浅底细线
+  return active ? 'chip-ink-active' : 'chip-ink'
 }
 </script>
 
 <style scoped>
+.chip-ink {
+  color: var(--rx-muted, #4b5563);
+  background: var(--rx-surface-hover, #fff);
+  box-shadow: inset 0 0 0 1px var(--rx-line, #e5e7eb);
+}
+
+.chip-ink:not(:disabled):hover {
+  color: var(--rx-ink, #111827);
+  box-shadow: inset 0 0 0 1px var(--rx-line-strong, #d1d5db);
+}
+
+.chip-ink-active {
+  color: var(--rx-on-accent, #fff);
+  background: var(--rx-accent, #0d9488);
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 6px 14px -8px rgba(17, 17, 15, 0.45);
+}
+
+/* 所有 chip 统一圆角胶囊 + 按压回弹 */
+button.chip-ink,
+button.chip-ink-active,
+button.chip-tinted,
+button.chip-tinted-active {
+  border-radius: 9999px;
+  transition: transform 0.3s var(--rx-spring, ease), background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+button.chip-ink:not(:disabled):active,
+button.chip-ink-active:not(:disabled):active,
+button.chip-tinted:not(:disabled):active,
+button.chip-tinted-active:not(:disabled):active {
+  transform: scale(0.95);
+}
+
 /* 平台/分组 chip 的配色统一从 --chip-accent(平台主色)派生,新增平台无需扩展样式。
    激活态与非激活态在模板上互斥挂载,避免选择器优先级互相覆盖。 */
 .chip-tinted {

@@ -1,10 +1,11 @@
 <template>
   <section
-    class="overflow-hidden rounded-2xl border bg-white shadow-card dark:bg-dark-800/50"
+    class="plaza-group overflow-hidden"
     :class="[platformBorderStrongClass(group.platform)]"
+    :style="{ '--plaza-accent': platformAccentColor(group.platform) }"
   >
     <!-- 分组头部:名称/平台/倍率徽章/专属/订阅徽章 + 描述 -->
-    <header class="border-b border-gray-100 px-5 py-4 dark:border-dark-700/60">
+    <header class="plaza-group__head px-5 py-4">
       <div class="flex flex-wrap items-center gap-2">
         <GroupBadge
           :name="group.name"
@@ -31,6 +32,7 @@
         >
           {{ t('modelPlaza.badges.subscription') }}
         </span>
+        <span class="plaza-group__count">{{ t('modelPlaza.hero.modelCount', { count: group.models.length }) }}</span>
       </div>
       <p v-if="group.description" class="mt-2 text-sm text-gray-500 dark:text-dark-400">
         {{ group.description }}
@@ -81,7 +83,7 @@ import GroupBadge from '@/components/common/GroupBadge.vue'
 import PlazaModelPricingTable from './PlazaModelPricingTable.vue'
 import type { ModelPlazaGroup } from '@/api/modelPlaza'
 import type { GroupPlatform, SubscriptionType } from '@/types'
-import { platformBorderStrongClass } from '@/utils/platformColors'
+import { platformAccentColor, platformBorderStrongClass } from '@/utils/platformColors'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
 import { useAppStore } from '@/stores/app'
 
@@ -121,3 +123,53 @@ const longContextNote = computed(() => {
   return hasOfficialLadder ? t('modelPlaza.detail.longContextDisabledNote') : ''
 })
 </script>
+
+<style scoped>
+/* 分组卡：玻璃底 + 左侧平台主色细条；悬浮时细条拉长、卡片轻抬 */
+.plaza-group {
+  position: relative;
+  border-radius: var(--rx-radius-lg, 1rem);
+  background: var(--rx-surface, #fff);
+  border: 1px solid var(--rx-line, #e5e7eb) !important;
+  box-shadow: var(--rx-highlight, 0 0 0 transparent), var(--rx-shadow, 0 1px 3px rgba(0, 0, 0, 0.05));
+  transition: transform 0.35s var(--rx-ease, ease), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.plaza-group::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1.1rem;
+  height: 2.2rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--plaza-accent, var(--rx-accent, #111827));
+  transition: height 0.45s var(--rx-ease, ease);
+}
+
+.plaza-group:hover {
+  border-color: var(--rx-line-strong, #d1d5db) !important;
+  box-shadow: var(--rx-highlight, 0 0 0 transparent), var(--rx-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.08));
+}
+
+.plaza-group:hover::before {
+  height: calc(100% - 2.2rem);
+}
+
+.plaza-group__head {
+  border-bottom: 1px solid var(--rx-line-soft, #f3f4f6);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--plaza-accent, transparent) 6%, transparent), transparent 55%);
+}
+
+.plaza-group__count {
+  margin-left: auto;
+  padding: 0.1rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rx-muted, #6b7280);
+  background: var(--rx-surface-2, #f9fafb);
+  border: 1px solid var(--rx-line-soft, #f3f4f6);
+}
+</style>

@@ -340,6 +340,12 @@ export default {
 
   // Usage
   usage: {
+    hero: {
+      eyebrow: 'Usage · Insights',
+      titleLead: 'Every request,',
+      titleAccent: 'in plain sight',
+      subtitle: 'Break down token usage and cost by time, model, group and endpoint.',
+    },
     title: 'Usage Records',
     description: 'View and analyze your API usage history',
     costDetails: 'Cost Breakdown',
@@ -574,6 +580,15 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    hero: {
+      eyebrow: 'Channels · Live',
+      titleLead: 'Channel health',
+      accent: {
+        operational: 'all systems normal',
+        degraded: 'partially degraded',
+      },
+      subtitle: 'Latency, availability and endpoint reachability summarised per window. Click a card for details.',
+    },
     title: 'Channel Status',
     description: 'Inspect channel availability, latency and recent status',
     searchPlaceholder: 'Search channels...',
@@ -659,6 +674,16 @@ export default {
 
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
+    hero: {
+      eyebrow: 'Models · Pricing',
+      titleLead: 'Every available model,',
+      titleAccent: 'priced in plain sight',
+      statModels: 'Models',
+      statGroups: 'Groups',
+      statPlatforms: 'Platforms',
+      statLowestRate: 'Lowest rate',
+      modelCount: '{count} models',
+    },
     title: 'Model Plaza',
     description: 'Browse available models and pricing by group',
     loading: 'Loading...',
@@ -721,6 +746,11 @@ export default {
   },
 
   affiliate: {
+    hero: {
+      eyebrow: 'Invite · Rebates',
+      titleLead: 'Share your link,',
+      titleAccent: 'earn together',
+    },
     title: 'Affiliate Rebates',
     description: 'Invite new users and convert your rebate quota into account balance',
     yourCode: 'Your Affiliate Code',
@@ -769,6 +799,13 @@ export default {
 
   // Redeem
   redeem: {
+    hero: {
+      eyebrow: 'Redeem center',
+      titleLead: 'One code,',
+      titleAccent: 'instantly applied',
+      ticketStub: 'Voucher',
+      stamp: 'REDEEMED',
+    },
     title: 'Redeem Code',
     description: 'Enter your redeem code to add balance or increase concurrency',
     currentBalance: 'Current Balance',
@@ -814,6 +851,11 @@ export default {
 
   // Profile
   profile: {
+    hero: {
+      eyebrow: 'Account · Security',
+      titleLead: 'Your account and security,',
+      titleAccent: 'under control',
+    },
     title: 'Profile Settings',
     description: 'Manage your account information and settings',
     accountBalance: 'Account Balance',

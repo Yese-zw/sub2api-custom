@@ -1,8 +1,9 @@
 <template>
   <span
-    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+    class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium"
     :class="statusClass"
   >
+    <span class="order-status-dot" :class="{ 'is-live': isLive }" aria-hidden="true"></span>
     {{ statusLabel }}
   </span>
 </template>
@@ -39,8 +40,42 @@ const statusLabel = computed(() => {
   return entry ? t(entry.key) : props.status
 })
 
+// 进行中的状态：圆点呼吸
+const isLive = computed(() => ['PENDING', 'PAID', 'RECHARGING', 'REFUNDING', 'REFUND_PENDING'].includes(props.status))
+
 const statusClass = computed(() => {
   const entry = statusMap[props.status]
   return entry?.class ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
 })
 </script>
+
+<style scoped>
+.order-status-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.order-status-dot.is-live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: order-status-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes order-status-ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .order-status-dot.is-live::after {
+    animation: none;
+  }
+}
+</style>

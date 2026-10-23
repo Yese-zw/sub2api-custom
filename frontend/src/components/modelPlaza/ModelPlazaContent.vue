@@ -9,7 +9,7 @@
     <!-- 全局价格说明(管理员配置,Markdown) -->
     <div
       v-if="descriptionHtml"
-      class="plaza-description rounded-2xl border border-gray-100 bg-white px-5 py-4 text-sm shadow-card dark:border-dark-700/50 dark:bg-dark-800/50"
+      class="plaza-description rx-glass px-5 py-4 text-sm"
       v-html="descriptionHtml"
     ></div>
 
@@ -23,8 +23,9 @@
     </p>
 
     <!-- 加载/错误/空 -->
-    <div v-if="loading" class="flex min-h-[240px] items-center justify-center">
-      <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-600/25 border-t-primary-600 dark:border-primary-400/25 dark:border-t-primary-400"></div>
+    <div v-if="loading" class="plaza-skeleton" aria-busy="true">
+      <span class="plaza-skeleton__bar"></span>
+      <span v-for="n in 3" :key="n" class="plaza-skeleton__card"></span>
     </div>
     <div
       v-else-if="error"
@@ -34,6 +35,7 @@
     </div>
     <template v-else>
       <!-- 筛选区:平台 → 分组 → 倍率 -->
+      <div class="rx-glass plaza-filter-shell rx-rise" style="--rx-i: 3">
       <PlazaFilterBar
         :platforms="platforms"
         :groups="groupOptions"
@@ -47,15 +49,23 @@
         @update:rate="selectedRate = $event"
         @update:search="searchQuery = $event"
       />
+      </div>
 
       <!-- 分组分节的模型清单(默认按生效倍率升序) -->
-      <div v-if="filteredGroups.length > 0" class="space-y-5">
-        <PlazaGroupSection v-for="g in filteredGroups" :key="g.id" :group="g" />
-      </div>
+      <TransitionGroup v-if="filteredGroups.length > 0" tag="div" name="plaza-list" class="relative space-y-5">
+        <PlazaGroupSection
+          v-for="(g, index) in filteredGroups"
+          :key="g.id"
+          :group="g"
+          class="plaza-section-rise"
+          :style="{ '--rx-i': index }"
+        />
+      </TransitionGroup>
       <div
         v-else
-        class="rounded-2xl border border-dashed border-gray-300 px-5 py-12 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
+        class="plaza-empty"
       >
+        <span class="plaza-empty__grid" aria-hidden="true"><i v-for="n in 9" :key="n"></i></span>
         {{ searchActive ? t('modelPlaza.noSearchResult') : t('modelPlaza.empty') }}
       </div>
     </template>
@@ -154,6 +164,120 @@ const filteredGroups = computed(() => {
 </script>
 
 <style scoped>
+.plaza-filter-shell {
+  position: relative;
+  z-index: 2;
+  padding: 1.1rem 1.25rem;
+}
+
+.plaza-section-rise {
+  animation: plaza-rise 0.6s var(--rx-ease, ease) both;
+  animation-delay: calc(min(var(--rx-i, 0), 6) * 70ms + 200ms);
+}
+
+@keyframes plaza-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 筛选切换时分组卡片的进出与重排 */
+.plaza-list-move {
+  transition: transform 0.45s var(--rx-ease, ease);
+}
+
+.plaza-list-enter-active,
+.plaza-list-leave-active {
+  transition: opacity 0.3s ease, transform 0.35s var(--rx-ease, ease);
+}
+
+.plaza-list-enter-from,
+.plaza-list-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.99);
+}
+
+.plaza-list-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
+.plaza-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.plaza-skeleton__bar,
+.plaza-skeleton__card {
+  display: block;
+  border-radius: var(--rx-radius-lg, 1rem);
+  background: linear-gradient(100deg, var(--rx-surface-2, #f3f4f6) 30%, var(--rx-surface-hover, #fff) 50%, var(--rx-surface-2, #f3f4f6) 70%);
+  background-size: 200% 100%;
+  animation: plaza-shimmer 1.5s ease-in-out infinite;
+}
+
+.plaza-skeleton__bar {
+  height: 9rem;
+}
+
+.plaza-skeleton__card {
+  height: 14rem;
+}
+
+@keyframes plaza-shimmer {
+  to { background-position: -200% 0; }
+}
+
+.plaza-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3.5rem 1.25rem;
+  border-radius: var(--rx-radius-lg, 1rem);
+  border: 1px dashed var(--rx-line-strong, #d1d5db);
+  font-size: 0.875rem;
+  color: var(--rx-muted, #6b7280);
+}
+
+/* 空态：九宫格中只有一格被点亮，缓慢游走 */
+.plaza-empty__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 0.7rem);
+  gap: 0.3rem;
+}
+
+.plaza-empty__grid i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: var(--rx-line, #e5e7eb);
+  animation: plaza-cell 4.5s steps(1) infinite;
+  animation-delay: calc(var(--n, 0) * 0.5s);
+}
+
+.plaza-empty__grid i:nth-child(1) { --n: 0; }
+.plaza-empty__grid i:nth-child(2) { --n: 1; }
+.plaza-empty__grid i:nth-child(3) { --n: 2; }
+.plaza-empty__grid i:nth-child(6) { --n: 3; }
+.plaza-empty__grid i:nth-child(9) { --n: 4; }
+.plaza-empty__grid i:nth-child(8) { --n: 5; }
+.plaza-empty__grid i:nth-child(7) { --n: 6; }
+.plaza-empty__grid i:nth-child(4) { --n: 7; }
+.plaza-empty__grid i:nth-child(5) { --n: 8; }
+
+@keyframes plaza-cell {
+  0%, 11% { background: var(--rx-accent, #111827); }
+  11.1%, 100% { background: var(--rx-line, #e5e7eb); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plaza-section-rise,
+  .plaza-empty__grid i {
+    animation: none;
+  }
+}
+
 .plaza-description {
   line-height: 1.7;
   overflow-wrap: anywhere;

@@ -1,5 +1,5 @@
 <template>
-  <header class="glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50">
+  <header class="app-topbar rx-theme glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50">
     <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -11,13 +11,16 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <div class="hidden lg:block">
-          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ pageTitle }}
-          </h1>
-          <p v-if="pageDescription" class="text-xs text-gray-500 dark:text-dark-400">
-            {{ pageDescription }}
-          </p>
+        <div class="topbar-title hidden lg:flex">
+          <span class="topbar-title__mark" aria-hidden="true"></span>
+          <div class="min-w-0">
+            <h1 class="topbar-title__text">
+              {{ pageTitle }}
+            </h1>
+            <p v-if="pageDescription" class="topbar-title__desc">
+              {{ pageDescription }}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -39,6 +42,8 @@
           </span>
         </button>
 
+        <!-- 工具坞：公告 / 文档 / 模型广场 / 语言，收进同一枚玻璃胶囊 -->
+        <div class="topbar-dock">
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
@@ -48,7 +53,7 @@
           :href="docUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white sm:flex"
+          class="topbar-dock__item hidden sm:flex"
         >
           <Icon name="book" size="sm" />
           <span class="hidden sm:inline">{{ t('nav.docs') }}</span>
@@ -60,14 +65,17 @@
           :to="{ path: '/model-plaza', query: { embedded: '1' } }"
           :title="t('nav.modelPlaza')"
           :aria-label="t('nav.modelPlaza')"
-          class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+          class="topbar-plaza"
+          :class="{ 'is-active': route.path === '/model-plaza' }"
         >
-          <Icon name="grid" size="sm" />
+          <span class="topbar-plaza__icon" aria-hidden="true"><Icon name="grid" size="sm" /></span>
           <span class="hidden sm:inline">{{ t('nav.modelPlaza') }}</span>
+          <span class="topbar-plaza__shine" aria-hidden="true"></span>
         </router-link>
 
         <!-- Language Switcher -->
         <LocaleSwitcher />
+        </div>
 
         <!-- Subscription Progress (for users with active subscriptions; not mounted at all when the feature is off) -->
         <SubscriptionProgressMini v-if="user && subscriptionFeatureEnabled" />
@@ -75,10 +83,10 @@
         <!-- Balance Display -->
         <div
           v-if="user"
-          class="group relative hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
+          class="topbar-balance group relative hidden items-center gap-2 sm:flex"
         >
           <svg
-            class="h-4 w-4 text-primary-600 dark:text-primary-400"
+            class="topbar-balance__icon h-4 w-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -90,7 +98,7 @@
               d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
             />
           </svg>
-          <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
+          <span class="topbar-balance__value">
             {{ formatHeaderMoney(availableBalance) }}
           </span>
           <span
@@ -100,7 +108,7 @@
             {{ balanceFrozenLabel }}
           </span>
           <div
-            class="pointer-events-none absolute right-0 top-full mt-2 hidden w-56 rounded-lg border border-gray-200 bg-white p-3 text-xs shadow-lg group-hover:block dark:border-dark-700 dark:bg-dark-800"
+            class="topbar-balance__pop pointer-events-none absolute right-0 top-full mt-2 hidden w-56 p-3 text-xs group-hover:block"
           >
             <div class="flex items-center justify-between">
               <span class="text-gray-500 dark:text-dark-400">{{ balanceAvailableText }}</span>
@@ -123,10 +131,11 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
+            class="topbar-user flex items-center gap-2 p-1.5"
+            :class="{ 'is-open': dropdownOpen }"
             :aria-label="t('common.userMenu')"
           >
-            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm">
+            <div class="topbar-avatar flex h-8 w-8 items-center justify-center overflow-hidden text-sm font-medium">
               <img
                 v-if="avatarUrl"
                 :src="avatarUrl"
@@ -143,7 +152,7 @@
                 {{ t('admin.users.roles.' + user.role) }}
               </div>
             </div>
-            <Icon name="chevronDown" size="sm" class="hidden text-gray-400 md:block" />
+            <Icon name="chevronDown" size="sm" class="topbar-user__chevron hidden text-gray-400 md:block" />
           </button>
 
           <!-- Dropdown Menu -->
@@ -297,6 +306,7 @@ import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveRouteMetaKeys } from '@/router/title'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
+import '@/styles/recharge-glass.css'
 
 const router = useRouter()
 const route = useRoute()
@@ -474,5 +484,232 @@ onBeforeUnmount(() => {
 .dropdown-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(-4px);
+}
+</style>
+
+<style scoped>
+/* ==========================================================================
+   顶栏：与侧边栏同一套墨色语言
+   - 标题前一枚墨色竖标，描述弱化
+   - 公告 / 文档 / 模型广场 / 语言收进同一枚玻璃胶囊
+   - 余额与头像改为墨色，不再使用青色主色
+   ========================================================================== */
+.app-topbar::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rx-line-strong), transparent);
+  opacity: 0.7;
+}
+
+.topbar-title {
+  align-items: center;
+  gap: 0.75rem;
+  animation: topbar-in 0.5s var(--rx-ease) both;
+}
+
+.topbar-title__mark {
+  width: 4px;
+  height: 1.9rem;
+  border-radius: 9999px;
+  background: var(--rx-accent);
+}
+
+.topbar-title__text {
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--rx-ink);
+}
+
+.topbar-title__desc {
+  margin-top: 0.05rem;
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: var(--rx-faint);
+}
+
+@keyframes topbar-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- 工具坞 ---------- */
+.topbar-dock {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border-radius: 9999px;
+  background: var(--rx-surface);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight), 0 1px 2px rgba(17, 17, 15, 0.04);
+}
+
+.topbar-dock__item {
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.1rem;
+  padding: 0 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--rx-muted);
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.topbar-dock__item:hover {
+  color: var(--rx-ink);
+  background: var(--rx-surface-hover);
+}
+
+/* 子组件（铃铛 / 语言）的按钮在坞内统一成圆角胶囊 */
+.topbar-dock :deep(> div > button),
+.topbar-dock :deep(> div > div > button) {
+  border-radius: 9999px;
+}
+
+/* ---------- 模型广场入口 ---------- */
+.topbar-plaza {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.1rem;
+  overflow: hidden;
+  padding: 0 0.85rem 0 0.3rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.topbar-plaza__icon {
+  display: grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 9999px;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  transition: transform 0.45s var(--rx-spring);
+}
+
+.topbar-plaza:hover {
+  background: var(--rx-surface-hover);
+}
+
+.topbar-plaza:hover .topbar-plaza__icon {
+  transform: rotate(90deg);
+}
+
+.topbar-plaza.is-active {
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+}
+
+.topbar-plaza.is-active .topbar-plaza__icon {
+  color: var(--rx-accent);
+  background: var(--rx-on-accent);
+}
+
+/* 悬浮时一道斜向扫光 */
+.topbar-plaza__shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+
+html.dark .topbar-plaza__shine {
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.12) 50%, transparent 65%);
+}
+
+.topbar-plaza:hover .topbar-plaza__shine {
+  transition: transform 0.8s var(--rx-ease);
+  transform: translateX(120%);
+}
+
+@media (max-width: 639px) {
+  .topbar-plaza {
+    padding-right: 0.3rem;
+  }
+}
+
+/* ---------- 余额 ---------- */
+.topbar-balance {
+  height: 2.5rem;
+  padding: 0 0.9rem 0 0.75rem;
+  border-radius: 9999px;
+  color: var(--rx-ink);
+  background: var(--rx-surface);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight), 0 1px 2px rgba(17, 17, 15, 0.04);
+  transition: border-color 0.2s ease;
+}
+
+.topbar-balance:hover {
+  border-color: var(--rx-line-strong);
+}
+
+.topbar-balance__icon {
+  color: var(--rx-muted);
+}
+
+.topbar-balance__value {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar-balance__pop {
+  z-index: 40;
+  border-radius: var(--rx-radius-md);
+  background: var(--rx-surface-hover);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-shadow-lg);
+}
+
+/* ---------- 用户 ---------- */
+.topbar-user {
+  border-radius: 9999px;
+  padding-right: 0.65rem;
+  transition: background 0.2s ease;
+}
+
+.topbar-user:hover,
+.topbar-user.is-open {
+  background: var(--rx-surface);
+}
+
+.topbar-avatar {
+  border-radius: 9999px;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 0 0 2px var(--rx-surface-hover), 0 0 0 3px var(--rx-line);
+}
+
+.topbar-user__chevron {
+  transition: transform 0.3s var(--rx-ease);
+}
+
+.topbar-user.is-open .topbar-user__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-title {
+    animation: none;
+  }
 }
 </style>

@@ -1,5 +1,14 @@
 <template>
   <AppLayout>
+    <RxStage wide>
+    <!-- 标题强调词随整体状态变化：运行正常 / 部分降级 -->
+    <RxPageHero
+      :eyebrow="t('channelStatus.hero.eyebrow')"
+      :lead="t('channelStatus.hero.titleLead')"
+      :accent="t(`channelStatus.hero.accent.${overallStatus}`)"
+      :subtitle="t('channelStatus.hero.subtitle')"
+    >
+      <template #aside>
     <MonitorHero
       :overall-status="overallStatus"
       :interval-seconds="DEFAULT_INTERVAL_SECONDS"
@@ -9,6 +18,8 @@
       @update:window="handleWindowChange"
       @refresh="refresh()"
     />
+      </template>
+    </RxPageHero>
 
     <MonitorCardGrid
       :items="items"
@@ -25,6 +36,7 @@
       :title="detailTitle"
       @close="closeDetail"
     />
+    </RxStage>
   </AppLayout>
 </template>
 
@@ -40,6 +52,8 @@ import {
   type UserMonitorDetail,
 } from '@/api/channelMonitor'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import RxStage from '@/components/common/RxStage.vue'
+import RxPageHero from '@/components/common/RxPageHero.vue'
 import MonitorHero, {
   type MonitorWindow,
   type OverallStatus,

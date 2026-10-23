@@ -1,0 +1,488 @@
+/* ==========================================================================
+   公告：右侧抽屉 + 信笺式详情 / 弹窗
+   浮层 Teleport 到 body，靠 .rx-theme 取主题令牌（见 recharge-glass.css）。
+   ========================================================================== */
+
+/* ---------- 遮罩 ---------- */
+.ann-overlay {
+  background: rgba(17, 17, 15, 0.26);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+
+html.dark .ann-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- 抽屉 ---------- */
+.ann-drawer {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  width: min(26rem, calc(100% - 1.5rem));
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--rx-radius-lg);
+  color: var(--rx-ink);
+  background: color-mix(in srgb, var(--rx-surface-hover) 94%, transparent);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-shadow-lg);
+}
+
+.ann-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem 1.4rem 1.1rem;
+  border-bottom: 1px solid var(--rx-line-soft);
+}
+
+.ann-drawer__title {
+  margin-top: 0.35rem;
+  font-family: var(--rx-display);
+  font-style: var(--rx-display-style);
+  font-size: 1.9rem;
+  font-weight: var(--rx-display-weight);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.ann-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.6rem;
+}
+
+.ann-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+.ann-eyebrow__dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--rx-line-strong);
+}
+
+.ann-eyebrow__dot.is-live {
+  background: var(--rx-ink);
+}
+
+.ann-eyebrow__dot.is-live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--rx-ink);
+  animation: ann-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ann-ping {
+  0% { transform: scale(1); opacity: 0.5; }
+  80%, 100% { transform: scale(3); opacity: 0; }
+}
+
+/* ---------- 列表 ---------- */
+.ann-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ann-item {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--rx-radius-md);
+  transition: background 0.2s ease, transform 0.3s var(--rx-ease);
+  animation: ann-item-in 0.45s var(--rx-ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms + 80ms);
+}
+
+.ann-item:hover {
+  background: var(--rx-surface-2);
+}
+
+.ann-item:hover .ann-item__arrow {
+  transform: translateX(3px);
+  color: var(--rx-ink);
+}
+
+@keyframes ann-item-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+.ann-item__dot {
+  flex-shrink: 0;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  border: 1.5px solid var(--rx-line-strong);
+}
+
+.ann-item.is-unread .ann-item__dot {
+  border-color: var(--rx-ink);
+  background: var(--rx-ink);
+  box-shadow: 0 0 0 4px var(--rx-accent-soft);
+}
+
+.ann-item__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 550;
+  color: var(--rx-ink-2);
+}
+
+.ann-item.is-unread .ann-item__title {
+  font-weight: 750;
+  color: var(--rx-ink);
+}
+
+.ann-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--rx-faint);
+}
+
+.ann-item__tag {
+  padding: 0 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.1rem;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+}
+
+.ann-item__arrow {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--rx-faint);
+  transition: transform 0.3s var(--rx-spring), color 0.2s ease;
+}
+
+/* ---------- 加载 / 空态 ---------- */
+.ann-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.4rem;
+}
+
+.ann-skeleton span {
+  height: 3.6rem;
+  border-radius: var(--rx-radius-md);
+  background: linear-gradient(100deg, var(--rx-surface-2) 30%, var(--rx-surface-hover) 50%, var(--rx-surface-2) 70%);
+  background-size: 200% 100%;
+  animation: ann-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes ann-shimmer {
+  to { background-position: -200% 0; }
+}
+
+.ann-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+}
+
+.ann-empty__title {
+  margin-top: 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--rx-ink);
+}
+
+.ann-empty__desc {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--rx-muted);
+}
+
+/* 信封插画：纯 CSS，信封口用两条对角细线画出 V 形 */
+.ann-envelope {
+  position: relative;
+  display: block;
+  width: 4.2rem;
+  height: 2.9rem;
+  border-radius: 8px;
+  background:
+    linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--rx-line-strong) 50%, transparent calc(50% + 0.75px)) left top / 50% 75% no-repeat,
+    linear-gradient(to bottom left, transparent calc(50% - 0.75px), var(--rx-line-strong) 50%, transparent calc(50% + 0.75px)) right top / 50% 75% no-repeat,
+    var(--rx-surface-hover);
+  border: 1px solid var(--rx-line-strong);
+  box-shadow: var(--rx-shadow);
+  animation: ann-envelope-bob 4s ease-in-out infinite;
+}
+
+/* 一枚墨色小圆点「封蜡」 */
+.ann-envelope i {
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  background: var(--rx-accent);
+  transform: translate(-50%, -50%);
+}
+
+@keyframes ann-envelope-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* ---------- 按钮 ---------- */
+.ann-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--rx-radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.35s var(--rx-spring), background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.ann-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ann-btn--ghost {
+  color: var(--rx-ink-2);
+  border: 1px solid var(--rx-line-strong);
+}
+
+.ann-btn--ghost:hover:not(:disabled) {
+  color: var(--rx-ink);
+  background: var(--rx-surface-2);
+}
+
+.ann-btn--ink {
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 1px 2px rgba(17, 17, 15, 0.14), 0 8px 20px -10px rgba(17, 17, 15, 0.45);
+}
+
+.ann-btn--ink:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ann-icon-btn {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  color: var(--rx-muted);
+  border: 1px solid var(--rx-line);
+  transition: color 0.2s ease, background 0.2s ease, transform 0.35s var(--rx-spring);
+}
+
+.ann-icon-btn:hover {
+  color: var(--rx-ink);
+  background: var(--rx-surface-2);
+  transform: rotate(90deg);
+}
+
+/* ---------- 信笺 ---------- */
+.ann-letter {
+  position: relative;
+  width: 100%;
+  max-width: 46rem;
+  overflow: hidden;
+  border-radius: var(--rx-radius-lg);
+  color: var(--rx-ink);
+  background: var(--rx-surface-hover);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-shadow-lg);
+}
+
+/* 顶部一道极淡的纸纹 */
+.ann-letter::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 auto;
+  height: 7rem;
+  background:
+    radial-gradient(120% 100% at 0% 0%, var(--rx-tint), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 27px, var(--rx-line-soft) 27px 28px);
+  opacity: 0.6;
+}
+
+.ann-letter__head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.75rem 1.75rem 1.25rem;
+}
+
+.ann-letter__title {
+  margin-top: 0.6rem;
+  font-family: var(--rx-display);
+  font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem);
+  font-weight: var(--rx-display-weight);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.ann-letter__meta {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--rx-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ann-letter__body {
+  position: relative;
+  max-height: 58vh;
+  overflow-y: auto;
+  margin: 0 1.75rem;
+  padding: 1.25rem 0 1.5rem 1.25rem;
+  border-top: 1px solid var(--rx-line-soft);
+}
+
+/* 正文左侧墨色竖线 */
+.ann-letter__body::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1.35rem;
+  bottom: 1.6rem;
+  width: 2px;
+  border-radius: 9999px;
+  background: var(--rx-accent);
+  opacity: 0.85;
+}
+
+.ann-letter__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.75rem;
+  border-top: 1px solid var(--rx-line-soft);
+  background: var(--rx-surface-2);
+}
+
+.ann-letter__hint {
+  font-size: 0.74rem;
+  color: var(--rx-faint);
+}
+
+@media (max-width: 639px) {
+  .ann-letter__head {
+    padding: 1.25rem 1.25rem 1rem;
+  }
+
+  .ann-letter__body {
+    margin: 0 1.25rem;
+  }
+
+  .ann-letter__foot {
+    padding: 0.9rem 1.25rem;
+  }
+}
+
+/* ---------- 过渡 ---------- */
+.ann-drawer-enter-active,
+.ann-drawer-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.ann-drawer-enter-active .ann-drawer,
+.ann-drawer-leave-active .ann-drawer {
+  transition: transform 0.45s var(--rx-ease), opacity 0.3s ease;
+}
+
+.ann-drawer-enter-from,
+.ann-drawer-leave-to {
+  opacity: 0;
+}
+
+.ann-drawer-enter-from .ann-drawer,
+.ann-drawer-leave-to .ann-drawer {
+  opacity: 0;
+  transform: translateX(2.5rem);
+}
+
+.ann-letter-enter-active,
+.ann-letter-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.ann-letter-enter-active .ann-letter,
+.ann-letter-leave-active .ann-letter {
+  transition: transform 0.45s var(--rx-ease), opacity 0.3s ease;
+}
+
+.ann-letter-enter-from,
+.ann-letter-leave-to {
+  opacity: 0;
+}
+
+.ann-letter-enter-from .ann-letter,
+.ann-letter-leave-to .ann-letter {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ann-item,
+  .ann-envelope,
+  .ann-eyebrow__dot.is-live::after {
+    animation: none;
+  }
+}
+
+/* 信笺内的 Markdown：列表符号、引用与链接改为墨色，去掉蓝色强调 */
+html .ann-letter .markdown-body li::marker {
+  color: var(--rx-ink);
+}
+
+html .ann-letter .markdown-body blockquote {
+  color: var(--rx-ink-2);
+  background: var(--rx-surface-2);
+  border-color: var(--rx-line-strong);
+}
+
+html .ann-letter .markdown-body blockquote::before {
+  color: var(--rx-faint);
+}
+
+html .ann-letter .markdown-body a {
+  color: var(--rx-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
