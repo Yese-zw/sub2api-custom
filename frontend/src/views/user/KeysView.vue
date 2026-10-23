@@ -4,95 +4,100 @@
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
-          <div class="keys-filterbar flex flex-wrap items-center gap-3">
-            <SearchInput
-              v-model="filterSearch"
-              :placeholder="t('keys.searchPlaceholder')"
-              class="w-full sm:w-64"
-              @search="onFilterChange"
-            />
-            <Select
-              :model-value="filterGroupId"
-              class="w-40"
-              :options="groupFilterOptions"
-              @update:model-value="onGroupFilterChange"
-            />
-            <Select
-              :model-value="filterStatus"
-              class="w-40"
-              :options="statusFilterOptions"
-              @update:model-value="onStatusFilterChange"
-            />
+          <div class="rx-toolbar keys-filterbar">
+            <div class="rx-toolbar__row">
+              <SearchInput
+                v-model="filterSearch"
+                :placeholder="t('keys.searchPlaceholder')"
+                class="rx-toolbar__search"
+                @search="onFilterChange"
+              />
+              <div class="rx-toolbar__fields">
+                <Select
+                  :model-value="filterGroupId"
+                  class="rx-toolbar__field w-40"
+                  :options="groupFilterOptions"
+                  @update:model-value="onGroupFilterChange"
+                />
+                <Select
+                  :model-value="filterStatus"
+                  class="rx-toolbar__field w-40"
+                  :options="statusFilterOptions"
+                  @update:model-value="onStatusFilterChange"
+                />
+              </div>
+              <div class="rx-toolbar__actions">
+                <button
+                  type="button"
+                  class="rx-icon-btn"
+                  :disabled="loading"
+                  :title="t('common.refresh')"
+                  @click="loadApiKeys"
+                >
+                  <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+                </button>
+                <div class="relative" ref="columnDropdownRef">
+                  <button
+                    type="button"
+                    class="rx-icon-btn is-wide"
+                    :class="{ 'is-open': showColumnDropdown }"
+                    :aria-expanded="showColumnDropdown"
+                    :title="t('keys.columnSettings')"
+                    @click="showColumnDropdown = !showColumnDropdown"
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
+                    </svg>
+                    <span class="hidden md:inline">{{ t('keys.columnSettings') }}</span>
+                  </button>
+                  <div
+                    v-if="showColumnDropdown"
+                    class="rx-toolbar__menu"
+                  >
+                    <button
+                      v-for="col in toggleableColumns"
+                      :key="col.key"
+                      type="button"
+                      @click="toggleColumn(col.key)"
+                    >
+                      <span>{{ col.label }}</span>
+                      <Icon
+                        v-if="isColumnVisible(col.key)"
+                        name="check"
+                        size="sm"
+                        :stroke-width="2"
+                      />
+                    </button>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary" data-tour="keys-create-btn" @click="showCreateModal = true">
+                  <Icon name="plus" size="md" class="mr-2" />
+                  {{ t('keys.createKey') }}
+                </button>
+              </div>
+            </div>
+            <div v-if="selectedIds.length" class="rx-toolbar__filters flex flex-wrap items-center gap-3 text-sm">
+              <span class="text-gray-600 dark:text-gray-300">
+                {{ t('keys.bulkEdit.selectedCount', { count: selectedIds.length }) }}
+              </span>
+              <button
+                class="btn btn-primary btn-sm"
+                :disabled="loading"
+                data-test="bulk-edit-keys"
+                @click="showBulkEditModal = true"
+              >
+                {{ t('keys.bulkEdit.title') }}
+              </button>
+              <button class="btn btn-secondary btn-sm" @click="selectedIds = []">
+                {{ t('keys.bulkEdit.clearSelection') }}
+              </button>
+            </div>
           </div>
           <EndpointPopover
             v-if="publicSettings?.api_base_url || (publicSettings?.custom_endpoints?.length ?? 0) > 0"
             :api-base-url="publicSettings?.api_base_url || ''"
             :custom-endpoints="publicSettings?.custom_endpoints || []"
           />
-          <div v-if="selectedIds.length" class="flex flex-wrap items-center gap-3 text-sm">
-            <span class="text-gray-600 dark:text-gray-300">
-              {{ t('keys.bulkEdit.selectedCount', { count: selectedIds.length }) }}
-            </span>
-            <button
-              class="btn btn-primary btn-sm"
-              :disabled="loading"
-              data-test="bulk-edit-keys"
-              @click="showBulkEditModal = true"
-            >
-              {{ t('keys.bulkEdit.title') }}
-            </button>
-            <button class="btn btn-secondary btn-sm" @click="selectedIds = []">
-              {{ t('keys.bulkEdit.clearSelection') }}
-            </button>
-          </div>
-        </div>
-      </template>
-
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <button
-            @click="loadApiKeys"
-            :disabled="loading"
-            class="btn btn-secondary"
-            :title="t('common.refresh')"
-          >
-            <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-          </button>
-          <div class="relative" ref="columnDropdownRef">
-            <button
-              @click="showColumnDropdown = !showColumnDropdown"
-              class="btn btn-secondary px-2 md:px-3"
-              :title="t('keys.columnSettings')"
-            >
-              <svg class="h-4 w-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-              </svg>
-              <span class="hidden md:inline">{{ t('keys.columnSettings') }}</span>
-            </button>
-            <div
-              v-if="showColumnDropdown"
-              class="dropdown right-0 top-full mt-1 max-h-80 w-48 overflow-y-auto"
-            >
-              <button
-                v-for="col in toggleableColumns"
-                :key="col.key"
-                @click="toggleColumn(col.key)"
-                class="dropdown-item"
-              >
-                <span>{{ col.label }}</span>
-                <Icon
-                  v-if="isColumnVisible(col.key)"
-                  name="check"
-                  size="sm"
-                  :stroke-width="2"
-                />
-              </button>
-            </div>
-          </div>
-          <button @click="showCreateModal = true" class="btn btn-primary" data-tour="keys-create-btn">
-            <Icon name="plus" size="md" class="mr-2" />
-            {{ t('keys.createKey') }}
-          </button>
         </div>
       </template>
 
@@ -2165,13 +2170,8 @@ onUnmounted(() => {
   color: #dc2626;
 }
 
-/* ---------- 筛选条 / 名称头像 / 状态点 ---------- */
+/* ---------- 筛选条入场 / 名称头像 / 状态点 ---------- */
 .rx-stage .keys-filterbar {
-  padding: 0.55rem;
-  border-radius: var(--rx-radius-md);
-  background: var(--rx-surface);
-  border: 1px solid var(--rx-line);
-  box-shadow: var(--rx-highlight), var(--rx-shadow);
   animation: rx-rise 0.7s var(--rx-ease) both 0.25s;
 }
 

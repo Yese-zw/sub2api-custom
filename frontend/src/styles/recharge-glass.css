@@ -597,3 +597,153 @@ html .rx-stage .btn.btn-secondary {
   background: var(--rx-accent);
   box-shadow: 0 0 0 4px var(--rx-surface), 0 0 0 5px var(--rx-line-strong);
 }
+
+/* ==========================================================================
+   表格工具条：搜索 / 筛选 / 图标操作
+   ========================================================================== */
+.rx-toolbar {
+  position: relative;
+  padding: 0.7rem;
+  border-radius: var(--rx-radius-lg);
+  background: var(--rx-surface);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight), var(--rx-shadow);
+}
+
+.rx-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.rx-toolbar__search {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  max-width: 24rem;
+}
+
+.rx-toolbar__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.55rem;
+}
+
+.rx-toolbar__field {
+  min-width: 10.5rem;
+}
+
+.rx-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.rx-toolbar__filters {
+  margin-top: 0.7rem;
+  padding: 0.9rem 0.15rem 0.2rem;
+  border-top: 1px dashed var(--rx-line-strong);
+}
+
+.rx-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  color: var(--rx-ink-2);
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight);
+  transition: transform 0.3s var(--rx-spring), border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.rx-icon-btn.is-wide {
+  width: auto;
+  grid-auto-flow: column;
+  gap: 0.4rem;
+  padding: 0 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.rx-icon-btn:hover:not(:disabled) {
+  color: var(--rx-ink);
+  border-color: var(--rx-line-strong);
+  transform: translateY(-1px);
+}
+
+.rx-icon-btn.is-open,
+.rx-icon-btn[aria-expanded="true"] {
+  color: var(--rx-ink);
+  border-color: var(--rx-line-strong);
+  background: var(--rx-surface-hover);
+}
+
+.rx-icon-btn:disabled {
+  opacity: 0.5;
+}
+
+.rx-toolbar__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 50;
+  max-height: 20rem;
+  width: 13rem;
+  overflow-y: auto;
+  padding: 0.35rem;
+  border-radius: var(--rx-radius-md);
+  background: var(--rx-surface);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight), var(--rx-shadow-lg);
+}
+
+.rx-toolbar__menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: var(--rx-ink-2);
+}
+
+.rx-toolbar__menu button:hover {
+  color: var(--rx-ink);
+  background: var(--rx-surface-2);
+}
+
+.rx-toolbar .input-label {
+  margin-bottom: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+.rx-toolbar .input,
+.rx-toolbar .select-trigger {
+  background: var(--rx-surface-2) !important;
+  border-color: var(--rx-line) !important;
+  color: var(--rx-ink) !important;
+  border-radius: var(--rx-radius-sm) !important;
+  box-shadow: var(--rx-highlight);
+}
+
+.rx-toolbar .input:focus,
+.rx-toolbar .select-trigger:focus,
+.rx-toolbar .select-trigger-open {
+  border-color: var(--rx-line-strong) !important;
+  box-shadow: var(--rx-highlight), 0 0 0 3px var(--rx-accent-soft) !important;
+}
+
+.rx-toolbar .text-gray-400 {
+  color: var(--rx-faint) !important;
+}

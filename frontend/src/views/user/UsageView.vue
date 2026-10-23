@@ -67,12 +67,12 @@
       </div>
 
       <!-- 工具栏：用量 / 错误切换 + 折叠筛选 + 操作 -->
-      <section class="usage-toolbar rx-glass">
-        <div class="usage-toolbar__row">
+      <section class="rx-toolbar usage-toolbar">
+        <div class="rx-toolbar__row">
           <div v-if="errorViewEnabled" class="usage-tabs" role="tablist" :class="{ 'is-errors': activeTab === 'errors' }">
             <span class="usage-tabs__pill" aria-hidden="true"></span>
-            <button class="usage-tabs__tab" :class="{ 'is-active': activeTab === 'usage' }" @click="activeTab = 'usage'">{{ t('usage.tabs.usage') }}</button>
-            <button class="usage-tabs__tab" :class="{ 'is-active': activeTab === 'errors' }" @click="switchToErrors">{{ t('usage.tabs.errors') }}</button>
+            <button type="button" class="usage-tabs__tab" :class="{ 'is-active': activeTab === 'usage' }" @click="activeTab = 'usage'">{{ t('usage.tabs.usage') }}</button>
+            <button type="button" class="usage-tabs__tab" :class="{ 'is-active': activeTab === 'errors' }" @click="switchToErrors">{{ t('usage.tabs.errors') }}</button>
           </div>
           <button
             type="button"
@@ -86,27 +86,35 @@
             <span v-if="activeFilterCount > 0" class="usage-filter-toggle__count">{{ activeFilterCount }}</span>
             <svg class="usage-filter-toggle__chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
           </button>
-          <div class="usage-toolbar__actions">
-            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary">
-              {{ t('common.refresh') }}
+          <div class="rx-toolbar__actions">
+            <button
+              type="button"
+              class="rx-icon-btn"
+              :disabled="activeTab === 'errors' ? errorLoading : loading"
+              :title="t('common.refresh')"
+              @click="refreshData"
+            >
+              <Icon name="refresh" size="md" :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''" />
             </button>
-            <button type="button" @click="resetFilters" class="btn btn-secondary">
+            <button type="button" class="rx-icon-btn is-wide" @click="resetFilters">
               {{ t('common.reset') }}
             </button>
             <div class="relative" ref="columnDropdownRef">
               <button
                 type="button"
                 data-testid="usage-column-settings"
-                @click="showColumnDropdown = !showColumnDropdown"
-                class="btn btn-secondary px-2 md:px-3"
+                class="rx-icon-btn is-wide"
+                :class="{ 'is-open': showColumnDropdown }"
+                :aria-expanded="showColumnDropdown"
                 :title="t('admin.users.columnSettings')"
+                @click="showColumnDropdown = !showColumnDropdown"
               >
                 <Icon name="grid" size="sm" />
                 <span class="hidden md:inline">{{ t('admin.users.columnSettings') }}</span>
               </button>
               <div
                 v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                class="rx-toolbar__menu"
               >
                 <button
                   v-for="col in currentToggleableColumns"
@@ -114,10 +122,9 @@
                   type="button"
                   :data-testid="`usage-column-toggle-${col.key}`"
                   @click="toggleCurrentColumn(col.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
                 >
                   <span>{{ col.label }}</span>
-                  <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
+                  <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" />
                 </button>
               </div>
             </div>
@@ -126,13 +133,13 @@
             </button>
           </div>
         </div>
-        <div v-show="filtersOpen" class="usage-toolbar__filters">
-          <div v-if="activeTab === 'errors'" class="flex flex-1 flex-wrap items-end gap-4">
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
+        <div v-show="filtersOpen" class="rx-toolbar__filters usage-toolbar__filters">
+          <div v-if="activeTab === 'errors'" class="rx-toolbar__fields flex-1">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[220px]">
               <label class="input-label">{{ t('usage.errors.keyName') }}</label>
               <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[220px]">
               <label class="input-label">{{ t('usage.errors.model') }}</label>
               <Select
                 v-model="errorFilter.model"
@@ -144,41 +151,41 @@
                 @change="applyErrorFilters"
               />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[200px]">
               <label class="input-label">{{ t('usage.errors.category') }}</label>
               <Select v-model="errorFilter.category" :options="errorCategoryOptions" @change="applyErrorFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[180px]">
               <label class="input-label">{{ t('usage.errors.status') }}</label>
               <Select v-model="errorFilter.status_code" :options="errorStatusOptions" @change="applyErrorFilters" />
             </div>
           </div>
-          <div v-else class="flex flex-1 flex-wrap items-end gap-4">
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
+          <div v-else class="rx-toolbar__fields flex-1">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[220px]">
               <label class="input-label">{{ t('usage.apiKeyFilter') }}</label>
               <Select v-model="filters.api_key_id" :options="apiKeyOptions" @change="applyFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[220px]">
               <label class="input-label">{{ t('usage.model') }}</label>
               <Select v-model="filters.model" :options="modelOptions" searchable @change="applyFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[200px]">
               <label class="input-label">{{ t('admin.usage.group') }}</label>
               <Select v-model="filters.group_id" :options="groupOptions" searchable @change="applyFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[180px]">
               <label class="input-label">{{ t('usage.type') }}</label>
               <Select v-model="filters.request_type" :options="requestTypeOptions" @change="applyFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[180px]">
               <label class="input-label">{{ t('usage.compactionFilter') }}</label>
               <Select v-model="filters.native_compaction_v2" :options="compactionOptions" @change="applyFilters" />
             </div>
-            <div v-if="subscriptionFeatureEnabled" class="w-full sm:w-auto sm:min-w-[200px]">
+            <div v-if="subscriptionFeatureEnabled" class="rx-toolbar__field w-full sm:w-auto sm:min-w-[200px]">
               <label class="input-label">{{ t('admin.usage.billingType') }}</label>
               <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="applyFilters" />
             </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
+            <div class="rx-toolbar__field w-full sm:w-auto sm:min-w-[200px]">
               <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
               <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="applyFilters" />
             </div>
@@ -979,33 +986,12 @@ watch(endpointDistributionSource, () => {
   }
 }
 
-/* ---------- 工具栏 ---------- */
+/* ---------- 工具栏（玻璃底由 .rx-toolbar 提供） ---------- */
 .usage-toolbar {
-  position: relative;
   z-index: 5;
-  padding: 0.65rem;
-}
-
-.usage-toolbar__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.usage-toolbar__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
 }
 
 .usage-toolbar__filters {
-  display: block;
-  margin-top: 0.65rem;
-  padding: 1rem 0.6rem 0.4rem;
-  border-top: 1px dashed var(--rx-line-strong);
   animation: usage-unfold 0.4s var(--rx-ease) both;
 }
 

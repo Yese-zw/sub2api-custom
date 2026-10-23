@@ -129,7 +129,27 @@
                   />
                 </section>
               </div>
-              <aside class="lg:sticky lg:top-6">
+              <aside class="lg:sticky lg:top-6 space-y-6">
+                <section
+                  v-if="showCheckoutHelp"
+                  class="rx-glass rx-help rx-rise"
+                  style="--rx-i: 3"
+                >
+                  <div class="flex flex-col items-center gap-3">
+                    <img
+                      v-if="checkout.help_image_url"
+                      :src="checkout.help_image_url"
+                      alt=""
+                      class="h-40 w-full max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
+                      @click="previewImage = checkout.help_image_url"
+                    />
+                    <div
+                      v-if="checkout.help_text"
+                      class="markdown-body w-full overflow-x-auto break-words"
+                      v-html="renderedHelpText"
+                    ></div>
+                  </div>
+                </section>
                 <div class="rx-glass rx-receipt rx-rise" style="--rx-i: 4">
                   <header class="rx-receipt__head">
                     <span class="rx-section-head__index">03</span>
@@ -344,14 +364,6 @@
             </template>
           </template>
         </template>
-        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="rx-glass rx-panel rx-help">
-          <div class="flex flex-col items-center gap-3">
-            <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
-              class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
-              @click="previewImage = checkout.help_image_url" />
-            <div v-if="checkout.help_text" class="markdown-body w-full overflow-x-auto break-words" v-html="renderedHelpText"></div>
-          </div>
-        </div>
       </template>
       </div>
     </div>
@@ -645,6 +657,8 @@ const checkout = ref<CheckoutInfoResponse>({
 const renderedHelpText = computed(() => DOMPurify.sanitize(
   marked.parse(checkout.value.help_text || '', { async: false, gfm: true, breaks: false }),
 ))
+
+const showCheckoutHelp = computed(() => Boolean(checkout.value.help_text || checkout.value.help_image_url))
 
 // 充值赠送活动文案：后台 Markdown 配置，空字符串时金额卡顶部不渲染
 const renderedBonusNotice = computed(() => {
@@ -1934,7 +1948,16 @@ html.dark .rx-cta__shine {
 }
 
 .rx-help {
-  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.4rem;
+  min-height: 0;
+}
+
+.rx-help .markdown-body {
+  font-size: 0.88rem;
+  line-height: 1.6;
 }
 
 .rx-fade-enter-active,
