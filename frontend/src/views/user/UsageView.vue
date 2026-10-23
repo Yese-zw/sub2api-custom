@@ -1,30 +1,20 @@
 <template>
   <AppLayout>
     <RxStage wide>
-    <RxPageHero
-      :eyebrow="t('usage.hero.eyebrow')"
-      :lead="t('usage.hero.titleLead')"
-      :accent="t('usage.hero.titleAccent')"
-      :subtitle="t('usage.hero.subtitle')"
-    >
-      <template #aside>
-        <!-- 时间范围与粒度：从内容区上移到首屏右侧 -->
-        <div class="usage-range rx-glass">
-          <span class="usage-range__label">{{ t('admin.dashboard.timeRange') }}</span>
-          <DateRangePicker
-            v-model:start-date="startDate"
-            v-model:end-date="endDate"
-            @change="onDateRangeChange"
-          />
-          <span class="usage-range__divider" aria-hidden="true"></span>
-          <span class="usage-range__label">{{ t('admin.dashboard.granularity') }}</span>
-          <div class="w-28">
-            <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
-          </div>
-        </div>
-      </template>
-    </RxPageHero>
     <div class="usage-page space-y-6">
+      <div class="usage-range rx-glass">
+        <span class="usage-range__label">{{ t('admin.dashboard.timeRange') }}</span>
+        <DateRangePicker
+          v-model:start-date="startDate"
+          v-model:end-date="endDate"
+          @change="onDateRangeChange"
+        />
+        <span class="usage-range__divider" aria-hidden="true"></span>
+        <span class="usage-range__label">{{ t('admin.dashboard.granularity') }}</span>
+        <div class="w-28">
+          <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
+        </div>
+      </div>
       <UsageKpiBento :stats="usageStats" :trend="trendData" :loading="loading || chartsLoading" />
 
       <header class="rx-section-head">
@@ -247,7 +237,6 @@
 
 <script setup lang="ts">
 import RxStage from '@/components/common/RxStage.vue'
-import RxPageHero from '@/components/common/RxPageHero.vue'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

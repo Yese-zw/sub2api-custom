@@ -92,8 +92,18 @@ const medianLatency = computed(() => {
 }
 
 @media (min-width: 1024px) {
-  .status-orb {
+  .status-orb:not(.status-orb--flush) {
     width: 30rem;
+  }
+}
+
+.status-orb--flush {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .status-orb--flush .status-orb__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

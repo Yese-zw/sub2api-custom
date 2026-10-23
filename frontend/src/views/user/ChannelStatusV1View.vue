@@ -1,17 +1,7 @@
 <template>
   <AppLayout>
     <RxStage wide>
-    <!-- 标题强调词随整体状态变化：运行正常 / 部分降级 -->
-    <RxPageHero
-      :eyebrow="t('channelStatus.hero.eyebrow')"
-      :lead="t('channelStatus.hero.titleLead')"
-      :accent="t(`channelStatus.hero.accent.${overallStatus}`)"
-      :subtitle="t('channelStatus.hero.subtitle')"
-    >
-      <template #aside>
-        <MonitorStatusOrb :items="items" :overall-status="overallStatus" />
-      </template>
-    </RxPageHero>
+    <MonitorStatusOrb class="status-orb--flush" :items="items" :overall-status="overallStatus" />
 
     <!-- 控制条：时间窗 / 刷新 / 自动刷新 -->
     <div class="monitor-toolbar-shell rx-glass">
@@ -63,7 +53,6 @@ import {
 } from '@/api/channelMonitor'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import RxStage from '@/components/common/RxStage.vue'
-import RxPageHero from '@/components/common/RxPageHero.vue'
 import MonitorHero, {
   type MonitorWindow,
   type OverallStatus,

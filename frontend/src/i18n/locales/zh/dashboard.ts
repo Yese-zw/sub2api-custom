@@ -80,14 +80,6 @@ export default {
 
   // API Keys
   keys: {
-    hero: {
-      eyebrow: '密钥 · 通行证',
-      titleLead: '一把钥匙，',
-      titleAccent: '打开全部模型',
-      passLabel: 'API PASS',
-      holder: '持有人',
-      keysOnPass: '本页密钥',
-    },
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
     searchPlaceholder: '搜索名称或Key...',
@@ -360,10 +352,6 @@ export default {
   usage: {
     hero: {
       filters: '筛选',
-      eyebrow: '用量 · 分析',
-      titleLead: '每一次调用，',
-      titleAccent: '都清晰可见',
-      subtitle: '按时间、模型、分组与端点拆解 Token 用量和费用。',
       chartsTitle: '构成与走势',
       ledgerTitle: '调用流水',
     },
@@ -607,13 +595,6 @@ export default {
       avgAvailability: '平均可用率 · 7天',
       medianLatency: '延迟中位数',
       window: '时间窗',
-      eyebrow: '渠道 · 实时监控',
-      titleLead: '各渠道健康状况',
-      accent: {
-        operational: '运行平稳',
-        degraded: '部分降级',
-      },
-      subtitle: '延迟、可用率与端点连通性按时间窗汇总，点击卡片查看详情。',
       gridTitle: '渠道雷达',
     },
     title: '渠道状态',
@@ -773,9 +754,6 @@ export default {
 
   affiliate: {
     hero: {
-      eyebrow: '邀请 · 返利',
-      titleLead: '分享你的专属入口，',
-      titleAccent: '一起获得回馈',
       ticketStub: '邀请券',
       stamped: '已复制',
     },
@@ -828,9 +806,6 @@ export default {
   // Redeem
   redeem: {
     hero: {
-      eyebrow: '兑换中心',
-      titleLead: '一串兑换码，',
-      titleAccent: '即刻生效',
       ticketStub: '兑换券',
       stamp: '已兑换',
     },
@@ -884,9 +859,6 @@ export default {
       secBasics: '基本资料',
       secSecurity: '安全与偏好',
       secLogin: '登录方式',
-      eyebrow: '账户 · 安全',
-      titleLead: '你的账户与安全，',
-      titleAccent: '尽在掌握',
     },
     title: '个人设置',
     description: '管理您的账户信息和设置',

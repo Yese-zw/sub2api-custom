@@ -80,14 +80,6 @@ export default {
 
   // API Keys
   keys: {
-    hero: {
-      eyebrow: 'Keys · Pass',
-      titleLead: 'One key,',
-      titleAccent: 'every model',
-      passLabel: 'API PASS',
-      holder: 'Holder',
-      keysOnPass: 'Keys here',
-    },
     title: 'API Keys',
     description: 'Manage your API keys and access tokens',
     searchPlaceholder: 'Search name or key...',
@@ -355,10 +347,6 @@ export default {
   usage: {
     hero: {
       filters: 'Filters',
-      eyebrow: 'Usage · Insights',
-      titleLead: 'Every request,',
-      titleAccent: 'in plain sight',
-      subtitle: 'Break down token usage and cost by time, model, group and endpoint.',
       chartsTitle: 'Mix & trend',
       ledgerTitle: 'Call ledger',
     },
@@ -602,13 +590,6 @@ export default {
       avgAvailability: 'Avg availability · 7d',
       medianLatency: 'Median latency',
       window: 'Window',
-      eyebrow: 'Channels · Live',
-      titleLead: 'Channel health',
-      accent: {
-        operational: 'all systems normal',
-        degraded: 'partially degraded',
-      },
-      subtitle: 'Latency, availability and endpoint reachability summarised per window. Click a card for details.',
       gridTitle: 'Channel radar',
     },
     title: 'Channel Status',
@@ -769,9 +750,6 @@ export default {
 
   affiliate: {
     hero: {
-      eyebrow: 'Invite · Rebates',
-      titleLead: 'Share your link,',
-      titleAccent: 'earn together',
       ticketStub: 'Invite',
       stamped: 'Copied',
     },
@@ -824,9 +802,6 @@ export default {
   // Redeem
   redeem: {
     hero: {
-      eyebrow: 'Redeem center',
-      titleLead: 'One code,',
-      titleAccent: 'instantly applied',
       ticketStub: 'Voucher',
       stamp: 'REDEEMED',
     },
@@ -880,9 +855,6 @@ export default {
       secBasics: 'Basics',
       secSecurity: 'Security & preferences',
       secLogin: 'Sign-in methods',
-      eyebrow: 'Account · Security',
-      titleLead: 'Your account and security,',
-      titleAccent: 'under control',
     },
     title: 'Profile Settings',
     description: 'Manage your account information and settings',

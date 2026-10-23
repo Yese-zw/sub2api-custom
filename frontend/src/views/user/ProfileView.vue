@@ -1,12 +1,6 @@
 <template>
   <AppLayout>
     <RxStage>
-    <RxPageHero
-      :eyebrow="t('profile.hero.eyebrow')"
-      :lead="t('profile.hero.titleLead')"
-      :accent="t('profile.hero.titleAccent')"
-      :subtitle="t('profile.description')"
-    />
     <div class="profile-layout">
       <ProfileIdentityRail :user="user" :sections="sections" />
 
@@ -101,7 +95,6 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import RxStage from '@/components/common/RxStage.vue'
-import RxPageHero from '@/components/common/RxPageHero.vue'
 import ProfileAccountBindingsCard from '@/components/user/profile/ProfileAccountBindingsCard.vue'
 import ProfileAppGroupCard from '@/components/user/profile/ProfileAppGroupCard.vue'
 import ProfileBalanceNotifyCard from '@/components/user/profile/ProfileBalanceNotifyCard.vue'

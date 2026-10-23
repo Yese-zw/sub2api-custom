@@ -1,27 +1,18 @@
 <template>
   <AppLayout>
     <RxStage>
-      <RxPageHero
-        :eyebrow="t('redeem.hero.eyebrow')"
-        :lead="t('redeem.hero.titleLead')"
-        :accent="t('redeem.hero.titleAccent')"
-        :subtitle="t('redeem.description')"
-      >
-        <template #aside>
-          <div class="rx-redeem-stats">
-            <div class="rx-glass rx-redeem-stat">
-              <span class="rx-redeem-stat__icon" aria-hidden="true"><Icon name="creditCard" size="md" /></span>
-              <p class="rx-redeem-stat__label">{{ t('redeem.currentBalance') }}</p>
-              <p class="rx-redeem-stat__value">${{ user?.balance?.toFixed(2) || '0.00' }}</p>
-            </div>
-            <div class="rx-glass rx-redeem-stat">
-              <span class="rx-redeem-stat__icon" aria-hidden="true"><Icon name="bolt" size="md" /></span>
-              <p class="rx-redeem-stat__label">{{ t('redeem.concurrency') }}</p>
-              <p class="rx-redeem-stat__value">{{ user?.concurrency || 0 }} <small>{{ t('redeem.requests') }}</small></p>
-            </div>
-          </div>
-        </template>
-      </RxPageHero>
+      <div class="rx-redeem-stats">
+        <div class="rx-glass rx-redeem-stat">
+          <span class="rx-redeem-stat__icon" aria-hidden="true"><Icon name="creditCard" size="md" /></span>
+          <p class="rx-redeem-stat__label">{{ t('redeem.currentBalance') }}</p>
+          <p class="rx-redeem-stat__value">${{ user?.balance?.toFixed(2) || '0.00' }}</p>
+        </div>
+        <div class="rx-glass rx-redeem-stat">
+          <span class="rx-redeem-stat__icon" aria-hidden="true"><Icon name="bolt" size="md" /></span>
+          <p class="rx-redeem-stat__label">{{ t('redeem.concurrency') }}</p>
+          <p class="rx-redeem-stat__value">{{ user?.concurrency || 0 }} <small>{{ t('redeem.requests') }}</small></p>
+        </div>
+      </div>
 
       <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section class="rx-glass rx-redeem-panel rx-rise" style="--rx-i: 3">
@@ -232,7 +223,6 @@ import { redeemAPI, authAPI, type RedeemHistoryItem } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import RxStage from '@/components/common/RxStage.vue'
-import RxPageHero from '@/components/common/RxPageHero.vue'
 import { formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
@@ -420,12 +410,6 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-}
-
-@media (min-width: 1024px) {
-  .rx-redeem-stats {
-    width: 24rem;
-  }
 }
 
 .rx-redeem-stat {

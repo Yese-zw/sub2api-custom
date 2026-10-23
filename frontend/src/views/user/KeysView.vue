@@ -4,36 +4,6 @@
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
-          <section class="keys-masthead">
-            <div class="keys-masthead__copy">
-              <span class="keys-masthead__eyebrow">
-                <span class="keys-masthead__dot" aria-hidden="true"></span>
-                {{ t('keys.hero.eyebrow') }}
-              </span>
-              <h1 class="keys-masthead__title">
-                <span>{{ t('keys.hero.titleLead') }}</span>
-                <em>{{ t('keys.hero.titleAccent') }}</em>
-              </h1>
-            </div>
-            <article class="keys-pass" aria-label="API pass">
-              <span class="keys-pass__sheen" aria-hidden="true"></span>
-              <div class="keys-pass__top">
-                <span class="keys-pass__chip" aria-hidden="true"><i></i><i></i><i></i></span>
-                <span class="keys-pass__brand">{{ t('keys.hero.passLabel') }}</span>
-              </div>
-              <p class="keys-pass__serial">•••• {{ passSerial }}</p>
-              <dl class="keys-pass__meta">
-                <div>
-                  <dt>{{ t('keys.hero.holder') }}</dt>
-                  <dd>{{ passHolder }}</dd>
-                </div>
-                <div>
-                  <dt>{{ t('keys.hero.keysOnPass') }}</dt>
-                  <dd>{{ pagination.total }}</dd>
-                </div>
-              </dl>
-            </article>
-          </section>
           <div class="rx-toolbar keys-filterbar">
             <div class="rx-toolbar__row">
               <SearchInput
@@ -1410,11 +1380,6 @@ const pagination = ref({
   total: 0,
   pages: 0
 })
-const passHolder = computed(() => {
-  const name = (apiKeys.value[0]?.name || '').trim()
-  return name || t('keys.title')
-})
-  const passSerial = computed(() => String(apiKeys.value[0]?.id ?? (pagination.value.total || 0)).padStart(4, '0'))
 const sortState = ref({
   sort_by: 'created_at',
   sort_order: 'desc' as 'asc' | 'desc'
@@ -2203,149 +2168,6 @@ onUnmounted(() => {
 .keys-action.is-danger:hover {
   background: rgba(220, 38, 38, 0.08);
   color: #dc2626;
-}
-
-/* ---------- 密钥通行证 ---------- */
-.keys-masthead {
-  display: grid;
-  gap: 1rem;
-  align-items: end;
-}
-
-@media (min-width: 768px) {
-  .keys-masthead {
-    grid-template-columns: minmax(0, 1fr) 16.5rem;
-  }
-}
-
-.keys-masthead__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.75rem 0.3rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--rx-muted);
-  background: var(--rx-surface);
-  border: 1px solid var(--rx-line);
-}
-
-.keys-masthead__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--rx-ink);
-}
-
-.keys-masthead__title {
-  margin-top: 0.7rem;
-  font-size: clamp(1.45rem, 1.1rem + 1.4vw, 2.1rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
-  color: var(--rx-ink);
-}
-
-.keys-masthead__title em {
-  display: inline-block;
-  margin-left: 0.2em;
-  font-family: var(--rx-display);
-  font-style: var(--rx-display-style);
-  font-weight: var(--rx-display-weight);
-}
-
-.keys-pass {
-  position: relative;
-  overflow: hidden;
-  padding: 1rem 1.1rem 0.95rem;
-  border-radius: var(--rx-radius-lg);
-  color: var(--rx-card-ink);
-  background: var(--rx-card-bg);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px var(--rx-card-line), var(--rx-shadow-lg);
-  animation: rx-rise 0.7s var(--rx-ease) both 0.12s;
-}
-
-.keys-pass__sheen {
-  pointer-events: none;
-  position: absolute;
-  inset: -40%;
-  background: conic-gradient(from var(--rx-angle), transparent 0deg, var(--rx-foil) 70deg, transparent 140deg);
-  mix-blend-mode: soft-light;
-  animation: keys-pass-spin 16s linear infinite;
-}
-
-@keyframes keys-pass-spin {
-  to { --rx-angle: 360deg; }
-}
-
-.keys-pass__top,
-.keys-pass__serial,
-.keys-pass__meta {
-  position: relative;
-}
-
-.keys-pass__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.keys-pass__chip {
-  display: grid;
-  grid-template-columns: repeat(3, 0.45rem);
-  gap: 0.18rem;
-}
-
-.keys-pass__chip i {
-  height: 0.7rem;
-  border-radius: 2px;
-  background: linear-gradient(135deg, #f8fafc, #94a3b8 55%, #e2e8f0);
-}
-
-.keys-pass__brand {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  opacity: 0.7;
-}
-
-.keys-pass__serial {
-  margin: 0.85rem 0 0.7rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 1.25rem;
-  letter-spacing: 0.18em;
-}
-
-.keys-pass__meta {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.75rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--rx-card-line);
-}
-
-.keys-pass__meta dt {
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.55;
-}
-
-.keys-pass__meta dd {
-  margin-top: 0.15rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.88rem;
-  font-weight: 750;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .keys-pass__sheen { animation: none; }
 }
 
 /* ---------- 筛选条入场 / 名称头像 / 状态点 ---------- */

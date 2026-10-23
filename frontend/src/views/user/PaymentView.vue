@@ -13,11 +13,6 @@
       <div class="space-y-6 pb-8">
       <div v-if="loading" class="rx-skeleton" aria-busy="true">
         <div class="rx-skeleton__hero">
-          <div class="space-y-4">
-            <span class="rx-skeleton__bar w-28"></span>
-            <span class="rx-skeleton__bar h-10 w-3/4"></span>
-            <span class="rx-skeleton__bar w-1/2"></span>
-          </div>
           <span class="rx-skeleton__card"></span>
         </div>
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -34,8 +29,6 @@
           :brand="appStore.siteName"
           :balance="user?.balance || 0"
           :credit="heroCredit"
-          :step="heroStep"
-          :show-steps="activeTab === 'recharge' && enabledMethods.length > 0"
         />
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
         <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="rx-tabs" role="tablist" :style="tabPillStyle">
@@ -117,17 +110,6 @@
                     </p>
                   </Transition>
                 </section>
-                <section v-if="enabledMethods.length >= 1" class="rx-glass rx-panel rx-rise" style="--rx-i: 3">
-                  <header class="rx-section-head">
-                    <span class="rx-section-head__index">02</span>
-                    <h2 class="rx-section-head__title">{{ t('payment.paymentMethod') }}</h2>
-                  </header>
-                  <PaymentMethodSelector
-                    :methods="methodOptions"
-                    :selected="selectedMethod"
-                    @select="selectedMethod = $event"
-                  />
-                </section>
               </div>
               <aside class="lg:sticky lg:top-6 space-y-6">
                 <section
@@ -150,7 +132,22 @@
                     ></div>
                   </div>
                 </section>
-                <div class="rx-glass rx-receipt rx-rise" style="--rx-i: 4">
+                <section
+                  v-if="enabledMethods.length >= 1"
+                  class="rx-glass rx-panel rx-rise rx-methods-rail"
+                  style="--rx-i: 4"
+                >
+                  <header class="rx-section-head">
+                    <span class="rx-section-head__index">02</span>
+                    <h2 class="rx-section-head__title">{{ t('payment.paymentMethod') }}</h2>
+                  </header>
+                  <PaymentMethodSelector
+                    :methods="methodOptions"
+                    :selected="selectedMethod"
+                    @select="selectedMethod = $event"
+                  />
+                </section>
+                <div class="rx-glass rx-receipt rx-rise" style="--rx-i: 5">
                   <header class="rx-receipt__head">
                     <span class="rx-section-head__index">03</span>
                     <div class="min-w-0 flex-1">
@@ -906,12 +903,6 @@ const paymentBrandColor = computed(() => {
 const amountReady = computed(() => validAmount.value > 0 && !amountError.value)
 // 首屏卡片「充值后」预览：仅在充值 tab 且金额有效时出现
 const heroCredit = computed(() => (activeTab.value === 'recharge' && amountReady.value ? creditedAmount.value : 0))
-const heroStep = computed(() => {
-  if (submitting.value) return 3
-  if (!amountReady.value) return 0
-  if (!selectedMethod.value || !canSubmit.value) return 1
-  return 2
-})
 
 const creditedTween = useTweenedNumber(creditedAmount, 600)
 const creditedTweenText = computed(() => creditedTween.value.toFixed(2))
@@ -1394,16 +1385,7 @@ onMounted(async () => {
 }
 
 .rx-skeleton__hero {
-  display: grid;
-  gap: 2rem;
-  align-items: center;
-}
-
-@media (min-width: 1024px) {
-  .rx-skeleton__hero {
-    grid-template-columns: minmax(0, 1fr) 22rem;
-    padding: 1rem 0.5rem;
-  }
+  display: block;
 }
 
 .rx-skeleton__bar,
@@ -1422,7 +1404,7 @@ onMounted(async () => {
 }
 
 .rx-skeleton__card {
-  aspect-ratio: 1.586;
+  height: 6.5rem;
   border-radius: var(--rx-radius-lg);
 }
 
@@ -1515,6 +1497,18 @@ html.pixel-ui .rx-tabs__tab {
   .rx-panel {
     padding: 1.75rem;
   }
+}
+
+.rx-methods-rail {
+  padding: 1.25rem 1.3rem 1.35rem;
+}
+
+.rx-methods-rail .rx-section-head {
+  margin-bottom: 0.9rem;
+}
+
+.rx-methods-rail :deep([data-testid="payment-method-grid"]) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .rx-empty {

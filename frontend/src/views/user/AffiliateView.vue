@@ -6,29 +6,21 @@
       </div>
 
       <template v-else-if="detail">
-        <RxPageHero
-          :eyebrow="t('affiliate.hero.eyebrow')"
-          :lead="t('affiliate.hero.titleLead')"
-          :accent="t('affiliate.hero.titleAccent')"
-          :subtitle="t('affiliate.description')"
-        >
-          <template #aside>
-            <!-- 邀请卡：返利比例 + 已邀请头像堆叠 -->
-            <div class="rx-invite-card">
-              <span class="rx-invite-card__sheen" aria-hidden="true"></span>
-              <p class="rx-invite-card__label">{{ t('affiliate.stats.rebateRate') }}</p>
-              <p class="rx-invite-card__rate">{{ formattedRebateRate }}<small>%</small></p>
-              <p class="rx-invite-card__hint">{{ t('affiliate.stats.rebateRateHint') }}</p>
-              <div class="rx-invite-card__foot">
-                <span class="rx-invite-card__avatars" aria-hidden="true">
-                  <span v-for="item in inviteeFaces" :key="item.user_id">{{ initialOf(item) }}</span>
-                  <span v-if="inviteeFaces.length === 0" class="is-empty">+</span>
-                </span>
-                <span>{{ t('affiliate.stats.invitedUsers') }} · <b>{{ formatCount(detail.aff_count) }}</b></span>
-              </div>
-            </div>
-          </template>
-        </RxPageHero>
+        <div class="rx-invite-card">
+          <span class="rx-invite-card__sheen" aria-hidden="true"></span>
+          <div class="rx-invite-card__rate-block">
+            <p class="rx-invite-card__label">{{ t('affiliate.stats.rebateRate') }}</p>
+            <p class="rx-invite-card__rate">{{ formattedRebateRate }}<small>%</small></p>
+            <p class="rx-invite-card__hint">{{ t('affiliate.stats.rebateRateHint') }}</p>
+          </div>
+          <div class="rx-invite-card__foot">
+            <span class="rx-invite-card__avatars" aria-hidden="true">
+              <span v-for="item in inviteeFaces" :key="item.user_id">{{ initialOf(item) }}</span>
+              <span v-if="inviteeFaces.length === 0" class="is-empty">+</span>
+            </span>
+            <span>{{ t('affiliate.stats.invitedUsers') }} · <b>{{ formatCount(detail.aff_count) }}</b></span>
+          </div>
+        </div>
 
         <div class="grid gap-4 sm:grid-cols-3">
           <div class="rx-glass rx-metric rx-rise" style="--rx-i: 3">
@@ -178,7 +170,6 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import RxStage from '@/components/common/RxStage.vue'
-import RxPageHero from '@/components/common/RxPageHero.vue'
 import userAPI from '@/api/user'
 import type { UserAffiliateDetail } from '@/types'
 import { useAppStore } from '@/stores/app'
@@ -295,18 +286,17 @@ onMounted(() => {
 .rx-invite-card {
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
   width: 100%;
-  padding: 1.35rem 1.5rem 1.2rem;
+  padding: 1.2rem 1.4rem 1.15rem;
   border-radius: var(--rx-radius-lg);
   color: var(--rx-card-ink);
   background: var(--rx-card-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px var(--rx-card-line), var(--rx-shadow-lg);
-}
-
-@media (min-width: 1024px) {
-  .rx-invite-card {
-    width: 22rem;
-  }
 }
 
 .rx-invite-card__sheen {
@@ -322,8 +312,15 @@ onMounted(() => {
   to { --rx-angle: 360deg; }
 }
 
-.rx-invite-card__label {
+.rx-invite-card__rate-block,
+.rx-invite-card__label,
+.rx-invite-card__rate,
+.rx-invite-card__hint,
+.rx-invite-card__foot {
   position: relative;
+}
+
+.rx-invite-card__label {
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -332,11 +329,10 @@ onMounted(() => {
 }
 
 .rx-invite-card__rate {
-  position: relative;
   margin-top: 0.3rem;
   font-family: var(--rx-display);
   font-style: var(--rx-display-style);
-  font-size: 3.4rem;
+  font-size: clamp(2.2rem, 1.6rem + 2vw, 3.2rem);
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -356,13 +352,12 @@ onMounted(() => {
 }
 
 .rx-invite-card__foot {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  margin-top: 1.1rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--rx-card-line);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
   font-size: 0.78rem;
   opacity: 0.85;
 }

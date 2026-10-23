@@ -1,26 +1,6 @@
 <template>
   <AppLayout>
     <RxStage>
-      <RxPageHero
-        :eyebrow="t('payment.ordersHero.eyebrow')"
-        :lead="t('payment.ordersHero.titleLead')"
-        :accent="t('payment.ordersHero.titleAccent')"
-        :subtitle="t('payment.ordersHero.subtitle')"
-      >
-        <template #aside>
-          <div class="rx-glass rx-orders-stat">
-            <div>
-              <p class="rx-orders-stat__label">{{ t('payment.ordersHero.total') }}</p>
-              <p class="rx-orders-stat__value">{{ totalText }}</p>
-            </div>
-            <button type="button" class="rx-orders-cta" @click="router.push('/purchase')">
-              {{ t('payment.result.backToRecharge') }}
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m0 0l-4.5-4.5M15 10l-4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            </button>
-          </div>
-        </template>
-      </RxPageHero>
-
       <!-- Filters -->
       <div class="rx-glass rx-orders-toolbar rx-rise" style="--rx-i: 3">
         <span class="rx-orders-toolbar__label">{{ t('payment.orders.status') }}</span>
@@ -176,7 +156,6 @@ import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
 import RxStage from '@/components/common/RxStage.vue'
-import RxPageHero from '@/components/common/RxPageHero.vue'
 import { currencySymbol } from '@/components/payment/currency'
 import { isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import alipayIcon from '@/assets/icons/alipay.svg'
@@ -207,8 +186,6 @@ const statusFilters = computed(() => [
   { value: 'FAILED', label: t('payment.status.failed') },
   { value: 'REFUNDED', label: t('payment.status.refunded') },
 ])
-
-const totalText = computed(() => pagination.total.toLocaleString())
 
 function methodIcon(type: string): string {
   if (isBuiltInAlipayMethod(type)) return alipayIcon
@@ -344,32 +321,6 @@ onMounted(() => { fetchOrders(); loadRefundEligibility() })
 </script>
 
 <style scoped>
-/* ---------- 首屏统计 ---------- */
-.rx-orders-stat {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1rem 1rem 1rem 1.4rem;
-}
-
-.rx-orders-stat__label {
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--rx-faint);
-}
-
-.rx-orders-stat__value {
-  margin-top: 0.15rem;
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-  color: var(--rx-ink);
-}
-
 .rx-orders-cta {
   display: inline-flex;
   align-items: center;

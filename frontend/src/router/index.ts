@@ -212,7 +212,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'API Keys',
       titleKey: 'keys.title',
-      descriptionKey: 'keys.description'
     }
   },
   {
@@ -237,7 +236,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Usage Records',
       titleKey: 'usage.title',
-      descriptionKey: 'usage.description'
     }
   },
   {
@@ -249,7 +247,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Redeem Code',
       titleKey: 'redeem.title',
-      descriptionKey: 'redeem.description'
     }
   },
   {
@@ -261,7 +258,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Affiliate',
       titleKey: 'affiliate.title',
-      descriptionKey: 'affiliate.description'
     }
   },
   {
@@ -297,7 +293,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Profile',
       titleKey: 'profile.title',
-      descriptionKey: 'profile.description'
     }
   },
   {
