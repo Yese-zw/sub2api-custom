@@ -103,28 +103,33 @@
       <div data-testid="profile-main-column" class="space-y-6">
         <section
           data-testid="profile-basics-panel"
-          class="card border border-gray-100 bg-white/90 p-6 dark:border-dark-700 dark:bg-dark-900/50"
+          class="card rx-settings"
         >
-          <div class="mb-5 flex items-start justify-between gap-4">
+          <header class="rx-settings__head">
+            <span class="rx-settings__icon" aria-hidden="true">
+              <Icon name="user" size="md" />
+            </span>
             <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 class="rx-settings__title">
                 {{ t('profile.basicsTitle') }}
               </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p class="rx-settings__desc">
                 {{ t('profile.basicsDescription') }}
               </p>
             </div>
-          </div>
+          </header>
 
-          <div class="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
-            <div class="rounded-3xl border border-gray-100 bg-gray-50/80 p-5 dark:border-dark-700 dark:bg-dark-900/30">
+          <div class="rx-settings__grid">
+            <div class="rx-settings__tile">
+              <p class="rx-settings__kicker">{{ t('profile.avatar.title') }}</p>
               <ProfileAvatarCard
                 :user="user"
                 embedded
               />
             </div>
 
-            <div class="rounded-3xl border border-gray-100 bg-gray-50/80 p-5 dark:border-dark-700 dark:bg-dark-900/30">
+            <div class="rx-settings__tile">
+              <p class="rx-settings__kicker">{{ t('profile.editProfile') }}</p>
               <ProfileEditForm
                 :initial-username="user?.username || ''"
                 embedded
@@ -141,22 +146,29 @@
       >
         <section
           v-if="sourceHints.length"
-          class="card border border-gray-100 bg-white/90 p-6 dark:border-dark-700 dark:bg-dark-900/50"
+          class="card rx-settings"
         >
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('profile.linkedProfileSources') }}
-          </h3>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ t('profile.linkedProfileSourcesDescription') }}
-          </p>
+          <header class="rx-settings__head">
+            <span class="rx-settings__icon is-soft" aria-hidden="true">
+              <Icon name="link" size="md" />
+            </span>
+            <div>
+              <h3 class="rx-settings__title">
+                {{ t('profile.linkedProfileSources') }}
+              </h3>
+              <p class="rx-settings__desc">
+                {{ t('profile.linkedProfileSourcesDescription') }}
+              </p>
+            </div>
+          </header>
 
-          <div class="mt-5 grid gap-3">
+          <div class="grid gap-2.5">
             <div
               v-for="hint in sourceHints"
               :key="hint.key"
-              class="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 text-sm text-gray-600 dark:border-dark-700 dark:bg-dark-900/30 dark:text-gray-300"
+              class="rx-settings__hint"
             >
-              <Icon name="link" size="sm" class="mt-0.5 text-gray-400 dark:text-gray-500" />
+              <Icon name="sync" size="sm" />
               <span>{{ hint.text }}</span>
             </div>
           </div>

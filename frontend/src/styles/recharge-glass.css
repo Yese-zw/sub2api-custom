@@ -486,3 +486,114 @@ html .rx-stage .btn.btn-secondary {
   color: var(--rx-faint);
   opacity: 0.7;
 }
+
+/* ==========================================================================
+   设置卡：资料 / 密码 / 分组等表单面板共用
+   ========================================================================== */
+.rx-settings {
+  position: relative;
+  overflow: hidden;
+  padding: 1.35rem 1.35rem 1.45rem;
+}
+
+@media (min-width: 640px) {
+  .rx-settings {
+    padding: 1.55rem 1.65rem 1.7rem;
+  }
+}
+
+.rx-settings__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 1.2rem;
+}
+
+.rx-settings__icon {
+  display: grid;
+  place-items: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  flex-shrink: 0;
+  border-radius: 14px;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--rx-accent) 80%, transparent);
+}
+
+.rx-settings__icon.is-soft {
+  color: var(--rx-ink);
+  background: var(--rx-surface-2);
+  box-shadow: var(--rx-highlight);
+  border: 1px solid var(--rx-line);
+}
+
+.rx-settings__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--rx-ink);
+}
+
+.rx-settings__desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--rx-muted);
+}
+
+.rx-settings__grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+@media (min-width: 768px) {
+  .rx-settings__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.rx-settings__tile {
+  position: relative;
+  padding: 1.15rem 1.15rem 1.2rem;
+  border-radius: var(--rx-radius-md);
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line);
+  box-shadow: var(--rx-highlight);
+}
+
+.rx-settings__kicker {
+  margin: 0 0 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rx-faint);
+}
+
+.rx-settings__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--rx-radius-sm);
+  background: var(--rx-surface-2);
+  border: 1px solid var(--rx-line);
+  color: var(--rx-ink-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.rx-settings__hint svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--rx-muted);
+}
+
+.rx-avatar-preview {
+  border-radius: 9999px;
+  color: var(--rx-on-accent);
+  background: var(--rx-accent);
+  box-shadow: 0 0 0 4px var(--rx-surface), 0 0 0 5px var(--rx-line-strong);
+}

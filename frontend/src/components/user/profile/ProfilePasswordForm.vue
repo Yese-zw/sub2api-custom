@@ -1,14 +1,19 @@
 <template>
-  <div :class="props.embedded ? 'space-y-4' : 'card'">
-    <div
-      v-if="!props.embedded"
-      class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-    >
-      <h2 class="text-lg font-medium text-gray-900 dark:text-white">
-        {{ t('profile.changePassword') }}
-      </h2>
-    </div>
-    <div :class="props.embedded ? '' : 'px-6 py-6'">
+  <div :class="props.embedded ? 'space-y-4' : 'card rx-settings'">
+    <header v-if="!props.embedded" class="rx-settings__head">
+      <span class="rx-settings__icon" aria-hidden="true">
+        <Icon name="lock" size="md" />
+      </span>
+      <div>
+        <h2 class="rx-settings__title">
+          {{ t('profile.changePassword') }}
+        </h2>
+        <p class="rx-settings__desc">
+          {{ t('profile.passwordDescription') }}
+        </p>
+      </div>
+    </header>
+    <div>
       <form @submit.prevent="handleChangePassword" class="space-y-4">
         <div v-if="props.embedded">
           <p class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -60,7 +65,7 @@
           />
         </div>
 
-        <div class="flex justify-end pt-4">
+        <div class="flex justify-end pt-2">
           <button type="submit" :disabled="loading" class="btn btn-primary">
             {{ loading ? t('profile.changingPassword') : t('profile.changePasswordButton') }}
           </button>
@@ -73,6 +78,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Icon } from '@/components/icons'
 import { useAppStore } from '@/stores/app'
 import { userAPI } from '@/api'
 import { extractApiErrorMessage } from '@/utils/apiError'

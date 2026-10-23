@@ -12,10 +12,10 @@
       </p>
     </div>
 
-    <div :class="props.embedded ? 'space-y-3' : 'flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-start'">
+    <div :class="props.embedded ? 'space-y-4' : 'flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-start'">
       <div
         :class="props.embedded
-          ? 'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-gray-700 to-gray-950 text-xl font-bold text-white shadow-lg shadow-black/20 dark:from-gray-600 dark:to-black'
+          ? 'rx-avatar-preview mx-auto flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden text-xl font-bold'
           : 'flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-gray-700 to-gray-950 text-3xl font-bold text-white shadow-lg shadow-black/20 dark:from-gray-600 dark:to-black'"
       >
         <img
@@ -28,12 +28,9 @@
         <span v-else>{{ avatarInitial }}</span>
       </div>
 
-      <div :class="props.embedded ? 'space-y-3' : 'min-w-0 flex-1 space-y-4'">
+      <div :class="props.embedded ? 'space-y-3 text-center' : 'min-w-0 flex-1 space-y-4'">
         <div class="space-y-1">
-          <p v-if="props.embedded" class="text-sm font-semibold text-gray-900 dark:text-white">
-            {{ t('profile.avatar.title') }}
-          </p>
-          <p v-else class="text-sm font-medium text-gray-900 dark:text-white">
+          <p v-if="!props.embedded" class="text-sm font-medium text-gray-900 dark:text-white">
             {{ displayName }}
           </p>
           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -41,7 +38,7 @@
           </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
+        <div :class="props.embedded ? 'flex flex-wrap items-center justify-center gap-2.5' : 'flex flex-wrap items-center gap-3'">
           <label class="btn btn-secondary btn-sm cursor-pointer">
             <input
               data-testid="profile-avatar-file-input"

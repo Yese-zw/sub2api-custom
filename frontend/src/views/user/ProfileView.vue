@@ -19,6 +19,7 @@
             <span class="profile-sec__index">01</span>
             <h2>{{ sections[0].label }}</h2>
           </header>
+          <div class="rx-skin-rise">
           <ProfileInfoCard
             :user="user"
             :oidc-provider-name="oidcOAuthProviderName"
@@ -26,17 +27,18 @@
           />
           <div
             v-if="contactInfo"
-            class="card mt-6 flex items-center gap-4 p-6"
+            class="card rx-settings mt-6 flex items-center gap-4"
           >
-            <div class="rx-profile-contact-icon shrink-0 p-3">
-              <Icon name="chat" size="lg" />
+            <div class="rx-settings__icon shrink-0">
+              <Icon name="chat" size="md" />
             </div>
             <div class="min-w-0">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
+              <h3 class="rx-settings__title">
                 {{ t('common.contactSupport') }}
               </h3>
-              <p class="truncate text-sm font-medium text-gray-600 dark:text-gray-300">{{ contactInfo }}</p>
+              <p class="rx-settings__desc truncate">{{ contactInfo }}</p>
             </div>
+          </div>
           </div>
         </section>
 
@@ -212,9 +214,4 @@ onMounted(async () => {
   color: var(--rx-ink);
 }
 
-.rx-profile-contact-icon {
-  border-radius: var(--rx-radius-sm);
-  color: var(--rx-on-accent);
-  background: var(--rx-accent);
-}
 </style>

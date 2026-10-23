@@ -4,37 +4,6 @@
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
-          <section class="keys-overview" aria-label="API key overview">
-            <article class="keys-metric">
-              <span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M15.5 7.5a3.5 3.5 0 11-4.95 3.18L4 17.25V20h2.75v-2h2v-2h2l1.07-1.07A3.5 3.5 0 0115.5 7.5z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-              <span class="keys-metric-label">{{ t('keys.overview.total') }}</span>
-              <strong class="keys-metric-value">{{ pagination.total }}</strong>
-            </article>
-            <article class="keys-metric">
-              <span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v8m5.66-4.66a8 8 0 11-11.32 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>
-              <span class="keys-metric-label">
-                {{ t('keys.overview.active') }}
-                <em class="keys-metric-scope">{{ t('keys.overview.pageScope') }}</em>
-              </span>
-              <strong class="keys-metric-value">{{ pageActiveCount }}</strong>
-            </article>
-            <article class="keys-metric">
-              <span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6v12m3.5-9.5c0-1.38-1.57-2.5-3.5-2.5S8.5 7.12 8.5 8.5 10.07 11 12 11s3.5 1.12 3.5 2.5S13.93 16 12 16s-3.5-1.12-3.5-2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>
-              <span class="keys-metric-label">
-                {{ t('keys.overview.todaySpend') }}
-                <em class="keys-metric-scope">{{ t('keys.overview.pageScope') }}</em>
-              </span>
-              <strong class="keys-metric-value">${{ pageTodaySpend.toFixed(4) }}</strong>
-            </article>
-            <article class="keys-metric" :class="{ 'is-alert': pageQuotaAlerts > 0 }">
-<span class="keys-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
-              <span class="keys-metric-label">{{ t('keys.overview.quotaAlert') }}</span>
-              <strong class="keys-metric-value">
-                {{ pageQuotaAlerts > 0 ? pageQuotaAlerts : t('keys.overview.healthy') }}
-              </strong>
-            </article>
-          </section>
-
           <div class="keys-filterbar flex flex-wrap items-center gap-3">
             <SearchInput
               v-model="filterSearch"
@@ -1400,24 +1369,6 @@ let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
 const userGroupRates = ref<Record<number, number>>({})
 
-// 概览指标：服务端分页下只有当前页数据在内存中，
-// 因此除 total 外的指标均标注"本页"，避免与全量统计混淆。
-const pageActiveCount = computed(
-  () => apiKeys.value.filter((k) => k.status === 'active').length
-)
-const pageTodaySpend = computed(() =>
-  apiKeys.value.reduce(
-    (sum, k) => sum + (usageStats.value[k.id]?.today_actual_cost ?? 0),
-    0
-  )
-)
-const pageQuotaAlerts = computed(
-  () =>
-    apiKeys.value.filter(
-      (k) => k.quota > 0 && k.quota_used >= k.quota * 0.8
-    ).length
-)
-
 const pagination = ref({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -2135,127 +2086,9 @@ onUnmounted(() => {
 <style scoped>
 /* ==========================================================================
    API 密钥页专属视觉层
-   概览指标 + 用量/配额进度条 + 操作按钮 + Key 芯片。
+   用量/配额进度条 + 操作按钮 + Key 芯片。
    使用主题令牌(--ed-*)，未启用 editorial 主题时回落到中性灰阶。
    ========================================================================== */
-
-.keys-overview {
-  counter-reset: keys-metric;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.keys-metric {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.125rem 1.25rem;
-  border-radius: 18px;
-  border: 1px solid var(--ed-line, rgba(17, 17, 15, 0.11));
-  background: var(--ed-grad-surface, linear-gradient(180deg, #fff, #fdfcfa));
-  box-shadow: var(--ed-shadow-sm, 0 1px 2px rgba(17, 17, 15, 0.03), 0 4px 12px rgba(17, 17, 15, 0.035));
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.16s ease;
-  overflow: hidden;
-}
-
-.keys-metric::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
-}
-
-/* 玻璃舞台内：取 --rx 令牌，入场错峰，右上角衬线序号 */
-.rx-stage .keys-metric {
-  counter-increment: keys-metric;
-  border-radius: var(--rx-radius-md);
-  border-color: var(--rx-line);
-  background: var(--rx-surface);
-  box-shadow: var(--rx-highlight), var(--rx-shadow);
-  animation: rx-rise 0.7s var(--rx-ease) both;
-}
-
-.rx-stage .keys-metric:nth-child(2) { animation-delay: 70ms; }
-.rx-stage .keys-metric:nth-child(3) { animation-delay: 140ms; }
-.rx-stage .keys-metric:nth-child(4) { animation-delay: 210ms; }
-
-.rx-stage .keys-metric::after {
-  content: counter(keys-metric, decimal-leading-zero);
-  position: absolute;
-  top: 0.8rem;
-  right: 1rem;
-  font-family: var(--rx-display);
-  font-style: var(--rx-display-style);
-  font-size: 0.9rem;
-  color: var(--rx-faint);
-  opacity: 0.7;
-}
-
-/* 第一块（密钥总数）翻为墨色，与侧边栏激活项呼应 */
-.rx-stage .keys-metric:first-child {
-  border-color: var(--rx-accent);
-  background: var(--rx-accent);
-}
-
-.rx-stage .keys-metric:first-child .keys-metric-label,
-.rx-stage .keys-metric:first-child .keys-metric-value,
-.rx-stage .keys-metric:first-child::after {
-  color: var(--rx-on-accent);
-}
-
-.rx-stage .keys-metric:first-child .keys-metric-label {
-  opacity: 0.7;
-}
-
-.keys-metric:hover {
-  transform: translateY(-2px);
-  border-color: var(--ed-line-strong, rgba(17, 17, 15, 0.2));
-  box-shadow: var(--ed-lift, 0 2px 6px rgba(17, 17, 15, 0.05), 0 18px 44px rgba(17, 17, 15, 0.1));
-}
-
-.keys-metric.is-alert {
-  border-color: rgba(180, 83, 9, 0.28);
-  background: linear-gradient(180deg, #fffdf8, #fffaf0);
-}
-
-.keys-metric-label {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--ed-muted, #706f69);
-}
-
-.keys-metric-scope {
-  font-style: normal;
-  font-size: 0.625rem;
-  font-weight: 600;
-  padding: 0.1rem 0.375rem;
-  border-radius: 999px;
-  color: var(--ed-faint, #96948d);
-  background: var(--ed-grad-sunken, #f0eee8);
-}
-
-.keys-metric-value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.045em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ed-ink, #11110f);
-}
-
-.keys-metric.is-alert .keys-metric-value {
-  color: #b45309;
-  font-size: 1.25rem;
-}
 
 /* ---------- 进度条：统一为编辑型细条 ---------- */
 .keys-bar {
@@ -2332,47 +2165,7 @@ onUnmounted(() => {
   color: #dc2626;
 }
 
-/* ---------- 指标图标 / 筛选条 / 名称头像 / 状态点 ---------- */
-.keys-metric-icon {
-  position: absolute;
-  right: 0.9rem;
-  bottom: 0.85rem;
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  color: var(--rx-muted, #706f69);
-  background: var(--rx-surface-2, #f0eee8);
-  transition: transform 0.45s var(--rx-spring, ease);
-}
-
-.keys-metric-icon svg {
-  width: 1.05rem;
-  height: 1.05rem;
-}
-
-.keys-metric:hover .keys-metric-icon {
-  transform: rotate(-12deg) scale(1.08);
-}
-
-.rx-stage .keys-metric:first-child .keys-metric-icon {
-  color: var(--rx-accent);
-  background: var(--rx-on-accent);
-}
-
-/* 告警：图标外圈脉冲 */
-.keys-metric.is-alert .keys-metric-icon {
-  color: #b45309;
-  background: rgba(217, 119, 6, 0.12);
-  animation: keys-alert 2s ease-out infinite;
-}
-
-@keyframes keys-alert {
-  0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.35); }
-  100% { box-shadow: 0 0 0 10px rgba(217, 119, 6, 0); }
-}
-
+/* ---------- 筛选条 / 名称头像 / 状态点 ---------- */
 .rx-stage .keys-filterbar {
   padding: 0.55rem;
   border-radius: var(--rx-radius-md);
@@ -2444,16 +2237,8 @@ tr:hover .keys-avatar {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .keys-metric.is-alert .keys-metric-icon,
   .keys-status__dot.is-live::after {
     animation: none;
-  }
-}
-
-/* ---------- 移动端 ---------- */
-@media (max-width: 640px) {
-  .keys-overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

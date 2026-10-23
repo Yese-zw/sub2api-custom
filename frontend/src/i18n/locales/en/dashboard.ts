@@ -69,15 +69,6 @@ export default {
     title: 'API Keys',
     description: 'Manage your API keys and access tokens',
     searchPlaceholder: 'Search name or key...',
-    overview: {
-      total: 'Total Keys',
-      active: 'Active',
-      disabled: 'Disabled',
-      todaySpend: 'Today Spend',
-      pageScope: 'This page',
-      quotaAlert: 'Quota Alerts',
-      healthy: 'Healthy',
-    },
     endpoints: {
       title: 'API Endpoints',
       default: 'Default',
@@ -895,6 +886,7 @@ export default {
     updateFailed: 'Failed to update profile',
     usernameRequired: 'Username is required',
     changePassword: 'Change Password',
+    passwordDescription: 'Update your password regularly to keep this account secure.',
     currentPassword: 'Current Password',
     newPassword: 'New Password',
     confirmNewPassword: 'Confirm New Password',

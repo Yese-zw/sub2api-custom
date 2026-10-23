@@ -69,15 +69,6 @@ export default {
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
     searchPlaceholder: '搜索名称或Key...',
-    overview: {
-      total: '密钥总数',
-      active: '启用中',
-      disabled: '已禁用',
-      todaySpend: '今日消费',
-      pageScope: '本页',
-      quotaAlert: '配额告警',
-      healthy: '运行正常',
-    },
     endpoints: {
       title: 'API 端点',
       default: '默认',
@@ -899,6 +890,7 @@ export default {
     updateFailed: '资料更新失败',
     usernameRequired: '用户名不能为空',
     changePassword: '修改密码',
+    passwordDescription: '定期更新密码，保护账户访问安全。',
     currentPassword: '当前密码',
     newPassword: '新密码',
     confirmNewPassword: '确认新密码',

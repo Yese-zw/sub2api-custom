@@ -1,14 +1,19 @@
 <template>
-  <div class="card">
-    <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <h2 class="text-lg font-medium text-gray-900 dark:text-white">
-        {{ t('profile.appGroup.title', { app: appLabel }) }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ t('profile.appGroup.description', { app: appLabel }) }}
-      </p>
-    </div>
-    <div class="px-6 py-6">
+  <div class="card rx-settings">
+    <header class="rx-settings__head">
+      <span class="rx-settings__icon" aria-hidden="true">
+        <Icon name="grid" size="md" />
+      </span>
+      <div>
+        <h2 class="rx-settings__title">
+          {{ t('profile.appGroup.title', { app: appLabel }) }}
+        </h2>
+        <p class="rx-settings__desc">
+          {{ t('profile.appGroup.description', { app: appLabel }) }}
+        </p>
+      </div>
+    </header>
+    <div class="space-y-3">
       <label class="input-label">{{ t('profile.appGroup.label') }}</label>
       <Select
         :model-value="selectedGroupId"
@@ -18,6 +23,9 @@
         searchable="auto"
         @update:model-value="onSelect"
       />
+      <p v-if="currentLabel" class="rx-settings__desc">
+        {{ currentLabel }}
+      </p>
     </div>
   </div>
 </template>
@@ -25,6 +33,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Icon } from '@/components/icons'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import { userAPI, userGroupsAPI } from '@/api'
 import { useAppStore } from '@/stores/app'
@@ -57,6 +66,11 @@ const options = computed<SelectOption[]>(() => {
     },
     ...groups.value.map((group) => ({ value: group.id, label: `${group.name} · ${group.platform}` })),
   ]
+})
+
+const currentLabel = computed(() => {
+  if (loading.value) return ''
+  return options.value.find((option) => option.value === selectedGroupId.value)?.label ?? ''
 })
 
 async function onSelect(value: string | number | boolean | null) {
