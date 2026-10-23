@@ -5815,6 +5815,7 @@ export default {
       tabs: {
         general: 'General',
         agreement: 'Agreement',
+        app: 'App',
         features: 'Feature Switches',
         security: 'Security',
         users: 'Users',

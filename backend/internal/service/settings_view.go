@@ -170,6 +170,8 @@ type SystemSettings struct {
 	SiteName                    string
 	SiteLogo                    string
 	CommunityGroupImage         string
+	AppName                     string
+	AppDefaultGroupID           int64
 	UITheme                     string
 	SiteSubtitle                string
 	APIBaseURL                  string
@@ -374,6 +376,8 @@ type PublicSettings struct {
 	SiteName                            string
 	SiteLogo                            string
 	CommunityGroupImage                 string
+	AppName                             string
+	AppDefaultGroupID                   int64
 	UITheme                             string
 	SiteSubtitle                        string
 	APIBaseURL                          string

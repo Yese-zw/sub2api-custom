@@ -309,3 +309,23 @@ func TestSettingService_GetPublicSettings_PaymentBalanceDisabledStrictTrue(t *te
 		})
 	}
 }
+
+func TestSettingService_GetPublicSettings_ExposesAppConfig(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyAppName:           " Example Agent ",
+			SettingKeyAppDefaultGroupID: "110",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "Example Agent", settings.AppName)
+	require.Equal(t, int64(110), settings.AppDefaultGroupID)
+
+	repo.values[SettingKeyAppDefaultGroupID] = "not-a-number"
+	settings, err = svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Zero(t, settings.AppDefaultGroupID)
+}

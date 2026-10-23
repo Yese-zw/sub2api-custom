@@ -480,6 +480,9 @@ export interface SystemSettings {
 	site_name: string;
 	site_logo: string;
 	community_group_image: string;
+	// 桌面 App 配置（App 通过 /api/v1/settings/public 读取）
+	app_name: string;
+	app_default_group_id: number;
 	ui_theme: "pixel" | "original" | "editorial";
 	site_subtitle: string;
   api_base_url: string;
@@ -838,6 +841,8 @@ export interface UpdateSettingsRequest {
 	site_name?: string;
 	site_logo?: string;
 	community_group_image?: string;
+	app_name?: string;
+	app_default_group_id?: number;
 	ui_theme?: "pixel" | "original" | "editorial";
 	site_subtitle?: string;
   api_base_url?: string;

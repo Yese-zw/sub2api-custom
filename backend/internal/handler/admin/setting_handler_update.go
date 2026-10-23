@@ -1,5 +1,3 @@
-//go:build split_setting_handler
-
 package admin
 
 import (
@@ -44,13 +42,17 @@ type UpdateSettingsRequest struct {
 	LoginAgreementDocuments             []dto.LoginAgreementDocument `json:"login_agreement_documents"`
 
 	// 邮件服务设置
-	SMTPHost     string `json:"smtp_host"`
-	SMTPPort     int    `json:"smtp_port"`
-	SMTPUsername string `json:"smtp_username"`
-	SMTPPassword string `json:"smtp_password"`
-	SMTPFrom     string `json:"smtp_from_email"`
-	SMTPFromName string `json:"smtp_from_name"`
-	SMTPUseTLS   bool   `json:"smtp_use_tls"`
+	EmailProvider            string `json:"email_provider"`
+	SMTPHost                 string `json:"smtp_host"`
+	SMTPPort                 int    `json:"smtp_port"`
+	SMTPUsername             string `json:"smtp_username"`
+	SMTPPassword             string `json:"smtp_password"`
+	SMTPFrom                 string `json:"smtp_from_email"`
+	SMTPFromName             string `json:"smtp_from_name"`
+	SMTPUseTLS               bool   `json:"smtp_use_tls"`
+	ResendAPIKey             string `json:"resend_api_key"`
+	CloudflareEmailAccountID string `json:"cloudflare_email_account_id"`
+	CloudflareEmailAPIToken  string `json:"cloudflare_email_api_token"`
 
 	// Cloudflare Turnstile 设置
 	TurnstileEnabled   bool   `json:"turnstile_enabled"`
@@ -157,6 +159,9 @@ type UpdateSettingsRequest struct {
 	// OEM设置
 	SiteName                    string                `json:"site_name"`
 	SiteLogo                    string                `json:"site_logo"`
+	CommunityGroupImage         string                `json:"community_group_image"`
+	AppName                     string                `json:"app_name"`
+	AppDefaultGroupID           int64                 `json:"app_default_group_id"`
 	UITheme                     string                `json:"ui_theme"`
 	SiteSubtitle                string                `json:"site_subtitle"`
 	APIBaseURL                  string                `json:"api_base_url"`
@@ -620,6 +625,13 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	if req.TablePageSizeOptions == nil {
 		req.TablePageSizeOptions = previousSettings.TablePageSizeOptions
 	}
+	req.EmailProvider = strings.ToLower(strings.TrimSpace(req.EmailProvider))
+	if req.EmailProvider == "" {
+		req.EmailProvider = previousSettings.EmailProvider
+	}
+	req.ResendAPIKey = strings.TrimSpace(req.ResendAPIKey)
+	req.CloudflareEmailAccountID = strings.TrimSpace(req.CloudflareEmailAccountID)
+	req.CloudflareEmailAPIToken = strings.TrimSpace(req.CloudflareEmailAPIToken)
 	req.SMTPHost = strings.TrimSpace(req.SMTPHost)
 	req.SMTPUsername = strings.TrimSpace(req.SMTPUsername)
 	req.SMTPPassword = strings.TrimSpace(req.SMTPPassword)
@@ -643,11 +655,26 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	// 防止前端加载设置失败时空表单覆盖已保存的 SMTP 配置
 	if req.SMTPHost == "" && previousSettings.SMTPHost != "" {
 		req.SMTPHost = previousSettings.SMTPHost
-		req.SMTPPort = previousSettings.SMTPPort
-		req.SMTPUsername = previousSettings.SMTPUsername
-		req.SMTPFrom = previousSettings.SMTPFrom
-		req.SMTPFromName = previousSettings.SMTPFromName
-		req.SMTPUseTLS = previousSettings.SMTPUseTLS
+		if req.EmailProvider == service.EmailProviderSMTP {
+			req.SMTPPort = previousSettings.SMTPPort
+			req.SMTPUsername = previousSettings.SMTPUsername
+			req.SMTPFrom = previousSettings.SMTPFrom
+			req.SMTPFromName = previousSettings.SMTPFromName
+			req.SMTPUseTLS = previousSettings.SMTPUseTLS
+		} else {
+			if req.SMTPUsername == "" {
+				req.SMTPUsername = previousSettings.SMTPUsername
+			}
+			if req.SMTPFrom == "" {
+				req.SMTPFrom = previousSettings.SMTPFrom
+			}
+			if req.SMTPFromName == "" {
+				req.SMTPFromName = previousSettings.SMTPFromName
+			}
+		}
+	}
+	if req.CloudflareEmailAccountID == "" && previousSettings.CloudflareEmailAccountID != "" {
+		req.CloudflareEmailAccountID = previousSettings.CloudflareEmailAccountID
 	}
 
 	turnstileEnabled := req.TurnstileEnabled
@@ -1546,6 +1573,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		LoginAgreementMode:                  loginAgreementMode,
 		LoginAgreementUpdatedAt:             loginAgreementUpdatedAt,
 		LoginAgreementDocuments:             loginAgreementDocuments,
+		EmailProvider:                       req.EmailProvider,
 		SMTPHost:                            req.SMTPHost,
 		SMTPPort:                            req.SMTPPort,
 		SMTPUsername:                        req.SMTPUsername,
@@ -1553,6 +1581,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		SMTPFrom:                            req.SMTPFrom,
 		SMTPFromName:                        req.SMTPFromName,
 		SMTPUseTLS:                          req.SMTPUseTLS,
+		ResendAPIKey:                        req.ResendAPIKey,
+		CloudflareEmailAccountID:            req.CloudflareEmailAccountID,
+		CloudflareEmailAPIToken:             req.CloudflareEmailAPIToken,
 		TurnstileEnabled:                    req.TurnstileEnabled,
 		TurnstileSiteKey:                    req.TurnstileSiteKey,
 		TurnstileSecretKey:                  req.TurnstileSecretKey,
@@ -1645,6 +1676,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		GoogleOAuthFrontendRedirectURL:         req.GoogleOAuthFrontendRedirectURL,
 		SiteName:                               req.SiteName,
 		SiteLogo:                               req.SiteLogo,
+		CommunityGroupImage:                    req.CommunityGroupImage,
+		AppName:                                req.AppName,
+		AppDefaultGroupID:                      req.AppDefaultGroupID,
 		UITheme:                                req.UITheme,
 		SiteSubtitle:                           req.SiteSubtitle,
 		APIBaseURL:                             req.APIBaseURL,
@@ -2216,6 +2250,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		LoginAgreementMode:                                     updatedSettings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                                updatedSettings.LoginAgreementUpdatedAt,
 		LoginAgreementDocuments:                                loginAgreementDocumentsToDTO(updatedSettings.LoginAgreementDocuments),
+		EmailProvider:                                          updatedSettings.EmailProvider,
 		SMTPHost:                                               updatedSettings.SMTPHost,
 		SMTPPort:                                               updatedSettings.SMTPPort,
 		SMTPUsername:                                           updatedSettings.SMTPUsername,
@@ -2223,6 +2258,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		SMTPFrom:                                               updatedSettings.SMTPFrom,
 		SMTPFromName:                                           updatedSettings.SMTPFromName,
 		SMTPUseTLS:                                             updatedSettings.SMTPUseTLS,
+		ResendAPIKeyConfigured:                                 updatedSettings.ResendAPIKeyConfigured,
+		CloudflareEmailAccountID:                               updatedSettings.CloudflareEmailAccountID,
+		CloudflareEmailAPITokenConfigured:                      updatedSettings.CloudflareEmailAPITokenConfigured,
 		TurnstileEnabled:                                       updatedSettings.TurnstileEnabled,
 		TurnstileSiteKey:                                       updatedSettings.TurnstileSiteKey,
 		TurnstileSecretKeyConfigured:                           updatedSettings.TurnstileSecretKeyConfigured,
@@ -2310,6 +2348,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		GoogleOAuthFrontendRedirectURL:                         updatedSettings.GoogleOAuthFrontendRedirectURL,
 		SiteName:                                               updatedSettings.SiteName,
 		SiteLogo:                                               updatedSettings.SiteLogo,
+		CommunityGroupImage:                                    updatedSettings.CommunityGroupImage,
+		AppName:                                                updatedSettings.AppName,
+		AppDefaultGroupID:                                      updatedSettings.AppDefaultGroupID,
 		UITheme:                                                updatedSettings.UITheme,
 		SiteSubtitle:                                           updatedSettings.SiteSubtitle,
 		APIBaseURL:                                             updatedSettings.APIBaseURL,

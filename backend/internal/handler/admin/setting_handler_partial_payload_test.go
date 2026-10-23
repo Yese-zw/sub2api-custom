@@ -230,3 +230,49 @@ func TestUpdateSettingsSubscriptionEnabledIsWritableAndKeptWhenOmitted(t *testin
 	require.Equal(t, "false", repo.values[service.SettingKeySubscriptionEnabled],
 		"a payload without subscription_enabled must not flip the stored value back to true")
 }
+
+// Email provider / Cloudflare / community image are fork-only fields; saving a
+// different settings tab must not reset them, and sending them must write them.
+func TestUpdateSettingsForkEmailAndCommunityFieldsRoundTrip(t *testing.T) {
+	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
+		service.SettingKeyEmailProvider:       service.EmailProviderSMTP,
+		service.SettingKeyCloudflareAccountID: "cf-account",
+		service.SettingKeyCommunityGroupImage: "data:image/png;base64,AAAA",
+	})
+
+	rec := doUpdateSettings(t, h, map[string]any{"site_name": "Example Gateway"}, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, service.EmailProviderSMTP, repo.values[service.SettingKeyEmailProvider])
+	require.Equal(t, "cf-account", repo.values[service.SettingKeyCloudflareAccountID])
+	require.Equal(t, "data:image/png;base64,AAAA", repo.values[service.SettingKeyCommunityGroupImage])
+
+	rec = doUpdateSettings(t, h, map[string]any{
+		"email_provider":              "cloudflare",
+		"cloudflare_email_account_id": "cf-account-2",
+		"community_group_image":       "",
+	}, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "cloudflare", repo.values[service.SettingKeyEmailProvider])
+	require.Equal(t, "cf-account-2", repo.values[service.SettingKeyCloudflareAccountID])
+	require.Equal(t, "", repo.values[service.SettingKeyCommunityGroupImage])
+}
+
+// The desktop App reads its name and key group from the public settings, so the
+// admin "App" tab must persist both and other tabs must not reset them.
+func TestUpdateSettingsAppNameAndDefaultGroupRoundTrip(t *testing.T) {
+	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
+
+	rec := doUpdateSettings(t, h, map[string]any{
+		"app_name":             "  Example Agent  ",
+		"app_default_group_id": 110,
+	}, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "Example Agent", repo.values[service.SettingKeyAppName])
+	require.Equal(t, "110", repo.values[service.SettingKeyAppDefaultGroupID])
+	require.Contains(t, rec.Body.String(), `"app_default_group_id":110`)
+
+	rec = doUpdateSettings(t, h, map[string]any{"site_name": "Example Gateway"}, nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "Example Agent", repo.values[service.SettingKeyAppName])
+	require.Equal(t, "110", repo.values[service.SettingKeyAppDefaultGroupID])
+}

@@ -387,6 +387,8 @@ const (
 	SettingKeySiteLogo                    = "site_logo"                     // 网站Logo (base64)
 	SettingKeyCommunityGroupImage         = "community_group_image"         // 交流群图片 (base64)
 	SettingKeyUITheme                     = "ui_theme"                      // 界面主题（pixel/original）
+	SettingKeyAppName                     = "app_name"                      // 桌面 App 名称（空表示由 App 自行决定）
+	SettingKeyAppDefaultGroupID           = "app_default_group_id"          // 桌面 App 创建 API Key 使用的默认分组（0 表示未配置）
 	SettingKeySiteSubtitle                = "site_subtitle"                 // 网站副标题
 	SettingKeyAPIBaseURL                  = "api_base_url"                  // API端点地址（用于客户端配置和导入）
 	SettingKeyContactInfo                 = "contact_info"                  // 客服联系方式

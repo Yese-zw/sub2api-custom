@@ -102,6 +102,9 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	if err := s.validateDefaultSubscriptionGroups(ctx, settings.DefaultSubscriptions); err != nil {
 		return nil, err
 	}
+	if err := s.validateAppDefaultGroup(ctx, settings.AppDefaultGroupID); err != nil {
+		return nil, err
+	}
 	normalizedWhitelist, err := NormalizeRegistrationEmailSuffixWhitelist(settings.RegistrationEmailSuffixWhitelist)
 	if err != nil {
 		return nil, infraerrors.BadRequest("INVALID_REGISTRATION_EMAIL_SUFFIX_WHITELIST", err.Error())
@@ -347,6 +350,12 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeySiteName] = settings.SiteName
 	updates[SettingKeySiteLogo] = settings.SiteLogo
 	updates[SettingKeyCommunityGroupImage] = settings.CommunityGroupImage
+	updates[SettingKeyAppName] = strings.TrimSpace(settings.AppName)
+	appDefaultGroupID := settings.AppDefaultGroupID
+	if appDefaultGroupID < 0 {
+		appDefaultGroupID = 0
+	}
+	updates[SettingKeyAppDefaultGroupID] = strconv.FormatInt(appDefaultGroupID, 10)
 	updates[SettingKeyUITheme] = normalizeUITheme(settings.UITheme)
 	updates[SettingKeySiteSubtitle] = settings.SiteSubtitle
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
@@ -827,6 +836,32 @@ func (s *SettingService) refreshCachedSettings(settings *SystemSettings) {
 
 func (s *SettingService) defaultRewriteMessageCacheControl() bool {
 	return false
+}
+
+// parseAppDefaultGroupID reads the desktop App default group; anything that is
+// not a positive id means "not configured".
+func parseAppDefaultGroupID(raw string) int64 {
+	id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || id < 0 {
+		return 0
+	}
+	return id
+}
+
+// validateAppDefaultGroup rejects a desktop App default group that does not
+// exist, so the App never provisions keys against a dangling group id.
+func (s *SettingService) validateAppDefaultGroup(ctx context.Context, groupID int64) error {
+	if groupID <= 0 || s.defaultSubGroupReader == nil {
+		return nil
+	}
+	if _, err := s.defaultSubGroupReader.GetByID(ctx, groupID); err != nil {
+		if errors.Is(err, ErrGroupNotFound) {
+			return infraerrors.BadRequest("INVALID_APP_DEFAULT_GROUP", "app default group does not exist").
+				WithMetadata(map[string]string{"group_id": strconv.FormatInt(groupID, 10)})
+		}
+		return fmt.Errorf("get app default group %d: %w", groupID, err)
+	}
+	return nil
 }
 
 func (s *SettingService) validateDefaultSubscriptionGroups(ctx context.Context, items []DefaultSubscriptionSetting) error {

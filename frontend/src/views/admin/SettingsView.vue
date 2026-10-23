@@ -6988,6 +6988,73 @@
 	        </div>
 	        <!-- /Tab: General -->
 
+	        <!-- Tab: App -->
+	        <div v-show="activeTab === 'app'" class="space-y-6">
+	          <div class="card">
+	            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+	              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+	                {{ localText("App 设置", "App settings") }}
+	              </h2>
+	              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+	                {{
+	                  localText(
+	                    "桌面 App 只需填写本站地址，名称和默认分组会从 /api/v1/settings/public 自动读取。",
+	                    "The desktop App only needs this site's URL; its name and default group are read from /api/v1/settings/public.",
+	                  )
+	                }}
+	              </p>
+	            </div>
+	            <div class="space-y-6 p-6">
+	              <div>
+	                <label
+	                  for="app-name"
+	                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+	                >
+	                  {{ localText("App 名称", "App name") }}
+	                </label>
+	                <input
+	                  id="app-name"
+	                  v-model="form.app_name"
+	                  type="text"
+	                  maxlength="64"
+	                  class="input"
+	                  placeholder="LSAGENT"
+	                />
+	                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+	                  {{
+	                    localText(
+	                      "显示在 App 的窗口标题与品牌位置，也用作 App 自动创建的 API Key 名称。留空则使用 App 内置名称。",
+	                      "Shown in the App window title and brand areas, and used as the name of the API key the App creates. Leave empty to use the App's built-in name.",
+	                    )
+	                  }}
+	                </p>
+	              </div>
+	              <div>
+	                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+	                  {{ localText("App 默认分组", "App default group") }}
+	                </label>
+	                <Select
+	                  v-model="appDefaultGroupSelection"
+	                  :options="appDefaultGroupOptions"
+	                  :placeholder="localText('选择分组', 'Select a group')"
+	                  :aria-label="localText('App 默认分组', 'App default group')"
+	                  searchable="auto"
+	                  clearable
+	                />
+	                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+	                  {{
+	                    localText(
+	                      "用户在 App 中登录或注册后，App 会在该分组下创建并使用 API Key。未配置时 App 无法开通 Key。请确保普通用户可以使用该分组。",
+	                      "After a user signs in or registers in the App, it creates and uses an API key in this group. Without it the App cannot provision a key. Make sure regular users may use this group.",
+	                    )
+	                  }}
+	                </p>
+	              </div>
+	            </div>
+	          </div>
+	        </div>
+	        <!-- /Tab: App -->
+
 	        <!-- Tab: Login Agreement -->
 	        <div v-show="activeTab === 'agreement'" class="space-y-6">
 	          <div class="card">
@@ -9234,6 +9301,7 @@ const paymentMethodsHref = computed(() =>
 type SettingsTab =
   | "general"
   | "agreement"
+  | "app"
   | "features"
   | "security"
   | "users"
@@ -9245,6 +9313,7 @@ const activeTab = ref<SettingsTab>("general");
 const settingsTabs = [
   { key: "general" as SettingsTab, icon: "home" as const },
   { key: "agreement" as SettingsTab, icon: "document" as const },
+  { key: "app" as SettingsTab, icon: "cube" as const },
   { key: "features" as SettingsTab, icon: "bolt" as const },
   { key: "security" as SettingsTab, icon: "shield" as const },
   { key: "users" as SettingsTab, icon: "user" as const },
@@ -9331,6 +9400,7 @@ const adminApiKeyMasked = ref("");
 const adminApiKeyOperating = ref(false);
 const newAdminApiKey = ref("");
 const subscriptionGroups = ref<AdminGroup[]>([]);
+const allGroups = ref<AdminGroup[]>([]);
 
 // Upstream billing probe state
 const upstreamBillingProbeLoading = ref(true);
@@ -9952,6 +10022,8 @@ const form = reactive<SettingsForm>({
   site_name: "Sub2API",
   site_logo: "",
   community_group_image: "",
+  app_name: "",
+  app_default_group_id: 0,
 	ui_theme: "pixel",
   site_subtitle: "Subscription to API Conversion Platform",
   api_base_url: "",
@@ -10631,6 +10703,29 @@ const defaultSubscriptionGroupOptions = computed<
     rate: group.rate_multiplier,
   })),
 );
+
+// App 默认分组：列出启用中的分组；已选分组即使被停用也保留在列表里，避免静默丢失当前值。
+const appDefaultGroupOptions = computed<SelectOption[]>(() =>
+  allGroups.value
+    .filter(
+      (group) =>
+        group.status === "active" || group.id === form.app_default_group_id,
+    )
+    .map((group) => ({
+      value: group.id,
+      label:
+        group.status === "active"
+          ? `${group.name} · ${group.platform}`
+          : `${group.name} · ${group.platform} (${localText("已停用", "disabled")})`,
+    })),
+);
+
+const appDefaultGroupSelection = computed<number | null>({
+  get: () => (form.app_default_group_id > 0 ? form.app_default_group_id : null),
+  set: (value) => {
+    form.app_default_group_id = typeof value === "number" ? value : 0;
+  },
+});
 
 const registrationEmailSuffixWhitelistSeparatorKeys = new Set([
   " ",
@@ -11386,11 +11481,13 @@ async function loadSettings() {
 async function loadSubscriptionGroups() {
   try {
     const groups = await adminAPI.groups.getAll();
+    allGroups.value = groups;
     subscriptionGroups.value = groups.filter(
       (group) =>
         group.subscription_type === "subscription" && group.status === "active",
     );
   } catch (_error: unknown) {
+    allGroups.value = [];
     subscriptionGroups.value = [];
   }
 }
@@ -11669,6 +11766,8 @@ async function saveSettings() {
       site_name: form.site_name,
       site_logo: form.site_logo,
       community_group_image: form.community_group_image,
+      app_name: form.app_name.trim(),
+      app_default_group_id: Number(form.app_default_group_id) || 0,
 		ui_theme: form.ui_theme,
       site_subtitle: form.site_subtitle,
       api_base_url: form.api_base_url,

@@ -71,6 +71,8 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		SiteName:                            settings.SiteName,
 		SiteLogo:                            settings.SiteLogo,
 		CommunityGroupImage:                 settings.CommunityGroupImage,
+		AppName:                             settings.AppName,
+		AppDefaultGroupID:                   settings.AppDefaultGroupID,
 		UITheme:                             settings.UITheme,
 		SiteSubtitle:                        settings.SiteSubtitle,
 		APIBaseURL:                          settings.APIBaseURL,

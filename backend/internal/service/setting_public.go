@@ -183,6 +183,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeySiteName,
 		SettingKeySiteLogo,
 		SettingKeyCommunityGroupImage,
+		SettingKeyAppName,
+		SettingKeyAppDefaultGroupID,
 		SettingKeyUITheme,
 		SettingKeySiteSubtitle,
 		SettingKeyAPIBaseURL,
@@ -329,6 +331,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SiteName:                            s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
 		SiteLogo:                            settings[SettingKeySiteLogo],
 		CommunityGroupImage:                 settings[SettingKeyCommunityGroupImage],
+		AppName:                             strings.TrimSpace(settings[SettingKeyAppName]),
+		AppDefaultGroupID:                   parseAppDefaultGroupID(settings[SettingKeyAppDefaultGroupID]),
 		UITheme:                             normalizeUITheme(settings[SettingKeyUITheme]),
 		SiteSubtitle:                        s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
 		APIBaseURL:                          settings[SettingKeyAPIBaseURL],
@@ -591,6 +595,8 @@ type PublicSettingsInjectionPayload struct {
 	SiteName                            string                   `json:"site_name"`
 	SiteLogo                            string                   `json:"site_logo"`
 	CommunityGroupImage                 string                   `json:"community_group_image"`
+	AppName                             string                   `json:"app_name"`
+	AppDefaultGroupID                   int64                    `json:"app_default_group_id"`
 	UITheme                             string                   `json:"ui_theme"`
 	SiteSubtitle                        string                   `json:"site_subtitle"`
 	APIBaseURL                          string                   `json:"api_base_url"`
@@ -688,6 +694,8 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		SiteName:                            settings.SiteName,
 		SiteLogo:                            settings.SiteLogo,
 		CommunityGroupImage:                 settings.CommunityGroupImage,
+		AppName:                             settings.AppName,
+		AppDefaultGroupID:                   settings.AppDefaultGroupID,
 		UITheme:                             settings.UITheme,
 		SiteSubtitle:                        settings.SiteSubtitle,
 		APIBaseURL:                          settings.APIBaseURL,

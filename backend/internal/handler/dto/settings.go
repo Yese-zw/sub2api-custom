@@ -156,6 +156,8 @@ type SystemSettings struct {
 	SiteName                    string           `json:"site_name"`
 	SiteLogo                    string           `json:"site_logo"`
 	CommunityGroupImage         string           `json:"community_group_image"`
+	AppName                     string           `json:"app_name"`
+	AppDefaultGroupID           int64            `json:"app_default_group_id"`
 	UITheme                     string           `json:"ui_theme"`
 	SiteSubtitle                string           `json:"site_subtitle"`
 	APIBaseURL                  string           `json:"api_base_url"`
@@ -398,6 +400,8 @@ type PublicSettings struct {
 	SiteName                            string                   `json:"site_name"`
 	SiteLogo                            string                   `json:"site_logo"`
 	CommunityGroupImage                 string                   `json:"community_group_image"`
+	AppName                             string                   `json:"app_name"`
+	AppDefaultGroupID                   int64                    `json:"app_default_group_id"`
 	UITheme                             string                   `json:"ui_theme"`
 	SiteSubtitle                        string                   `json:"site_subtitle"`
 	APIBaseURL                          string                   `json:"api_base_url"`
