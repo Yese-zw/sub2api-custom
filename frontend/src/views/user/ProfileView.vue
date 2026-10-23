@@ -6,6 +6,47 @@
     >
       <ProfileInfoCard
         :user="user"
+        :oidc-provider-name="oidcOAuthProviderName"
+      />
+
+      <div
+        v-if="contactInfo"
+        class="card flex items-center gap-4 p-6"
+      >
+        <div class="shrink-0 rounded-xl bg-gray-100 p-3 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+          <Icon name="chat" size="lg" />
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-semibold text-gray-900 dark:text-white">
+            {{ t('common.contactSupport') }}
+          </h3>
+          <p class="truncate text-sm font-medium text-gray-600 dark:text-gray-300">{{ contactInfo }}</p>
+        </div>
+      </div>
+
+      <div
+        data-testid="profile-settings"
+        class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2"
+      >
+        <ProfilePasswordForm />
+        <ProfileAppGroupCard
+          v-if="user && appDefaultGroupId > 0"
+          :app-name="appName"
+          :default-group-id="appDefaultGroupId"
+        />
+        <ProfileBalanceNotifyCard
+          v-if="user && balanceLowNotifyEnabled"
+          :enabled="user.balance_notify_enabled ?? true"
+          :threshold="user.balance_notify_threshold"
+          :extra-emails="user.balance_notify_extra_emails ?? []"
+          :system-default-threshold="systemDefaultThreshold"
+          :user-email="user.email"
+        />
+        <ProfileTotpCard />
+      </div>
+
+      <ProfileAccountBindingsCard
+        :user="user"
         :linuxdo-enabled="linuxdoOAuthEnabled"
         :dingtalk-enabled="dingtalkOAuthEnabled"
         :oidc-enabled="oidcOAuthEnabled"
@@ -15,45 +56,7 @@
         :wechat-mp-enabled="wechatOAuthMPEnabled"
       />
 
-      <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <div class="space-y-6">
-          <ProfilePasswordForm />
-          <ProfileTotpCard />
-          <ProfilePasskeyCard :enabled="passkeyEnabled" />
-        </div>
-
-        <div class="space-y-6">
-          <div
-            v-if="contactInfo"
-            class="card flex items-center gap-4 p-6"
-          >
-            <div class="shrink-0 rounded-xl bg-gray-100 p-3 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-              <Icon name="chat" size="lg" />
-            </div>
-            <div class="min-w-0">
-              <h3 class="font-semibold text-gray-900 dark:text-white">
-                {{ t('common.contactSupport') }}
-              </h3>
-              <p class="truncate text-sm font-medium text-gray-600 dark:text-gray-300">{{ contactInfo }}</p>
-            </div>
-          </div>
-
-          <ProfileAppGroupCard
-            v-if="user && appDefaultGroupId > 0"
-            :app-name="appName"
-            :default-group-id="appDefaultGroupId"
-          />
-
-          <ProfileBalanceNotifyCard
-            v-if="user && balanceLowNotifyEnabled"
-            :enabled="user.balance_notify_enabled ?? true"
-            :threshold="user.balance_notify_threshold"
-            :extra-emails="user.balance_notify_extra_emails ?? []"
-            :system-default-threshold="systemDefaultThreshold"
-            :user-email="user.email"
-          />
-        </div>
-      </div>
+      <ProfilePasskeyCard :enabled="passkeyEnabled" />
     </div>
   </AppLayout>
 </template>
@@ -63,6 +66,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ProfileAccountBindingsCard from '@/components/user/profile/ProfileAccountBindingsCard.vue'
 import ProfileAppGroupCard from '@/components/user/profile/ProfileAppGroupCard.vue'
 import ProfileBalanceNotifyCard from '@/components/user/profile/ProfileBalanceNotifyCard.vue'
 import ProfileInfoCard from '@/components/user/profile/ProfileInfoCard.vue'
