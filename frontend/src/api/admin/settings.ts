@@ -1341,6 +1341,44 @@ export async function updateOverloadCooldownSettings(
   return data;
 }
 
+// ==================== Desktop App Update Settings ====================
+
+export interface AppUpdatePlatform {
+  url: string;
+  signature: string;
+}
+
+/** Release the desktop App updates to; served as a Tauri updater manifest. */
+export interface AppUpdateSettings {
+  enabled: boolean;
+  version: string;
+  notes: string;
+  pub_date: string;
+  platforms: Record<string, AppUpdatePlatform>;
+}
+
+export interface AppUpdateSettingsResponse {
+  settings: AppUpdateSettings;
+  targets: string[];
+}
+
+export async function getAppUpdateSettings(): Promise<AppUpdateSettingsResponse> {
+  const { data } = await apiClient.get<AppUpdateSettingsResponse>(
+    "/admin/settings/app-update",
+  );
+  return data;
+}
+
+export async function updateAppUpdateSettings(
+  settings: AppUpdateSettings,
+): Promise<AppUpdateSettingsResponse> {
+  const { data } = await apiClient.put<AppUpdateSettingsResponse>(
+    "/admin/settings/app-update",
+    settings,
+  );
+  return data;
+}
+
 // ==================== 429 Rate Limit Cooldown Settings ====================
 
 export interface RateLimit429CooldownSettings {
@@ -1622,6 +1660,8 @@ export const settingsAPI = {
   deleteAdminApiKey,
   getOverloadCooldownSettings,
   updateOverloadCooldownSettings,
+  getAppUpdateSettings,
+  updateAppUpdateSettings,
   getRateLimit429CooldownSettings,
   updateRateLimit429CooldownSettings,
   getPanelRateLimitSettings,

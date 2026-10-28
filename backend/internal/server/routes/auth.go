@@ -247,6 +247,13 @@ func RegisterAuthRoutes(
 		settings.GET("/email-unsubscribe", h.Setting.UnsubscribeNotificationEmail)
 	}
 
+	// 桌面 App 更新清单（无需认证）：内容在后台「App 设置」中编辑。
+	app := v1.Group("/app")
+	app.Use(panelRateLimiter.PublicIP())
+	{
+		app.GET("/update/:target", h.Setting.GetAppUpdateManifest)
+	}
+
 	// 需要认证的当前用户信息
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))

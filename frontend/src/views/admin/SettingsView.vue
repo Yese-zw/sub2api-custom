@@ -7052,6 +7052,7 @@
 	              </div>
 	            </div>
 	          </div>
+	          <AppUpdateSettingsCard v-if="activeTab === 'app'" />
 	        </div>
 	        <!-- /Tab: App -->
 
@@ -9250,6 +9251,7 @@ import {
   type RechargeBonusTierDraft,
 } from "@/utils/rechargeBonus";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
+import AppUpdateSettingsCard from "@/views/admin/settings/AppUpdateSettingsCard.vue";
 import { useClipboard } from "@/composables/useClipboard";
 import {
   useStepUp,

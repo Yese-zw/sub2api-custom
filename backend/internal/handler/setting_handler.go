@@ -163,3 +163,23 @@ func publicLoginAgreementDocumentsToDTO(items []service.LoginAgreementDocument) 
 	}
 	return result
 }
+
+// GetAppUpdateManifest 返回桌面 App 的 Tauri 更新清单（无需认证）
+// GET /api/v1/app/update/:target
+//
+// 未发布或该平台无安装包时返回 204，Tauri updater 视为"已是最新版本"。
+func (h *SettingHandler) GetAppUpdateManifest(c *gin.Context) {
+	target := strings.TrimSuffix(c.Param("target"), ".json")
+	manifest, err := h.settingService.GetAppUpdateManifest(c.Request.Context(), target)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	if manifest == nil {
+		c.Status(http.StatusNoContent)
+		return
+	}
+	// Tauri updater 读取的是裸 JSON，不能套 {code,data} 外层。
+	c.JSON(http.StatusOK, manifest)
+}
