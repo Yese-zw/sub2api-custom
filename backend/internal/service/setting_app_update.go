@@ -39,8 +39,10 @@ type AppUpdatePlatform struct {
 
 // AppUpdateSettings is the release the desktop App should update to.
 // The App compares Version with its own and only installs newer builds.
+// Force makes older Apps block on a dialog that shows Notes until the user updates.
 type AppUpdateSettings struct {
 	Enabled   bool                         `json:"enabled"`
+	Force     bool                         `json:"force"`
 	Version   string                       `json:"version"`
 	Notes     string                       `json:"notes"`
 	PubDate   string                       `json:"pub_date"`
@@ -48,12 +50,14 @@ type AppUpdateSettings struct {
 }
 
 // AppUpdateManifest is the Tauri updater v2 "dynamic server" response for one target.
+// Force is ignored by the Tauri updater and read by the desktop App.
 type AppUpdateManifest struct {
 	Version   string `json:"version"`
 	Notes     string `json:"notes,omitempty"`
 	PubDate   string `json:"pub_date,omitempty"`
 	URL       string `json:"url"`
 	Signature string `json:"signature"`
+	Force     bool   `json:"force"`
 }
 
 // AppDownloads is the public catalog of full installers for the website.
@@ -136,6 +140,7 @@ func (s *SettingService) GetAppUpdateManifest(ctx context.Context, target string
 		PubDate:   settings.PubDate,
 		URL:       platform.URL,
 		Signature: platform.Signature,
+		Force:     settings.Force,
 	}, nil
 }
 
@@ -226,6 +231,9 @@ func normalizeAppUpdateSettings(settings *AppUpdateSettings) error {
 		}
 		if len(platforms) == 0 {
 			return appUpdateBadRequest("at least one platform is required when the update is enabled")
+		}
+		if settings.Force && settings.Notes == "" {
+			return appUpdateBadRequest("notes are required when force update is enabled")
 		}
 		if settings.PubDate == "" {
 			settings.PubDate = time.Now().UTC().Format(time.RFC3339)

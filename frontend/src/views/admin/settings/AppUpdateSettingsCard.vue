@@ -75,6 +75,23 @@
         />
       </div>
 
+      <div class="flex items-start justify-between gap-4 rounded-lg border border-gray-200 p-4 dark:border-dark-600">
+        <div>
+          <div class="text-sm font-medium text-gray-900 dark:text-white">
+            {{ localText("强制更新", "Force update") }}
+          </div>
+          <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+            {{
+              localText(
+                "开启后，版本低于本次发布的 macOS / Windows 桌面 App 在进入时弹出无法关闭的窗口，并展示上面的更新说明。用户完成更新前不能进行其他操作。开启时必须填写更新说明。只对已包含该弹窗的 App 版本生效。",
+                "When on, a macOS or Windows App older than this release opens onto a dialog that cannot be dismissed and shows the notes above. The user cannot do anything else until the update finishes. Notes are required while this is on. Only App builds that include this dialog honor it.",
+              )
+            }}
+          </p>
+        </div>
+        <Toggle v-model="form.force" :disabled="loading" />
+      </div>
+
       <div class="space-y-4">
         <div>
           <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -174,6 +191,7 @@ const saving = ref(false);
 const targets = ref<string[]>(Object.keys(TARGET_LABELS));
 const form = reactive<AppUpdateSettings>({
   enabled: false,
+  force: false,
   version: "",
   notes: "",
   pub_date: "",
@@ -202,6 +220,7 @@ function installerPlaceholder(target: string): string {
 function apply(settings: AppUpdateSettings, serverTargets: string[]) {
   if (serverTargets.length > 0) targets.value = serverTargets;
   form.enabled = settings.enabled;
+  form.force = Boolean(settings.force);
   form.version = settings.version;
   form.notes = settings.notes;
   form.pub_date = settings.pub_date;
@@ -229,6 +248,12 @@ async function load() {
 }
 
 async function save() {
+  if (form.enabled && form.force && !form.notes.trim()) {
+    appStore.showError(
+      localText("开启强制更新时必须填写更新说明", "Release notes are required when force update is on"),
+    );
+    return;
+  }
   saving.value = true;
   try {
     const data = await adminAPI.settings.updateAppUpdateSettings({
