@@ -130,3 +130,48 @@ func TestAppUpdateSettings_Validation(t *testing.T) {
 	// A disabled draft may be incomplete.
 	require.NoError(t, svc.SetAppUpdateSettings(ctx, &AppUpdateSettings{Version: "1.0.0-beta.1"}))
 }
+
+func TestAppUpdateSettings_ForceUpdate(t *testing.T) {
+	ctx := context.Background()
+	svc := NewSettingService(newStubSettingRepo(), nil)
+	platform := AppUpdatePlatform{URL: "https://cdn.example.com/a.tar.gz", Signature: "sig"}
+
+	err := svc.SetAppUpdateSettings(ctx, &AppUpdateSettings{
+		Enabled:   true,
+		Force:     true,
+		Version:   "1.2.0",
+		Platforms: map[string]AppUpdatePlatform{"darwin-aarch64": platform},
+	})
+	require.Error(t, err, "a published force update must include notes")
+
+	require.NoError(t, svc.SetAppUpdateSettings(ctx, &AppUpdateSettings{
+		Force:   true,
+		Version: "1.2.0",
+	}), "an unpublished draft may record force without notes")
+
+	require.NoError(t, svc.SetAppUpdateSettings(ctx, &AppUpdateSettings{
+		Enabled: true,
+		Force:   true,
+		Version: "1.2.0",
+		Notes:   "安全修复，请立即更新",
+		Platforms: map[string]AppUpdatePlatform{
+			"darwin-aarch64": platform,
+		},
+	}))
+
+	saved, err := svc.GetAppUpdateSettings(ctx)
+	require.NoError(t, err)
+	require.True(t, saved.Force)
+
+	manifest, err := svc.GetAppUpdateManifest(ctx, "darwin-aarch64")
+	require.NoError(t, err)
+	require.NotNil(t, manifest)
+	require.True(t, manifest.Force)
+	require.Equal(t, "安全修复，请立即更新", manifest.Notes)
+
+	saved.Enabled = false
+	require.NoError(t, svc.SetAppUpdateSettings(ctx, saved))
+	manifest, err = svc.GetAppUpdateManifest(ctx, "darwin-aarch64")
+	require.NoError(t, err)
+	require.Nil(t, manifest, "an unpublished force update does not block clients")
+}

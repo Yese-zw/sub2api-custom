@@ -1352,6 +1352,8 @@ export interface AppUpdatePlatform {
 /** Release the desktop App updates to; served as a Tauri updater manifest. */
 export interface AppUpdateSettings {
   enabled: boolean;
+  /** When true, older desktop Apps block on a dialog that shows notes until the user updates. */
+  force: boolean;
   version: string;
   notes: string;
   pub_date: string;
