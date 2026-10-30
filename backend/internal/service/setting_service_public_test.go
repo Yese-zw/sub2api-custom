@@ -4,6 +4,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -328,4 +330,27 @@ func TestSettingService_GetPublicSettings_ExposesAppConfig(t *testing.T) {
 	settings, err = svc.GetPublicSettings(context.Background())
 	require.NoError(t, err)
 	require.Zero(t, settings.AppDefaultGroupID)
+}
+
+func TestSettingService_GetPublicSettings_MCPEnabledFollowsExplicitPublicURL(t *testing.T) {
+	for _, tc := range []struct {
+		publicURL, frontendURL string
+		want                   bool
+	}{
+		{"https://api.example.com/api/v1/mcp", "", true},
+		// A frontend URL alone never enables MCP.
+		{"", "https://platform.example.com", false},
+		{"  ", "", false},
+	} {
+		cfg := &config.Config{MCP: config.MCPConfig{PublicURL: tc.publicURL}}
+		cfg.Server.FrontendURL = tc.frontendURL
+		settings, err := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, cfg).GetPublicSettings(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, tc.want, settings.MCPEnabled, tc)
+		payload, err := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, cfg).GetPublicSettingsForInjection(context.Background())
+		require.NoError(t, err)
+		encoded, err := json.Marshal(payload)
+		require.NoError(t, err)
+		require.Contains(t, string(encoded), fmt.Sprintf(`"mcp_enabled":%t`, tc.want))
+	}
 }
