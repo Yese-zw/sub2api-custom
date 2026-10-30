@@ -108,7 +108,6 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		BalanceLowNotifyThreshold:           settings.BalanceLowNotifyThreshold,
 		BalanceLowNotifyRechargeURL:         settings.BalanceLowNotifyRechargeURL,
 
-
 		ChannelMonitorEnabled:                settings.ChannelMonitorEnabled,
 		ChannelMonitorMode:                   settings.ChannelMonitorMode,
 		ChannelMonitorDefaultIntervalSeconds: settings.ChannelMonitorDefaultIntervalSeconds,
@@ -182,4 +181,18 @@ func (h *SettingHandler) GetAppUpdateManifest(c *gin.Context) {
 	}
 	// Tauri updater 读取的是裸 JSON，不能套 {code,data} 外层。
 	c.JSON(http.StatusOK, manifest)
+}
+
+// GetAppDownloads 返回已发布的完整安装包下载地址（无需认证）
+// GET /api/v1/app/downloads
+//
+// 只包含官网给新用户下载的 DMG / setup EXE，不包含自动更新包和签名。
+func (h *SettingHandler) GetAppDownloads(c *gin.Context) {
+	downloads, err := h.settingService.GetAppDownloads(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	response.Success(c, downloads)
 }

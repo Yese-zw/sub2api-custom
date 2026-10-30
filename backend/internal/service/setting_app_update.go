@@ -28,11 +28,13 @@ const (
 	appUpdateMaxURLLen       = 2048
 )
 
-// AppUpdatePlatform is one downloadable package: the updater bundle URL and
-// the content of its minisign `.sig` file.
+// AppUpdatePlatform is one platform release. URL and Signature are the Tauri
+// updater artifact. InstallerURL is the full installer (DMG or setup EXE) the
+// website offers to new users.
 type AppUpdatePlatform struct {
-	URL       string `json:"url"`
-	Signature string `json:"signature"`
+	URL          string `json:"url"`
+	Signature    string `json:"signature"`
+	InstallerURL string `json:"installer_url"`
 }
 
 // AppUpdateSettings is the release the desktop App should update to.
@@ -52,6 +54,15 @@ type AppUpdateManifest struct {
 	PubDate   string `json:"pub_date,omitempty"`
 	URL       string `json:"url"`
 	Signature string `json:"signature"`
+}
+
+// AppDownloads is the public catalog of full installers for the website.
+// It never includes updater artifacts or signatures.
+type AppDownloads struct {
+	Version   string            `json:"version"`
+	Notes     string            `json:"notes,omitempty"`
+	PubDate   string            `json:"pub_date,omitempty"`
+	Downloads map[string]string `json:"downloads"`
 }
 
 func defaultAppUpdateSettings() *AppUpdateSettings {
@@ -128,6 +139,33 @@ func (s *SettingService) GetAppUpdateManifest(ctx context.Context, target string
 	}, nil
 }
 
+// GetAppDownloads returns the published full-installer links. Unpublished
+// drafts and updater-only platforms are omitted.
+func (s *SettingService) GetAppDownloads(ctx context.Context) (*AppDownloads, error) {
+	settings, err := s.GetAppUpdateSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	downloads := &AppDownloads{Downloads: map[string]string{}}
+	if !settings.Enabled || settings.Version == "" {
+		return downloads, nil
+	}
+	for _, target := range AppUpdateTargets {
+		platform, ok := settings.Platforms[target]
+		if !ok || platform.InstallerURL == "" {
+			continue
+		}
+		downloads.Downloads[target] = platform.InstallerURL
+	}
+	if len(downloads.Downloads) == 0 {
+		return &AppDownloads{Downloads: map[string]string{}}, nil
+	}
+	downloads.Version = settings.Version
+	downloads.Notes = settings.Notes
+	downloads.PubDate = settings.PubDate
+	return downloads, nil
+}
+
 func appUpdateBadRequest(message string) error {
 	return infraerrors.BadRequest("INVALID_APP_UPDATE_SETTINGS", message)
 }
@@ -158,21 +196,25 @@ func normalizeAppUpdateSettings(settings *AppUpdateSettings) error {
 		}
 		platform.URL = strings.TrimSpace(platform.URL)
 		platform.Signature = strings.TrimSpace(platform.Signature)
-		if platform.URL == "" && platform.Signature == "" {
+		platform.InstallerURL = strings.TrimSpace(platform.InstallerURL)
+		if platform.URL == "" && platform.Signature == "" && platform.InstallerURL == "" {
 			continue
 		}
-		if platform.URL == "" || platform.Signature == "" {
+		if (platform.URL == "") != (platform.Signature == "") {
 			return appUpdateBadRequest(target + ": url and signature must both be set")
 		}
-		if len(platform.URL) > appUpdateMaxURLLen {
-			return appUpdateBadRequest(target + ": url is too long")
+		if platform.URL != "" {
+			if err := validateAppUpdateURL(target, "url", platform.URL); err != nil {
+				return err
+			}
+			if len(platform.Signature) > appUpdateMaxSignatureLen {
+				return appUpdateBadRequest(target + ": signature is too long")
+			}
 		}
-		parsed, err := url.Parse(platform.URL)
-		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
-			return appUpdateBadRequest(target + ": url must be an http(s) URL")
-		}
-		if len(platform.Signature) > appUpdateMaxSignatureLen {
-			return appUpdateBadRequest(target + ": signature is too long")
+		if platform.InstallerURL != "" {
+			if err := validateAppUpdateURL(target, "installer_url", platform.InstallerURL); err != nil {
+				return err
+			}
 		}
 		platforms[target] = platform
 	}
@@ -188,6 +230,17 @@ func normalizeAppUpdateSettings(settings *AppUpdateSettings) error {
 		if settings.PubDate == "" {
 			settings.PubDate = time.Now().UTC().Format(time.RFC3339)
 		}
+	}
+	return nil
+}
+
+func validateAppUpdateURL(target, field, raw string) error {
+	if len(raw) > appUpdateMaxURLLen {
+		return appUpdateBadRequest(target + ": " + field + " is too long")
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
+		return appUpdateBadRequest(target + ": " + field + " must be an http(s) URL")
 	}
 	return nil
 }

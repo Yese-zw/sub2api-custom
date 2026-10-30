@@ -1346,6 +1346,7 @@ export async function updateOverloadCooldownSettings(
 export interface AppUpdatePlatform {
   url: string;
   signature: string;
+  installer_url: string;
 }
 
 /** Release the desktop App updates to; served as a Tauri updater manifest. */

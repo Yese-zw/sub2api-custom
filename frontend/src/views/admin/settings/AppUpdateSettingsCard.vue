@@ -83,8 +83,8 @@
           <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {{
               localText(
-                "填写 Tauri updater 产物（macOS 为 .app.tar.gz，Windows 为 NSIS 安装包）的下载地址，以及同名 .sig 文件的完整内容。签名必须由 App 内置公钥对应的私钥生成。不填的平台不会收到更新。",
-                "Enter the download URL of each Tauri updater artifact (.app.tar.gz on macOS, the NSIS installer on Windows) and the full contents of its .sig file. Signatures must come from the private key matching the App's built-in public key. Platforms left empty receive no update.",
+                "更新包地址填写 Tauri updater 产物（macOS 为 .app.tar.gz，Windows 为 .nsis.zip）和同名 .sig 的完整内容，已安装的 App 用它升级。完整安装包地址填写给新用户下载的 DMG 或 setup EXE，官网从 /api/v1/app/downloads 读取。不填的平台不会出现在对应入口。",
+                "The update URL is the Tauri updater artifact (.app.tar.gz on macOS, .nsis.zip on Windows) plus the full .sig contents, used by installed Apps. The full installer URL is the DMG or setup EXE for new users; the website reads it from /api/v1/app/downloads. Empty platforms are omitted from that entry.",
               )
             }}
           </p>
@@ -99,13 +99,19 @@
             <span class="text-xs text-gray-500 dark:text-gray-400">{{ targetLabel(target) }}</span>
           </div>
           <div class="space-y-3">
-            <input
-              v-model="platformFor(target).url"
-              type="url"
-              class="input font-mono text-xs"
-              :aria-label="`${target} URL`"
-              placeholder="https://cdn.example.com/releases/v0.5.5/LSAGENT_aarch64.app.tar.gz"
-            />
+            <div>
+              <label class="mb-1.5 block text-xs text-gray-500 dark:text-gray-400" :for="`app-update-url-${target}`">
+                {{ localText("更新包地址", "Update package URL") }}
+              </label>
+              <input
+                :id="`app-update-url-${target}`"
+                v-model="platformFor(target).url"
+                type="url"
+                class="input font-mono text-xs"
+                :aria-label="`${target} URL`"
+                placeholder="https://cdn.example.com/releases/v1.0.1/LSAGENT_aarch64.app.tar.gz"
+              />
+            </div>
             <textarea
               v-model="platformFor(target).signature"
               rows="2"
@@ -113,6 +119,19 @@
               :aria-label="`${target} signature`"
               :placeholder="localText('.sig 文件内容', '.sig file contents')"
             />
+            <div>
+              <label class="mb-1.5 block text-xs text-gray-500 dark:text-gray-400" :for="`app-installer-url-${target}`">
+                {{ localText("完整安装包地址", "Full installer URL") }}
+              </label>
+              <input
+                :id="`app-installer-url-${target}`"
+                v-model="platformFor(target).installer_url"
+                type="url"
+                class="input font-mono text-xs"
+                :aria-label="`${target} installer URL`"
+                :placeholder="installerPlaceholder(target)"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -168,9 +187,16 @@ function targetLabel(target: string): string {
 
 function platformFor(target: string): AppUpdatePlatform {
   if (!form.platforms[target]) {
-    form.platforms[target] = { url: "", signature: "" };
+    form.platforms[target] = { url: "", signature: "", installer_url: "" };
   }
   return form.platforms[target];
+}
+
+function installerPlaceholder(target: string): string {
+  if (target.startsWith("windows")) {
+    return "https://cdn.example.com/releases/v1.0.1/setup.exe";
+  }
+  return "https://cdn.example.com/releases/v1.0.1/app.dmg";
 }
 
 function apply(settings: AppUpdateSettings, serverTargets: string[]) {
@@ -182,7 +208,11 @@ function apply(settings: AppUpdateSettings, serverTargets: string[]) {
   form.platforms = {};
   for (const target of targets.value) {
     const platform = settings.platforms?.[target];
-    form.platforms[target] = { url: platform?.url ?? "", signature: platform?.signature ?? "" };
+    form.platforms[target] = {
+      url: platform?.url ?? "",
+      signature: platform?.signature ?? "",
+      installer_url: platform?.installer_url ?? "",
+    };
   }
 }
 
