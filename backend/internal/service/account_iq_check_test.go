@@ -44,4 +44,9 @@ func TestExtractIQAnswer(t *testing.T) {
 	if _, _, _, msg := extractIQAnswer([]byte(`{"error":{"message":"bad"}}`)); msg != "bad" {
 		t.Fatalf("err: %q", msg)
 	}
+	// 以 SSE 注释行开头、含 response.created 的流式回复也要能解析。
+	sse2 := ": keepalive\n\nevent: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"status\":\"in_progress\"}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"21\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"21\"}]}]}}\n\n"
+	if text, _, _, _ := extractIQAnswer([]byte(sse2)); text != "21" {
+		t.Fatalf("sse with comment: %q", text)
+	}
 }

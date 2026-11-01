@@ -311,7 +311,8 @@ func iqAnswerPasses(text string) bool {
 // Chat Completions or Anthropic Messages reply, streamed (SSE) or not.
 func extractIQAnswer(body []byte) (text string, inTokens, outTokens int64, errMsg string) {
 	trimmed := bytes.TrimSpace(body)
-	if bytes.HasPrefix(trimmed, []byte("event:")) || bytes.HasPrefix(trimmed, []byte("data:")) {
+	// 流式回复可能以 SSE 注释行（": keepalive"）等开头，因此凡不是合法 JSON 且含 data: 行的都按 SSE 解析。
+	if !gjson.ValidBytes(trimmed) && bytes.Contains(trimmed, []byte("data:")) {
 		var deltas, finalText strings.Builder
 		for _, line := range strings.Split(string(trimmed), "\n") {
 			line = strings.TrimSpace(line)
@@ -325,9 +326,15 @@ func extractIQAnswer(body []byte) (text string, inTokens, outTokens int64, errMs
 			switch gjson.Get(data, "type").String() {
 			case "response.output_text.delta":
 				deltas.WriteString(gjson.Get(data, "delta").String())
+			case "response.output_text.done":
+				if finalText.Len() == 0 {
+					finalText.WriteString(gjson.Get(data, "text").String())
+				}
 			case "response.completed", "response.done":
 				t, i, o, _ := extractIQAnswer([]byte(gjson.Get(data, "response").Raw))
-				finalText.WriteString(t)
+				if finalText.Len() == 0 {
+					finalText.WriteString(t)
+				}
 				inTokens, outTokens = i, o
 			case "error", "response.failed":
 				errMsg = firstNonEmpty(gjson.Get(data, "error.message").String(), gjson.Get(data, "response.error.message").String(), gjson.Get(data, "message").String())
