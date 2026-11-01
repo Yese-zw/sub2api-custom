@@ -502,6 +502,17 @@ export default {
         threshold: 'Alert Amount',
         thresholdPlaceholder: 'Enter percentage',
       },
+      iqCheck: {
+        menu: 'IQ Check',
+        title: 'IQ (Degradation) Check',
+        hint: 'Runs the candy test using the upstream URL and key of this account via the IQ check service',
+        model: 'Model',
+        modelPlaceholder: 'Default model',
+        start: 'Start',
+        running: 'Checking…',
+        duration: 'Duration',
+        state: { idle: 'Idle', running: 'Checking, please wait…', passed: 'Passed: no degradation detected', incorrect: 'Incorrect: possible degradation', error: 'Check failed or inconclusive' }
+      },
       testConnection: 'Test Connection',
       reAuthorize: 'Re-Authorize',
       refreshToken: 'Refresh Token',

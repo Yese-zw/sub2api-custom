@@ -36,6 +36,8 @@ export default {
       maxResultsTooltipBody: 'Only the newest test results are kept. Once the number of saved results exceeds this value, older records are pruned automatically so the history list and storage stay under control.',
       maxResultsTooltipExample: 'For example, 100 means keeping at most the latest 100 test results. When the 101st result is saved, the oldest one is removed.',
       maxResultsTooltipRange: 'Recommended range: usually 20 to 200. Use 20-50 when you only care about recent health status, or 100-200 if you want a longer trend history.',
+      iqCheck: 'IQ Check',
+      iqCheckHelp: 'Also run the candy IQ (degradation) check on each run, using the plan model; consumes quota of the upstream key',
       autoRecover: 'Auto Recover',
       autoRecoverHelp: 'Automatically recover account from error/rate-limited state on successful test'
     },

@@ -660,6 +660,30 @@ export async function getAvailableModels(id: number): Promise<ClaudeModel[]> {
   return data
 }
 
+export interface IQCheckTask {
+  id: string
+  status: 'running' | 'succeeded' | 'failed' | 'cancelled'
+  phase?: string
+  expires_at?: string
+  verdict?: 'passed' | 'incorrect' | 'error' | ''
+  answer?: string
+  duration_ms?: number
+  input_tokens?: number
+  output_tokens?: number
+  error?: string
+}
+
+/** Start a candy IQ (降智) check using the account's upstream base_url / api_key */
+export async function startIQCheck(id: number, modelId?: string): Promise<IQCheckTask> {
+  const { data } = await apiClient.post<IQCheckTask>(`/admin/accounts/${id}/iq-check`, { model_id: modelId || '' })
+  return data
+}
+
+export async function getIQCheck(taskId: string): Promise<IQCheckTask> {
+  const { data } = await apiClient.get<IQCheckTask>(`/admin/accounts/iq-check/${encodeURIComponent(taskId)}`)
+  return data
+}
+
 export interface SyncUpstreamModelsResult {
   models: string[]
   metadata?: Record<string, UpstreamModelMetadata>
@@ -1218,6 +1242,8 @@ export const accountsAPI = {
   resetTempUnschedulable,
   setSchedulable,
   getAvailableModels,
+  startIQCheck,
+  getIQCheck,
   syncUpstreamModels,
   syncUpstreamModelsPreview,
   generateAuthUrl,

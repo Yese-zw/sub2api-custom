@@ -295,6 +295,17 @@ export default {
         threshold: '告警金额',
         thresholdPlaceholder: '输入百分比',
       },
+      iqCheck: {
+        menu: '智商检测',
+        title: '智商检测（降智检测）',
+        hint: '使用账号的上游地址和密钥，向智商检测服务发起糖果测试',
+        model: '检测模型',
+        modelPlaceholder: '默认模型',
+        start: '开始检测',
+        running: '检测中…',
+        duration: '耗时',
+        state: { idle: '未开始', running: '检测中，请稍候…', passed: '通过：未发现降智', incorrect: '未通过：疑似降智', error: '检测失败或无法判定' }
+      },
       testConnection: '测试连接',
       reAuthorize: '重新授权',
       refreshToken: '刷新令牌',

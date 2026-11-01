@@ -14,6 +14,7 @@ type ScheduledTestPlan struct {
 	Enabled        bool       `json:"enabled"`
 	MaxResults     int        `json:"max_results"`
 	AutoRecover    bool       `json:"auto_recover"`
+	IQCheck        bool       `json:"iq_check"`
 	LastRunAt      *time.Time `json:"last_run_at"`
 	NextRunAt      *time.Time `json:"next_run_at"`
 	CreatedAt      time.Time  `json:"created_at"`
@@ -28,6 +29,8 @@ type ScheduledTestResult struct {
 	ResponseText string    `json:"response_text"`
 	ErrorMessage string    `json:"error_message"`
 	LatencyMs    int64     `json:"latency_ms"`
+	IQStatus     string    `json:"iq_status"`
+	IQMessage    string    `json:"iq_message"`
 	StartedAt    time.Time `json:"started_at"`
 	FinishedAt   time.Time `json:"finished_at"`
 	CreatedAt    time.Time `json:"created_at"`

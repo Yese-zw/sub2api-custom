@@ -19,6 +19,7 @@ type ScheduledTestRunnerService struct {
 	accountTestSvc *AccountTestService
 	rateLimitSvc   *RateLimitService
 	cfg            *config.Config
+	iqCheckSvc     *IQCheckService
 
 	cron      *cron.Cron
 	startOnce sync.Once
@@ -39,6 +40,7 @@ func NewScheduledTestRunnerService(
 		accountTestSvc: accountTestSvc,
 		rateLimitSvc:   rateLimitSvc,
 		cfg:            cfg,
+		iqCheckSvc:     NewIQCheckService(),
 	}
 }
 
@@ -126,6 +128,10 @@ func (s *ScheduledTestRunnerService) runOnePlan(ctx context.Context, plan *Sched
 		return
 	}
 
+	if plan.IQCheck {
+		s.runIQCheck(ctx, plan, result)
+	}
+
 	if err := s.scheduledSvc.SaveResult(ctx, plan.ID, plan.MaxResults, result); err != nil {
 		logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d SaveResult error: %v", plan.ID, err)
 	}
@@ -167,4 +173,25 @@ func (s *ScheduledTestRunnerService) tryRecoverAccount(ctx context.Context, acco
 	if recovery.ClearedRateLimit {
 		logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d auto-recover: account=%d cleared rate-limit/runtime state", planID, accountID)
 	}
+}
+
+// runIQCheck runs the candy IQ check for the plan's account and records the verdict on result.
+func (s *ScheduledTestRunnerService) runIQCheck(ctx context.Context, plan *ScheduledTestPlan, result *ScheduledTestResult) {
+	account, err := s.accountTestSvc.accountRepo.GetByID(ctx, plan.AccountID)
+	if err == nil {
+		var baseURL, apiKey string
+		baseURL, apiKey, err = ResolveIQCheckUpstream(account)
+		if err == nil {
+			var task *IQCheckTask
+			task, err = s.iqCheckSvc.Run(ctx, baseURL, apiKey, plan.ModelID)
+			if err == nil {
+				result.IQStatus = task.Verdict
+				result.IQMessage = IQCheckVerdictLabel(task)
+				return
+			}
+		}
+	}
+	logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d iq check error: %v", plan.ID, err)
+	result.IQStatus = iqCheckStatusError
+	result.IQMessage = "检测失败: " + err.Error()
 }

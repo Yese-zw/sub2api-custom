@@ -72,6 +72,7 @@ type AccountHandler struct {
 	ollamaCloudUsage        *service.OllamaCloudUsageService
 	cfg                     *config.Config
 	opencodeGoUsage         *service.OpenCodeGoUsageService
+	iqCheck                 *service.IQCheckService
 }
 
 // SetUpstreamBillingProbeService attaches the optional remote billing probe service.
@@ -121,6 +122,7 @@ func NewAccountHandler(
 		sessionLimitCache:       sessionLimitCache,
 		rpmCache:                rpmCache,
 		tokenCacheInvalidator:   tokenCacheInvalidator,
+		iqCheck:                 service.NewIQCheckService(),
 	}
 }
 
@@ -3703,4 +3705,46 @@ func sanitizeExtraBaseRPM(extra map[string]any) {
 		v = 10000
 	}
 	extra["base_rpm"] = v
+}
+
+// StartIQCheck submits a candy IQ (降智) check using the account's upstream base_url / api_key.
+// POST /api/v1/admin/accounts/:id/iq-check
+func (h *AccountHandler) StartIQCheck(c *gin.Context) {
+	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid account ID")
+		return
+	}
+	var req struct {
+		ModelID string `json:"model_id"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	account, err := h.adminService.GetAccount(c.Request.Context(), accountID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	baseURL, apiKey, err := service.ResolveIQCheckUpstream(account)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	task, err := h.iqCheck.Start(c.Request.Context(), baseURL, apiKey, req.ModelID)
+	if err != nil {
+		response.Error(c, http.StatusBadGateway, err.Error())
+		return
+	}
+	response.Success(c, task)
+}
+
+// GetIQCheck returns the state of a previously started IQ check task.
+// GET /api/v1/admin/accounts/iq-check/:task_id
+func (h *AccountHandler) GetIQCheck(c *gin.Context) {
+	task, err := h.iqCheck.Get(c.Request.Context(), c.Param("task_id"))
+	if err != nil {
+		response.Error(c, http.StatusBadGateway, err.Error())
+		return
+	}
+	response.Success(c, task)
 }
