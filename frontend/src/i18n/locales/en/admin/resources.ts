@@ -38,6 +38,9 @@ export default {
       maxResultsTooltipRange: 'Recommended range: usually 20 to 200. Use 20-50 when you only care about recent health status, or 100-200 if you want a longer trend history.',
       iqCheck: 'IQ Check',
       iqReply: 'Model reply',
+      iqStopOnFail: 'Stop scheduling when IQ check fails',
+      iqStopOnFailHelp: 'When the check result is \'incorrect\', temporarily stop scheduling this account; it resumes automatically after the duration',
+      iqStopMinutes: 'Stop duration (minutes)',
       iqCheckHelp: 'Replaces the normal connectivity test with the candy IQ (degradation) check on each run; run locally against the upstream using the plan model; consumes quota of the upstream key',
       autoRecover: 'Auto Recover',
       autoRecoverHelp: 'Automatically recover account from error/rate-limited state on successful test'

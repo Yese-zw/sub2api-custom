@@ -118,6 +118,19 @@
               </p>
             </div>
           </div>
+          <div v-if="newPlan.iq_check" class="sm:col-span-2">
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <Toggle v-model="newPlan.iq_stop_on_fail" />
+              {{ t('admin.scheduledTests.iqStopOnFail') }}
+            </label>
+            <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+              {{ t('admin.scheduledTests.iqStopOnFailHelp') }}
+            </p>
+            <div v-if="newPlan.iq_stop_on_fail" class="mt-2 flex items-center gap-2">
+              <span class="text-xs text-gray-600 dark:text-gray-400">{{ t('admin.scheduledTests.iqStopMinutes') }}</span>
+              <Input v-model="newPlan.iq_stop_minutes" type="number" class="w-28" placeholder="60" />
+            </div>
+          </div>
         </div>
         <div class="mt-3 flex justify-end gap-2">
           <button
@@ -345,6 +358,19 @@
                   </p>
                 </div>
               </div>
+              <div v-if="editForm.iq_check" class="sm:col-span-2">
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <Toggle v-model="editForm.iq_stop_on_fail" />
+                  {{ t('admin.scheduledTests.iqStopOnFail') }}
+                </label>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+                  {{ t('admin.scheduledTests.iqStopOnFailHelp') }}
+                </p>
+                <div v-if="editForm.iq_stop_on_fail" class="mt-2 flex items-center gap-2">
+                  <span class="text-xs text-gray-600 dark:text-gray-400">{{ t('admin.scheduledTests.iqStopMinutes') }}</span>
+                  <Input v-model="editForm.iq_stop_minutes" type="number" class="w-28" placeholder="60" />
+                </div>
+              </div>
             </div>
             <div class="mt-3 flex justify-end gap-2">
               <button
@@ -485,10 +511,24 @@
                   >{{ result.response_text }}</pre>
                 </div>
                 <div v-if="result.iq_status && result.response_text" class="mt-2">
-                  <div class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  <div
+                    class="cursor-pointer text-xs font-medium text-gray-600 dark:text-gray-400"
+                    @click="toggleIQReply(result.id)"
+                  >
                     {{ t('admin.scheduledTests.iqReply') }}
+                    <Icon
+                      name="chevronDown"
+                      size="sm"
+                      :class="[
+                        'inline transition-transform duration-200',
+                        collapsedIQReplyIds.has(result.id) ? '' : 'rotate-180'
+                      ]"
+                    />
                   </div>
-                  <pre class="mt-1 max-h-60 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-300">{{ result.response_text }}</pre>
+                  <pre
+                    v-if="!collapsedIQReplyIds.has(result.id)"
+                    class="mt-1 max-h-60 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-300"
+                  >{{ result.response_text }}</pre>
                 </div>
               </div>
             </div>
@@ -554,6 +594,12 @@ watch(expandedPlanId, () => {
 }, { flush: 'sync' })
 onBeforeUnmount(() => { resultsRequestId++ })
 const expandedResultIds = reactive(new Set<number>())
+// IQ check replies are expanded by default; ids here have been collapsed by the user.
+const collapsedIQReplyIds = reactive(new Set<number>())
+const toggleIQReply = (resultId: number) => {
+  if (collapsedIQReplyIds.has(resultId)) collapsedIQReplyIds.delete(resultId)
+  else collapsedIQReplyIds.add(resultId)
+}
 const showAddForm = ref(false)
 const showDeleteConfirm = ref(false)
 const deletingPlan = ref<ScheduledTestPlan | null>(null)
@@ -565,7 +611,9 @@ const editForm = reactive({
   max_results: '100' as string,
   enabled: true,
   auto_recover: false,
-  iq_check: false
+  iq_check: false,
+  iq_stop_on_fail: false,
+  iq_stop_minutes: '60' as string
 })
 
 const newPlan = reactive({
@@ -574,7 +622,9 @@ const newPlan = reactive({
   max_results: '100' as string,
   enabled: true,
   auto_recover: false,
-  iq_check: false
+  iq_check: false,
+  iq_stop_on_fail: false,
+  iq_stop_minutes: '60' as string
 })
 
 const resetNewPlan = () => {
@@ -584,6 +634,8 @@ const resetNewPlan = () => {
   newPlan.enabled = true
   newPlan.auto_recover = false
   newPlan.iq_check = false
+  newPlan.iq_stop_on_fail = false
+  newPlan.iq_stop_minutes = '60'
 }
 
 // Load plans when dialog opens
@@ -627,7 +679,9 @@ const handleCreate = async () => {
       enabled: newPlan.enabled,
       max_results: maxResults,
       auto_recover: newPlan.auto_recover,
-      iq_check: newPlan.iq_check
+      iq_check: newPlan.iq_check,
+      iq_stop_on_fail: newPlan.iq_stop_on_fail,
+      iq_stop_minutes: Number(newPlan.iq_stop_minutes) || 60
     })
     appStore.showSuccess(t('admin.scheduledTests.createSuccess'))
     showAddForm.value = false
@@ -661,6 +715,8 @@ const startEdit = (plan: ScheduledTestPlan) => {
   editForm.enabled = plan.enabled
   editForm.auto_recover = plan.auto_recover
   editForm.iq_check = plan.iq_check
+  editForm.iq_stop_on_fail = plan.iq_stop_on_fail
+  editForm.iq_stop_minutes = String(plan.iq_stop_minutes || 60)
 }
 
 const cancelEdit = () => {
@@ -677,7 +733,9 @@ const handleEdit = async () => {
       max_results: Number(editForm.max_results) || 100,
       enabled: editForm.enabled,
       auto_recover: editForm.auto_recover,
-      iq_check: editForm.iq_check
+      iq_check: editForm.iq_check,
+      iq_stop_on_fail: editForm.iq_stop_on_fail,
+      iq_stop_minutes: Number(editForm.iq_stop_minutes) || 60
     })
     const index = plans.value.findIndex((p) => p.id === editingPlanId.value)
     if (index !== -1) {

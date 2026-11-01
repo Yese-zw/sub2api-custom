@@ -70,7 +70,21 @@
         />
       </div>
 
-      <div v-if="isOpenAIAccount" class="space-y-1.5">
+      <div v-if="supportsIQ" class="space-y-1.5">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ t('admin.accounts.iqCheck.testKind') }}
+        </label>
+        <Select
+          v-model="checkKind"
+          :options="checkKindOptions"
+          :disabled="status === 'connecting'"
+        />
+        <p v-if="iqMode" class="text-xs text-gray-500 dark:text-gray-400">
+          {{ t('admin.accounts.iqCheck.hint') }}
+        </p>
+      </div>
+
+      <div v-if="isOpenAIAccount && !iqMode" class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
           {{ t('admin.accounts.openai.testMode') }}
         </label>
@@ -81,7 +95,7 @@
         />
       </div>
 
-      <div v-if="supportsPromptInput" class="space-y-1.5">
+      <div v-if="supportsPromptInput && !iqMode" class="space-y-1.5">
         <TextArea
           v-model="testPrompt"
           :label="promptInputLabel"
@@ -92,7 +106,7 @@
         />
       </div>
       <p
-        v-else-if="isGrokAccount && promptInputHint"
+        v-else-if="isGrokAccount && promptInputHint && !iqMode"
         class="text-xs text-gray-500 dark:text-gray-400"
       >
         {{ promptInputHint }}
@@ -453,6 +467,22 @@ const generatedAudios = ref<PreviewMedia[]>([])
 const generatedVideos = ref<PreviewMedia[]>([])
 const previewImageUrl = ref('')
 const testMode = ref<'default' | 'compact'>('default')
+// 智商检测（糖果测试）：API Key / 上游账号默认使用的测试模式，可切换为普通连接测试。
+const checkKind = ref<'iq' | 'connection'>('connection')
+const supportsIQ = computed(() => {
+  const a = props.account
+  if (!a) return false
+  if (a.type !== 'apikey' && a.type !== 'upstream') return false
+  if (a.parent_account_id != null) return false
+  return !['grok', 'gemini', 'antigravity', 'typesafe'].includes(a.platform)
+})
+const iqMode = computed(() => supportsIQ.value && checkKind.value === 'iq')
+const checkKindOptions = computed(() => [
+  { value: 'iq', label: t('admin.accounts.iqCheck.kindIQ') },
+  { value: 'connection', label: t('admin.accounts.iqCheck.kindConnection') }
+])
+let iqSession = 0
+let iqTimer: ReturnType<typeof setTimeout> | null = null
 const grokTestMode = ref<'text' | 'image' | 'video' | 'search' | 'tts' | 'stt' | 'realtime'>('text')
 const uploadImageDataURL = ref('')
 const uploadImagePreview = ref('')
@@ -702,6 +732,7 @@ const testModeSummary = computed(() => {
         return t('admin.accounts.grok.textTestMode')
     }
   }
+  if (iqMode.value) return t('admin.accounts.iqCheck.kindIQ')
   if (supportsImageTest.value) return t('admin.accounts.imageTestMode')
   return t('admin.accounts.textTestMode')
 })
@@ -785,6 +816,7 @@ watch(
       promptIsAutoDefault = false
       testMode.value = 'default'
       grokTestMode.value = 'text'
+      checkKind.value = supportsIQ.value ? 'iq' : 'connection'
       resetState()
       await loadAvailableModels()
       if (isGrokAccount.value) {
@@ -860,6 +892,9 @@ const handleClose = () => {
 }
 
 const abortStream = () => {
+  iqSession++
+  if (iqTimer) clearTimeout(iqTimer)
+  iqTimer = null
   if (abortController) {
     abortController.abort()
     abortController = null
@@ -913,6 +948,11 @@ const startTest = async () => {
   addLine('', 'text-gray-300')
 
   abortStream()
+
+  if (iqMode.value) {
+    await runIQCheck()
+    return
+  }
 
   abortController = new AbortController()
 
@@ -1004,6 +1044,50 @@ const startTest = async () => {
       status.value = 'idle'
       return
     }
+    status.value = 'error'
+    const msg = error instanceof Error ? error.message : t('common.unknownError')
+    errorMessage.value = msg
+    addLine(t('admin.accounts.errorPrefix', { message: msg }), 'text-red-400')
+  }
+}
+
+const IQ_POLL_MS = 3000
+const runIQCheck = async () => {
+  if (!props.account) return
+  const account = props.account
+  const mySession = iqSession
+  addLine(t('admin.accounts.iqCheck.starting'), 'text-gray-400')
+  try {
+    let task = await adminAPI.accounts.startIQCheck(account.id, selectedModelId.value)
+    while (!['succeeded', 'failed', 'cancelled'].includes(task.status)) {
+      await new Promise<void>((resolve) => {
+        iqTimer = setTimeout(resolve, IQ_POLL_MS)
+      })
+      if (mySession !== iqSession) return
+      task = await adminAPI.accounts.getIQCheck(task.id)
+    }
+    if (mySession !== iqSession) return
+    totalLatencyMs.value = task.duration_ms ?? null
+    if (selectedModelId.value) {
+      addLine(t('admin.accounts.usingModel', { model: selectedModelId.value }), 'text-cyan-400')
+    }
+    addLine('', 'text-gray-300')
+    addLine(t('admin.accounts.response'), 'text-yellow-400')
+    if (task.answer) streamingContent.value = task.answer
+    addLine('', 'text-gray-300')
+    if (task.verdict === 'passed') {
+      addLine(t('admin.accounts.iqCheck.state.passed'), 'text-green-400')
+      status.value = 'success'
+    } else if (task.verdict === 'incorrect') {
+      addLine(t('admin.accounts.iqCheck.state.incorrect'), 'text-red-400')
+      status.value = 'success'
+    } else {
+      errorMessage.value = task.error || t('admin.accounts.iqCheck.state.error')
+      addLine(t('admin.accounts.errorPrefix', { message: errorMessage.value }), 'text-red-400')
+      status.value = 'error'
+    }
+  } catch (error: unknown) {
+    if (mySession !== iqSession) return
     status.value = 'error'
     const msg = error instanceof Error ? error.message : t('common.unknownError')
     errorMessage.value = msg

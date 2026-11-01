@@ -2552,6 +2552,8 @@ export interface ScheduledTestPlan {
   max_results: number
   auto_recover: boolean
   iq_check: boolean
+  iq_stop_on_fail: boolean
+  iq_stop_minutes: number
   last_run_at: string | null
   next_run_at: string | null
   created_at: string
@@ -2580,6 +2582,8 @@ export interface CreateScheduledTestPlanRequest {
   max_results?: number
   auto_recover?: boolean
   iq_check?: boolean
+  iq_stop_on_fail?: boolean
+  iq_stop_minutes?: number
 }
 
 export interface UpdateScheduledTestPlanRequest {
@@ -2589,6 +2593,8 @@ export interface UpdateScheduledTestPlanRequest {
   max_results?: number
   auto_recover?: boolean
   iq_check?: boolean
+  iq_stop_on_fail?: boolean
+  iq_stop_minutes?: number
 }
 
 // Payment types

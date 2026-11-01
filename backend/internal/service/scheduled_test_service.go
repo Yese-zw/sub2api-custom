@@ -39,6 +39,10 @@ func (s *ScheduledTestService) CreatePlan(ctx context.Context, plan *ScheduledTe
 		plan.MaxResults = 50
 	}
 
+	if plan.IQStopMinutes <= 0 {
+		plan.IQStopMinutes = 60
+	}
+
 	return s.planRepo.Create(ctx, plan)
 }
 

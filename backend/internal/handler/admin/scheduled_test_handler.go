@@ -27,6 +27,8 @@ type createScheduledTestPlanRequest struct {
 	MaxResults     int    `json:"max_results"`
 	AutoRecover    *bool  `json:"auto_recover"`
 	IQCheck        *bool  `json:"iq_check"`
+	IQStopOnFail   *bool  `json:"iq_stop_on_fail"`
+	IQStopMinutes  int    `json:"iq_stop_minutes"`
 }
 
 type updateScheduledTestPlanRequest struct {
@@ -36,6 +38,8 @@ type updateScheduledTestPlanRequest struct {
 	MaxResults     int    `json:"max_results"`
 	AutoRecover    *bool  `json:"auto_recover"`
 	IQCheck        *bool  `json:"iq_check"`
+	IQStopOnFail   *bool  `json:"iq_stop_on_fail"`
+	IQStopMinutes  int    `json:"iq_stop_minutes"`
 }
 
 // ListByAccount GET /admin/accounts/:id/scheduled-test-plans
@@ -68,6 +72,7 @@ func (h *ScheduledTestHandler) Create(c *gin.Context) {
 		CronExpression: req.CronExpression,
 		Enabled:        true,
 		MaxResults:     req.MaxResults,
+		IQStopMinutes:  req.IQStopMinutes,
 	}
 	if req.Enabled != nil {
 		plan.Enabled = *req.Enabled
@@ -77,6 +82,9 @@ func (h *ScheduledTestHandler) Create(c *gin.Context) {
 	}
 	if req.IQCheck != nil {
 		plan.IQCheck = *req.IQCheck
+	}
+	if req.IQStopOnFail != nil {
+		plan.IQStopOnFail = *req.IQStopOnFail
 	}
 
 	created, err := h.scheduledTestSvc.CreatePlan(c.Request.Context(), plan)
@@ -124,6 +132,12 @@ func (h *ScheduledTestHandler) Update(c *gin.Context) {
 	}
 	if req.IQCheck != nil {
 		existing.IQCheck = *req.IQCheck
+	}
+	if req.IQStopOnFail != nil {
+		existing.IQStopOnFail = *req.IQStopOnFail
+	}
+	if req.IQStopMinutes > 0 {
+		existing.IQStopMinutes = req.IQStopMinutes
 	}
 
 	updated, err := h.scheduledTestSvc.UpdatePlan(c.Request.Context(), existing)

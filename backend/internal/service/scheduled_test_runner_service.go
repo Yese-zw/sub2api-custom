@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -124,6 +125,9 @@ func (s *ScheduledTestRunnerService) runOnePlan(ctx context.Context, plan *Sched
 	if plan.IQCheck {
 		// 开启智商检测后不再做普通连通性测试，仅运行智商检测。
 		result = s.runIQCheckOnly(ctx, plan)
+		if plan.IQStopOnFail && result.IQStatus == IQVerdictIncorrect {
+			s.pauseAccountForIQ(ctx, plan)
+		}
 	} else {
 		var err error
 		result, err = s.accountTestSvc.RunTestBackground(ctx, plan.AccountID, plan.ModelID)
@@ -202,4 +206,20 @@ func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *S
 	result.IQStatus = task.Verdict
 	result.IQMessage = IQCheckVerdictLabel(task)
 	return result
+}
+
+// pauseAccountForIQ temporarily stops scheduling the account after a failed IQ check.
+// Scheduling resumes automatically once the plan's stop duration has elapsed.
+func (s *ScheduledTestRunnerService) pauseAccountForIQ(ctx context.Context, plan *ScheduledTestPlan) {
+	minutes := plan.IQStopMinutes
+	if minutes <= 0 {
+		minutes = 60
+	}
+	until := time.Now().Add(time.Duration(minutes) * time.Minute)
+	reason := fmt.Sprintf("智商检测未通过，已停止调度 %d 分钟（定时测试计划 #%d）", minutes, plan.ID)
+	if err := s.accountTestSvc.accountRepo.SetTempUnschedulable(ctx, plan.AccountID, until, reason); err != nil {
+		logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d pause account=%d failed: %v", plan.ID, plan.AccountID, err)
+		return
+	}
+	logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d iq check failed: account=%d paused until %s", plan.ID, plan.AccountID, until.Format(time.RFC3339))
 }

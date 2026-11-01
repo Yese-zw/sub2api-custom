@@ -38,6 +38,9 @@ export default {
       maxResultsTooltipRange: '推荐填写范围：一般可填 20 到 200。只关注近期可用性时可填 20-50；需要回看较长时间的波动趋势时可填 100-200。',
       iqCheck: '智商检测',
       iqReply: '模型回复',
+      iqStopOnFail: '智商不通过时停止调度',
+      iqStopOnFailHelp: '检测结果为“未通过”时，临时停止该账号的调度；到期后自动恢复调度',
+      iqStopMinutes: '停止调度时长（分钟）',
       iqCheckHelp: '开启后定时测试只运行糖果智商检测，不再做普通连通性测试（由本服务直接请求上游，使用计划所选模型，会消耗该 Key 的额度）',
       autoRecover: '自动恢复',
       autoRecoverHelp: '测试成功后自动恢复异常状态的账号'
