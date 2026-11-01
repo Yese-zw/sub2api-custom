@@ -19,7 +19,6 @@ type ScheduledTestRunnerService struct {
 	accountTestSvc *AccountTestService
 	rateLimitSvc   *RateLimitService
 	cfg            *config.Config
-	iqCheckSvc     *IQCheckService
 
 	cron      *cron.Cron
 	startOnce sync.Once
@@ -40,7 +39,6 @@ func NewScheduledTestRunnerService(
 		accountTestSvc: accountTestSvc,
 		rateLimitSvc:   rateLimitSvc,
 		cfg:            cfg,
-		iqCheckSvc:     NewIQCheckService(),
 	}
 }
 
@@ -122,14 +120,17 @@ func (s *ScheduledTestRunnerService) runScheduled() {
 }
 
 func (s *ScheduledTestRunnerService) runOnePlan(ctx context.Context, plan *ScheduledTestPlan) {
-	result, err := s.accountTestSvc.RunTestBackground(ctx, plan.AccountID, plan.ModelID)
-	if err != nil {
-		logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d RunTestBackground error: %v", plan.ID, err)
-		return
-	}
-
+	var result *ScheduledTestResult
 	if plan.IQCheck {
-		s.runIQCheck(ctx, plan, result)
+		// 开启智商检测后不再做普通连通性测试，仅运行智商检测。
+		result = s.runIQCheckOnly(ctx, plan)
+	} else {
+		var err error
+		result, err = s.accountTestSvc.RunTestBackground(ctx, plan.AccountID, plan.ModelID)
+		if err != nil {
+			logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d RunTestBackground error: %v", plan.ID, err)
+			return
+		}
 	}
 
 	if err := s.scheduledSvc.SaveResult(ctx, plan.ID, plan.MaxResults, result); err != nil {
@@ -175,23 +176,30 @@ func (s *ScheduledTestRunnerService) tryRecoverAccount(ctx context.Context, acco
 	}
 }
 
-// runIQCheck runs the candy IQ check for the plan's account and records the verdict on result.
-func (s *ScheduledTestRunnerService) runIQCheck(ctx context.Context, plan *ScheduledTestPlan, result *ScheduledTestResult) {
-	account, err := s.accountTestSvc.accountRepo.GetByID(ctx, plan.AccountID)
-	if err == nil {
-		var baseURL, apiKey string
-		baseURL, apiKey, err = ResolveIQCheckUpstream(account)
-		if err == nil {
-			var task *IQCheckTask
-			task, err = s.iqCheckSvc.Run(ctx, baseURL, apiKey, plan.ModelID)
-			if err == nil {
-				result.IQStatus = task.Verdict
-				result.IQMessage = IQCheckVerdictLabel(task)
-				return
-			}
-		}
+// runIQCheckOnly runs the local candy IQ check and converts it into a scheduled test result.
+// The result is "success" when the check ran to a verdict (passed or incorrect); a
+// failed request or empty answer is "failed".
+func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *ScheduledTestPlan) *ScheduledTestResult {
+	startedAt := time.Now()
+	result := &ScheduledTestResult{StartedAt: startedAt}
+	task, err := s.accountTestSvc.RunIQCheck(ctx, plan.AccountID, plan.ModelID)
+	result.FinishedAt = time.Now()
+	result.LatencyMs = result.FinishedAt.Sub(startedAt).Milliseconds()
+	if err != nil {
+		logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d iq check error: %v", plan.ID, err)
+		result.Status = "failed"
+		result.ErrorMessage = err.Error()
+		result.IQStatus = IQVerdictError
+		result.IQMessage = "检测失败: " + err.Error()
+		return result
 	}
-	logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] plan=%d iq check error: %v", plan.ID, err)
-	result.IQStatus = iqCheckStatusError
-	result.IQMessage = "检测失败: " + err.Error()
+	result.Status = "success"
+	if task.Status != "succeeded" {
+		result.Status = "failed"
+		result.ErrorMessage = task.Error
+	}
+	result.ResponseText = task.Answer
+	result.IQStatus = task.Verdict
+	result.IQMessage = IQCheckVerdictLabel(task)
+	return result
 }

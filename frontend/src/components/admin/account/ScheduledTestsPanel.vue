@@ -464,7 +464,7 @@
                     class="mt-1 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300"
                   >{{ result.error_message }}</pre>
                 </div>
-                <div v-else-if="result.response_text" class="mt-2">
+                <div v-else-if="result.response_text && !result.iq_status" class="mt-2">
                   <div
                     class="cursor-pointer text-xs font-medium text-gray-600 dark:text-gray-400"
                     @click="toggleResultDetail(result.id)"
@@ -483,6 +483,12 @@
                     v-if="expandedResultIds.has(result.id)"
                     class="mt-1 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-300"
                   >{{ result.response_text }}</pre>
+                </div>
+                <div v-if="result.iq_status && result.response_text" class="mt-2">
+                  <div class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    {{ t('admin.scheduledTests.iqReply') }}
+                  </div>
+                  <pre class="mt-1 max-h-60 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-300">{{ result.response_text }}</pre>
                 </div>
               </div>
             </div>

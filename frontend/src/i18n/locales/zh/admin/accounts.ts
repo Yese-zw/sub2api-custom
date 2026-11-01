@@ -298,8 +298,9 @@ export default {
       iqCheck: {
         menu: '智商检测',
         title: '智商检测（降智检测）',
-        hint: '使用账号的上游地址和密钥，向智商检测服务发起糖果测试',
+        hint: '使用账号自身的上游地址、密钥和代理，由本服务直接发起糖果测试（答案含独立的 21 即通过），不依赖第三方',
         model: '检测模型',
+        reply: '模型回复',
         modelPlaceholder: '默认模型',
         start: '开始检测',
         running: '检测中…',

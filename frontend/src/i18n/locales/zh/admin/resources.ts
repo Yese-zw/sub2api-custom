@@ -37,7 +37,8 @@ export default {
       maxResultsTooltipExample: '例如填写 100，表示最多保存最近 100 次测试结果；第 101 次结果写入后，最早的一条会被清理。',
       maxResultsTooltipRange: '推荐填写范围：一般可填 20 到 200。只关注近期可用性时可填 20-50；需要回看较长时间的波动趋势时可填 100-200。',
       iqCheck: '智商检测',
-      iqCheckHelp: '定时测试时同时运行糖果智商检测，判断上游是否降智（使用计划所选模型，会消耗该 Key 的额度）',
+      iqReply: '模型回复',
+      iqCheckHelp: '开启后定时测试只运行糖果智商检测，不再做普通连通性测试（由本服务直接请求上游，使用计划所选模型，会消耗该 Key 的额度）',
       autoRecover: '自动恢复',
       autoRecoverHelp: '测试成功后自动恢复异常状态的账号'
     },

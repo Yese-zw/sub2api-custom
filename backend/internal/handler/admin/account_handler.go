@@ -72,7 +72,6 @@ type AccountHandler struct {
 	ollamaCloudUsage        *service.OllamaCloudUsageService
 	cfg                     *config.Config
 	opencodeGoUsage         *service.OpenCodeGoUsageService
-	iqCheck                 *service.IQCheckService
 }
 
 // SetUpstreamBillingProbeService attaches the optional remote billing probe service.
@@ -122,7 +121,6 @@ func NewAccountHandler(
 		sessionLimitCache:       sessionLimitCache,
 		rpmCache:                rpmCache,
 		tokenCacheInvalidator:   tokenCacheInvalidator,
-		iqCheck:                 service.NewIQCheckService(),
 	}
 }
 
@@ -3707,7 +3705,7 @@ func sanitizeExtraBaseRPM(extra map[string]any) {
 	extra["base_rpm"] = v
 }
 
-// StartIQCheck submits a candy IQ (降智) check using the account's upstream base_url / api_key.
+// StartIQCheck runs the candy IQ (降智) check locally against the account's own upstream.
 // POST /api/v1/admin/accounts/:id/iq-check
 func (h *AccountHandler) StartIQCheck(c *gin.Context) {
 	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -3720,19 +3718,9 @@ func (h *AccountHandler) StartIQCheck(c *gin.Context) {
 	}
 	_ = c.ShouldBindJSON(&req)
 
-	account, err := h.adminService.GetAccount(c.Request.Context(), accountID)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	baseURL, apiKey, err := service.ResolveIQCheckUpstream(account)
+	task, err := h.accountTestService.StartIQCheck(c.Request.Context(), accountID, req.ModelID)
 	if err != nil {
 		response.BadRequest(c, err.Error())
-		return
-	}
-	task, err := h.iqCheck.Start(c.Request.Context(), baseURL, apiKey, req.ModelID)
-	if err != nil {
-		response.Error(c, http.StatusBadGateway, err.Error())
 		return
 	}
 	response.Success(c, task)
@@ -3741,9 +3729,9 @@ func (h *AccountHandler) StartIQCheck(c *gin.Context) {
 // GetIQCheck returns the state of a previously started IQ check task.
 // GET /api/v1/admin/accounts/iq-check/:task_id
 func (h *AccountHandler) GetIQCheck(c *gin.Context) {
-	task, err := h.iqCheck.Get(c.Request.Context(), c.Param("task_id"))
+	task, err := h.accountTestService.GetIQCheck(c.Param("task_id"))
 	if err != nil {
-		response.Error(c, http.StatusBadGateway, err.Error())
+		response.NotFound(c, err.Error())
 		return
 	}
 	response.Success(c, task)

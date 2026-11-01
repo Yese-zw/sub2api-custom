@@ -505,8 +505,9 @@ export default {
       iqCheck: {
         menu: 'IQ Check',
         title: 'IQ (Degradation) Check',
-        hint: 'Runs the candy test using the upstream URL and key of this account via the IQ check service',
+        hint: 'Runs the candy test directly against this account\'s own upstream with its key and proxy; no third-party service is involved',
         model: 'Model',
+        reply: 'Model reply',
         modelPlaceholder: 'Default model',
         start: 'Start',
         running: 'Checking…',

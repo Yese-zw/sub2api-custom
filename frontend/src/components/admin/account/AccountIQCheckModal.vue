@@ -30,6 +30,13 @@
         </div>
         <div v-if="errorText" class="mt-1 whitespace-pre-wrap break-all text-xs">{{ errorText }}</div>
       </div>
+
+      <div v-if="task?.answer" class="space-y-1.5">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ t('admin.accounts.iqCheck.reply') }}
+        </label>
+        <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-gray-100 p-3 text-xs text-gray-800 dark:bg-dark-800 dark:text-gray-200">{{ task.answer }}</pre>
+      </div>
     </div>
 
     <template #footer>
