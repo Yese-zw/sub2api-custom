@@ -744,8 +744,15 @@ export default {
       failedToLoadBalanceHistory: 'Failed to load balance history',
       createdAt: 'Created',
       totalRecharged: 'Total Recharged',
+      operatorPermissions: {
+        title: 'Operator permissions',
+        hint: 'Choose which admin tabs this operator can see and which actions they can perform. Unchecked tabs are hidden.',
+        selectAll: 'Select all',
+        clear: 'Clear'
+      },
       roles: {
         admin: 'Admin',
+        operator: 'Operator',
         user: 'User'
       },
       // Settings Dropdowns
