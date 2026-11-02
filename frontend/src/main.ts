@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { vPerm } from '@/directives/perm'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
@@ -58,6 +59,7 @@ async function bootstrap() {
   await initI18n()
 
   app.use(router)
+  app.directive('perm', vPerm)
   app.use(i18n)
 
   // 等待路由器完成初始导航后再挂载，避免竞态条件导致的空白渲染

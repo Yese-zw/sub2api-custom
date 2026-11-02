@@ -191,6 +191,7 @@
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { canOperatorAccessPath, firstAllowedAdminPath } from '@/utils/operatorAccess'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -248,11 +249,17 @@ const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
-const isAdmin = computed(() => authStore.isAdmin)
+// 模板中的「后台菜单」对管理员与运营都展示；运营的条目在 adminNavItems 中按权限过滤
+const isAdmin = computed(() => authStore.isStaff)
 const sidebarNavRef = ref<HTMLElement | null>(null)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 
-const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
+const homePath = computed(() => {
+  if (authStore.isOperator) {
+    return firstAllowedAdminPath(authStore.user?.operator_permissions ?? []) ?? '/dashboard'
+  }
+  return isAdmin.value ? '/admin/dashboard' : '/dashboard'
+})
 
 // Per-group expand/collapse overrides. A group with no entry follows the
 // automatic behavior (expanded while the active route is one of its children);
@@ -728,8 +735,9 @@ const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagPluginManagement = makeSidebarFlag(FeatureFlags.pluginManagement)
 const flagMCP = makeSidebarFlag(FeatureFlags.mcp)
-const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
-const flagAdminPayment = () => adminSettingsStore.paymentEnabled
+const flagOpsMonitoring = () => authStore.isOperator || adminSettingsStore.opsMonitoringEnabled
+const flagAdminPayment = () =>
+  authStore.isOperator ? appStore.cachedPublicSettings?.payment_enabled !== false : adminSettingsStore.paymentEnabled
 const flagBatchImageAccess = () => canUseBatchImage.value
 
 // buildSelfNavItems 构造用户自己的导航项（用户端主菜单和管理员的"我的账户"子菜单共享这组声明）。
@@ -862,6 +870,19 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/profit', label: t('nav.profit'), icon: ChartIcon },
   ]
 
+  // 运营：仅保留被授予查看权限的标签页，不展示系统设置、插件与自定义菜单
+  if (authStore.isOperator) {
+    const perms = authStore.user?.operator_permissions ?? []
+    const allowed = baseItems
+      .map((item) => {
+        if (!item.children?.length) return item
+        const children = item.children.filter((c) => canOperatorAccessPath(c.path, perms))
+        return children.length ? { ...item, children } : null
+      })
+      .filter((item): item is NavItem => !!item && (!!item.children?.length || canOperatorAccessPath(item.path, perms)))
+    return applyFeatureFlags(allowed)
+  }
+
   const visible = applyFeatureFlags(baseItems)
 
   // 简单模式下，在系统设置前插入 API密钥
@@ -969,7 +990,7 @@ if (
 
 // Fetch admin settings (for feature-gated nav items like Ops).
 watch(
-  isAdmin,
+  () => authStore.isAdmin,
   (v) => {
     if (v) {
       adminSettingsStore.fetch()
@@ -980,7 +1001,7 @@ watch(
 
 onMounted(() => {
   void refreshBatchImageAccess()
-  if (isAdmin.value) {
+  if (authStore.isAdmin) {
     adminSettingsStore.fetch()
   }
   // Restore sidebar scroll position after route change re-mounts the component

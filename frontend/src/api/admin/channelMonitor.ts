@@ -380,6 +380,25 @@ export async function updateIQSettings(
   return data
 }
 
+export interface MonitorCacheSettings {
+  monitor_id: number
+  show_cache_rate: boolean
+}
+
+/** 获取监控的缓存率展示设置 */
+export async function getCacheSettings(id: number): Promise<MonitorCacheSettings> {
+  const { data } = await apiClient.get<MonitorCacheSettings>(`/admin/channel-monitors/${id}/cache-settings`)
+  return data
+}
+
+/** 保存监控的缓存率展示设置 */
+export async function updateCacheSettings(id: number, showCacheRate: boolean): Promise<MonitorCacheSettings> {
+  const { data } = await apiClient.put<MonitorCacheSettings>(`/admin/channel-monitors/${id}/cache-settings`, {
+    show_cache_rate: showCacheRate,
+  })
+  return data
+}
+
 export const channelMonitorAPI = {
   list,
   get,
@@ -391,6 +410,8 @@ export const channelMonitorAPI = {
   listHistory,
   getIQSettings,
   updateIQSettings,
+  getCacheSettings,
+  updateCacheSettings,
 }
 
 export default channelMonitorAPI

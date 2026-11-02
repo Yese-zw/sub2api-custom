@@ -602,6 +602,9 @@ export default {
         intervalSecondsHint: 'Range: 15 - 3600 seconds',
         jitterSeconds: 'Random Jitter (± seconds)',
         jitterSecondsHint: 'Each check fires at interval ± a random offset within this value; 0 means fixed interval. Interval minus jitter must be ≥ 15s',
+        showCacheRate: 'Show cache rate',
+        showCacheRateHint: 'Show the 7-day cache hit rate on the channel status card (computed from real usage on this site for the channel API key; the key must be an API key of this site).',
+        showCacheRateSaveFailed: 'Channel saved, but saving the cache rate setting failed',
         iq: {
           title: 'IQ check (degradation check)',
           enabled: 'Enable IQ check',

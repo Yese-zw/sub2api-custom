@@ -84,6 +84,8 @@ type ChannelMonitorService struct {
 	quotaFetcher *ChannelMonitorQuotaFetcher
 	// iq 智商（降智）检测，wire 通过 SetIQ 注入；nil 时不做任何检测。
 	iq *ChannelMonitorIQService
+	// cache 缓存率展示（可能为 nil）。
+	cache *ChannelMonitorCacheService
 }
 
 const maxChannelMonitorNameRunes = 100

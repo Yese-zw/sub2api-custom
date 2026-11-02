@@ -69,7 +69,7 @@ export async function list(
   pageSize: number = 20,
   filters?: {
     status?: 'active' | 'disabled'
-    role?: 'admin' | 'user'
+    role?: 'admin' | 'operator' | 'user'
     search?: string
     group_name?: string         // fuzzy filter by allowed group name
     api_key_group_id?: number   // filter users by the group their API keys are bound to
@@ -133,7 +133,7 @@ export async function create(userData: {
   password: string
   username?: string
   notes?: string
-  role?: 'admin' | 'user'
+  role?: 'admin' | 'operator' | 'user'
   balance?: number
   concurrency?: number
   rpm_limit?: number
@@ -404,7 +404,32 @@ export async function resetPlatformQuotaWindow(
   return data
 }
 
+export interface OperatorPermissionTab {
+  key: string
+  label: string
+  permissions: Array<{ id: string; label: string }>
+}
+
+/** 可授予运营身份的标签页/操作目录（仅管理员） */
+export async function getOperatorPermissionCatalog(): Promise<OperatorPermissionTab[]> {
+  const { data } = await apiClient.get<OperatorPermissionTab[]>('/admin/operator-permissions/catalog')
+  return data
+}
+
+export async function getOperatorPermissions(id: number): Promise<string[]> {
+  const { data } = await apiClient.get<{ permissions: string[] }>(`/admin/users/${id}/operator-permissions`)
+  return data.permissions ?? []
+}
+
+export async function setOperatorPermissions(id: number, permissions: string[]): Promise<string[]> {
+  const { data } = await apiClient.put<{ permissions: string[] }>(`/admin/users/${id}/operator-permissions`, { permissions })
+  return data.permissions ?? []
+}
+
 export const usersAPI = {
+  getOperatorPermissionCatalog,
+  getOperatorPermissions,
+  setOperatorPermissions,
   list,
   getById,
   create,

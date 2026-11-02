@@ -591,3 +591,58 @@ func (h *ChannelMonitorHandler) UpdateIQSettings(c *gin.Context) {
 	}
 	response.Success(c, settings)
 }
+
+// --- 缓存率展示设置 ---
+
+type channelMonitorCacheSettingsRequest struct {
+	ShowCacheRate bool `json:"show_cache_rate"`
+}
+
+// GetCacheSettings GET /api/v1/admin/channel-monitors/:id/cache-settings
+func (h *ChannelMonitorHandler) GetCacheSettings(c *gin.Context) {
+	id, ok := ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	cache := h.monitorService.Cache()
+	if cache == nil {
+		response.ErrorFrom(c, service.ErrChannelMonitorDisabled)
+		return
+	}
+	if _, err := h.monitorService.Get(c.Request.Context(), id); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	settings, err := cache.GetSettings(c.Request.Context(), id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
+
+// UpdateCacheSettings PUT /api/v1/admin/channel-monitors/:id/cache-settings
+func (h *ChannelMonitorHandler) UpdateCacheSettings(c *gin.Context) {
+	id, ok := ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	cache := h.monitorService.Cache()
+	if cache == nil {
+		response.ErrorFrom(c, service.ErrChannelMonitorDisabled)
+		return
+	}
+	var req channelMonitorCacheSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorFrom(c, infraerrors.BadRequest("VALIDATION_ERROR", err.Error()))
+		return
+	}
+	settings, err := cache.SaveSettings(c.Request.Context(), &service.ChannelMonitorCacheSettings{
+		MonitorID: id, ShowCacheRate: req.ShowCacheRate,
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}

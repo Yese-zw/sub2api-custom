@@ -13,6 +13,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/handler/quotaview"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/adminaccess"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/operatoraccess"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -64,7 +66,7 @@ type CreateUserRequest struct {
 	Password             string   `json:"password" binding:"required,min=6"`
 	Username             string   `json:"username"`
 	Notes                string   `json:"notes"`
-	Role                 string   `json:"role" binding:"omitempty,oneof=admin user"`
+	Role                 string   `json:"role" binding:"omitempty,oneof=admin operator user"`
 	Balance              *float64 `json:"balance"`
 	Concurrency          int      `json:"concurrency"`
 	RPMLimit             int      `json:"rpm_limit"`
@@ -79,7 +81,7 @@ type UpdateUserRequest struct {
 	Password             string   `json:"password" binding:"omitempty,min=6"`
 	Username             *string  `json:"username"`
 	Notes                *string  `json:"notes"`
-	Role                 string   `json:"role" binding:"omitempty,oneof=admin user"`
+	Role                 string   `json:"role" binding:"omitempty,oneof=admin operator user"`
 	Balance              *float64 `json:"balance"`
 	Concurrency          *int     `json:"concurrency"`
 	RPMLimit             *int     `json:"rpm_limit"`
@@ -293,6 +295,12 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// 运营身份只能创建普通用户；授予 admin/operator 角色仅限管理员。
+	if !isAdminActor(c) && req.Role != "" && req.Role != service.RoleUser {
+		response.Forbidden(c, "Only administrators can assign admin or operator roles")
+		return
+	}
+
 	// 创建管理员账号属权限敏感操作：需最近完成 step-up 2FA 验证。
 	if req.Role == service.RoleAdmin {
 		if !middleware.EnforceStepUp(c, h.totpService, h.userService, h.settingService) {
@@ -336,9 +344,15 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// 防锁死保护：管理员不能把自己降级为普通用户(单管理员场景下会失去后台访问权)。
+	// 角色变更仅限管理员；运营即使持有 users.edit 也不能提权或改动角色。
+	if !isAdminActor(c) && req.Role != "" {
+		response.Forbidden(c, "Only administrators can change user roles")
+		return
+	}
+
+	// 防锁死保护：管理员不能把自己降级(单管理员场景下会失去后台访问权)。
 	// 与既有"不能禁用/删除 admin"保护一致。降级其他管理员仍然允许。
-	if req.Role == service.RoleUser && userID == getAdminIDFromContext(c) {
+	if req.Role != "" && req.Role != service.RoleAdmin && userID == getAdminIDFromContext(c) {
 		response.BadRequest(c, "cannot demote yourself from admin")
 		return
 	}
@@ -1006,4 +1020,77 @@ func (h *UserHandler) ResetUserPlatformQuotaWindow(c *gin.Context) {
 		out = append(out, quotaview.LazyZeroQuotaForResponse(records[i], now, true))
 	}
 	response.Success(c, map[string]any{"platform_quotas": out})
+}
+
+// isAdminActor 当前操作者是否为完整管理员（而非受限的运营身份）。
+func isAdminActor(c *gin.Context) bool {
+	role, ok := middleware.GetUserRoleFromContext(c)
+	return ok && role == service.RoleAdmin
+}
+
+// OperatorPermissionCatalog 返回可授予运营身份的标签页/操作目录。
+// GET /api/v1/admin/operator-permissions/catalog
+func (h *UserHandler) OperatorPermissionCatalog(c *gin.Context) {
+	response.Success(c, operatoraccess.Catalog())
+}
+
+// GetOperatorPermissions 读取指定用户被授予的后台权限。
+// GET /api/v1/admin/users/:id/operator-permissions
+func (h *UserHandler) GetOperatorPermissions(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+	if _, err := h.adminService.GetUser(c.Request.Context(), userID); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	perms, err := h.settingService.GetOperatorPermissions(c.Request.Context(), userID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"permissions": perms})
+}
+
+// SetOperatorPermissionsRequest 覆盖式设置运营权限。
+type SetOperatorPermissionsRequest struct {
+	Permissions []string `json:"permissions"`
+}
+
+// SetOperatorPermissions 保存指定用户被授予的后台权限（仅管理员）。
+// PUT /api/v1/admin/users/:id/operator-permissions
+func (h *UserHandler) SetOperatorPermissions(c *gin.Context) {
+	if !isAdminActor(c) {
+		response.Forbidden(c, "Only administrators can configure operator permissions")
+		return
+	}
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+	var req SetOperatorPermissionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	target, err := h.adminService.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if target.Role != service.RoleOperator {
+		response.BadRequest(c, "Permissions can only be configured for operator users")
+		return
+	}
+	saved, err := h.settingService.SetOperatorPermissions(c.Request.Context(), userID, req.Permissions)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	logger.LegacyPrintf("service.admin", "audit: operator permissions changed actor_admin_id=%d target_user_id=%d permissions=%v",
+		getAdminIDFromContext(c), userID, saved)
+	response.Success(c, gin.H{"permissions": saved})
 }

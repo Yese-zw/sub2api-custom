@@ -29,7 +29,7 @@
         <label class="input-label">{{ t('admin.users.username') }}</label>
         <input v-model="form.username" type="text" class="input" />
       </div>
-      <div>
+      <div v-if="authStore.isAdmin">
         <label class="input-label">{{ t('admin.users.form.roleLabel') }}</label>
         <Select
           v-model="form.role"
@@ -37,6 +37,13 @@
           :searchable="false"
         />
       </div>
+      <OperatorPermissionsEditor
+        v-if="authStore.isAdmin && form.role === 'operator'"
+        :key="user.id"
+        ref="permissionsEditor"
+        :user-id="user.id"
+        :initial-role="user.role"
+      />
       <div>
         <label class="input-label">{{ t('admin.users.notes') }}</label>
         <textarea v-model="form.notes" rows="3" class="input"></textarea>
@@ -92,6 +99,8 @@ import type { AdminUser, UserAttributeValuesMap } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import UserAttributeForm from '@/components/user/UserAttributeForm.vue'
+import OperatorPermissionsEditor from '@/components/admin/user/OperatorPermissionsEditor.vue'
+import { useAuthStore } from '@/stores/auth'
 import Icon from '@/components/icons/Icon.vue'
 import { useStepUp, isStepUpBlocked, isStepUpCancelled, stepUpBlockReason } from '@/composables/useStepUp'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
@@ -100,9 +109,12 @@ const props = defineProps<{ show: boolean, user: AdminUser | null }>()
 const emit = defineEmits(['close', 'success'])
 const { t } = useI18n(); const appStore = useAppStore(); const { copyToClipboard } = useClipboard()
 
+const authStore = useAuthStore()
+const permissionsEditor = ref<InstanceType<typeof OperatorPermissionsEditor> | null>(null)
 const submitting = ref(false); const passwordCopied = ref(false)
 const roleOptions = computed(() => [
   { value: 'user', label: t('admin.users.roles.user') },
+  { value: 'operator', label: t('admin.users.roles.operator') },
   { value: 'admin', label: t('admin.users.roles.admin') }
 ])
 const form = reactive({
@@ -149,10 +161,16 @@ const handleUpdateUser = async () => {
   const userId = props.user.id
   submitting.value = true
   try {
-    const data: any = { email: form.email, username: form.username, notes: form.notes, role: form.role, concurrency: form.concurrency, rpm_limit: form.rpm_limit }
+    const data: any = { email: form.email, username: form.username, notes: form.notes, concurrency: form.concurrency, rpm_limit: form.rpm_limit }
+    // 角色变更仅管理员可提交；运营编辑用户时不携带 role
+    if (authStore.isAdmin) data.role = form.role
     if (form.password.trim()) data.password = form.password.trim()
     // 提升为管理员属敏感操作：后端返回 STEP_UP_REQUIRED 时弹 TOTP 验证并重试
     await stepUp.run(() => adminAPI.users.update(userId, data))
+    if (authStore.isAdmin && form.role === 'operator') {
+      const perms = permissionsEditor.value?.getPermissions()
+      if (perms) await adminAPI.users.setOperatorPermissions(userId, perms)
+    }
     if (Object.keys(form.customAttributes).length > 0) await adminAPI.userAttributes.updateUserAttributeValues(userId, form.customAttributes)
     appStore.showSuccess(t('admin.users.userUpdated'))
     emit('success'); emit('close')

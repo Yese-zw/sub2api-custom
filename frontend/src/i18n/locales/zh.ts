@@ -2038,8 +2038,15 @@ export default {
       failedToToggle: '更新用户状态失败',
       failedToLoadApiKeys: '加载用户 API 密钥失败',
       deleteConfirm: "确定要删除用户 '{email}' 吗？此操作无法撤销。",
+      operatorPermissions: {
+        title: '运营权限',
+        hint: '勾选该运营可见的后台标签页及可执行的操作；未勾选的标签页不会显示。',
+        selectAll: '全选',
+        clear: '清空'
+      },
       roles: {
         admin: '管理员',
+        operator: '运营',
         user: '用户'
       },
       form: {

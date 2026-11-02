@@ -316,7 +316,8 @@
   <Teleport to="body">
     <div
       v-if="tokenTooltipVisible"
-      class="fixed z-[9999] pointer-events-none -translate-y-1/2"
+      ref="tokenTooltipEl"
+      class="fixed z-[100000] pointer-events-none"
       :style="{
         left: tokenTooltipPosition.x + 'px',
         top: tokenTooltipPosition.y + 'px'
@@ -391,7 +392,16 @@
             <span class="font-semibold text-blue-400">{{ ((tokenTooltipData?.input_tokens || 0) + (tokenTooltipData?.output_tokens || 0) + (tokenTooltipData?.cache_creation_tokens || 0) + (tokenTooltipData?.cache_read_tokens || 0)).toLocaleString() }}</span>
           </div>
         </div>
-        <div class="absolute right-full top-1/2 h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-gray-900 border-t-transparent dark:border-r-gray-800"></div>
+        <div
+          v-if="!tokenTooltipFlipped"
+          class="absolute right-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-gray-900 border-t-transparent dark:border-r-gray-800"
+          :style="{ top: tokenTooltipArrowY + 'px' }"
+        ></div>
+        <div
+          v-else
+          class="absolute left-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-l-[6px] border-t-[6px] border-b-transparent border-l-gray-900 border-t-transparent dark:border-l-gray-800"
+          :style="{ top: tokenTooltipArrowY + 'px' }"
+        ></div>
       </div>
     </div>
   </Teleport>
@@ -535,7 +545,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, formatReasoningEffort, reasoningEffortValuesEqual } from '@/utils/format'
@@ -701,6 +711,9 @@ const tooltipData = ref<AdminUsageLog | null>(null)
 const tokenTooltipVisible = ref(false)
 const tokenTooltipPosition = ref({ x: 0, y: 0 })
 const tokenTooltipData = ref<AdminUsageLog | null>(null)
+const tokenTooltipEl = ref<HTMLElement | null>(null)
+const tokenTooltipArrowY = ref(0)
+const tokenTooltipFlipped = ref(false)
 
 const getRequestTypeLabel = (row: AdminUsageLog): string => {
   const requestType = resolveUsageRequestType(row)
@@ -754,13 +767,34 @@ const hideTooltip = () => {
 }
 
 // Token tooltip functions
-const showTokenTooltip = (event: MouseEvent, row: AdminUsageLog) => {
+const TOOLTIP_GAP = 8
+const TOOLTIP_MARGIN = 8
+
+const showTokenTooltip = async (event: MouseEvent, row: AdminUsageLog) => {
   const target = event.currentTarget as HTMLElement
   const rect = target.getBoundingClientRect()
+  const centerY = rect.top + rect.height / 2
   tokenTooltipData.value = row
-  tokenTooltipPosition.value.x = rect.right + 8
-  tokenTooltipPosition.value.y = rect.top + rect.height / 2
+  tokenTooltipFlipped.value = false
+  tokenTooltipPosition.value.x = rect.right + TOOLTIP_GAP
+  tokenTooltipPosition.value.y = centerY
+  tokenTooltipArrowY.value = 0
   tokenTooltipVisible.value = true
+
+  // 按弹窗实际尺寸摆放：垂直方向限制在视口内（靠近底部/顶部的行不再被截断或遮挡），
+  // 右侧放不下时翻到图标左侧，箭头始终对准图标。
+  await nextTick()
+  const el = tokenTooltipEl.value
+  if (!el || !tokenTooltipVisible.value) return
+  const { width, height } = el.getBoundingClientRect()
+  const maxTop = Math.max(TOOLTIP_MARGIN, window.innerHeight - height - TOOLTIP_MARGIN)
+  const top = Math.min(Math.max(centerY - height / 2, TOOLTIP_MARGIN), maxTop)
+  tokenTooltipPosition.value.y = top
+  tokenTooltipArrowY.value = centerY - top
+  if (rect.right + TOOLTIP_GAP + width > window.innerWidth - TOOLTIP_MARGIN) {
+    tokenTooltipFlipped.value = true
+    tokenTooltipPosition.value.x = Math.max(TOOLTIP_MARGIN, rect.left - TOOLTIP_GAP - width)
+  }
 }
 
 const hideTokenTooltip = () => {

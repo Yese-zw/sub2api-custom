@@ -13,7 +13,9 @@ const (
 // Role constants
 const (
 	RoleAdmin = "admin"
-	RoleUser  = "user"
+	// RoleOperator 介于管理员与普通用户之间：仅可访问被管理员授予的后台标签页与操作。
+	RoleOperator = "operator"
+	RoleUser     = "user"
 )
 
 // Platform constants

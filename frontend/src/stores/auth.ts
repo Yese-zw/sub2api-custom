@@ -96,6 +96,17 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value?.role === 'admin'
   })
 
+  const isOperator = computed(() => user.value?.role === 'operator')
+  // 可进入后台的身份：管理员或被授权的运营
+  const isStaff = computed(() => isAdmin.value || isOperator.value)
+
+  /** 管理员拥有全部权限；运营按授予列表判断 */
+  function hasPermission(perm: string): boolean {
+    if (isAdmin.value) return true
+    if (!isOperator.value) return false
+    return (user.value?.operator_permissions ?? []).includes(perm)
+  }
+
   const isSimpleMode = computed(() => runMode.value === 'simple')
   const hasPendingAuthSession = computed(() => pendingAuthSession.value !== null)
 
@@ -498,6 +509,9 @@ export const useAuthStore = defineStore('auth', () => {
     // Computed
     isAuthenticated,
     isAdmin,
+    isOperator,
+    isStaff,
+    hasPermission,
     isSimpleMode,
     hasPendingAuthSession,
 

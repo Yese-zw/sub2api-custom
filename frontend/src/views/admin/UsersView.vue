@@ -29,6 +29,7 @@
                 :options="[
                   { value: '', label: t('admin.users.allRoles') },
                   { value: 'admin', label: t('admin.users.admin') },
+                  { value: 'operator', label: t('admin.users.roles.operator') },
                   { value: 'user', label: t('admin.users.user') }
                 ]"
                 @change="applyFilter"
@@ -264,7 +265,7 @@
             </button>
 
             <!-- Create User Button (full width on mobile, auto width on desktop) -->
-            <button @click="showCreateModal = true" class="btn btn-primary flex-1 md:flex-initial">
+            <button v-perm="'users.create'" @click="showCreateModal = true" class="btn btn-primary flex-1 md:flex-initial">
               <Icon name="plus" size="md" class="mr-2" />
               {{ t('admin.users.createUser') }}
             </button>
@@ -337,7 +338,7 @@
           </template>
 
           <template #cell-role="{ value }">
-            <span :class="['badge', value === 'admin' ? 'badge-purple' : 'badge-gray']">
+            <span :class="['badge', value === 'admin' ? 'badge-purple' : value === 'operator' ? 'badge-primary' : 'badge-gray']">
               {{ t('admin.users.roles.' + value) }}
             </span>
           </template>
@@ -447,7 +448,7 @@
                   <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-dark-600"></div>
                 </div>
               </div>
-              <button
+              <button v-perm="'users.balance'"
                 @click.stop="handleDeposit(row)"
                 class="rounded px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
                 :title="t('admin.users.deposit')"
@@ -613,7 +614,7 @@
           <template #cell-actions="{ row }">
             <div class="flex items-center gap-1">
               <!-- Edit Button -->
-              <button
+              <button v-perm="'users.edit'"
                 @click="handleEdit(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
@@ -704,7 +705,7 @@
               <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
 
               <!-- Deposit -->
-              <button
+              <button v-perm="'users.balance'"
                 @click="handleDeposit(user); closeActionMenu()"
                 class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
               >
@@ -713,7 +714,7 @@
               </button>
 
               <!-- Withdraw -->
-              <button
+              <button v-perm="'users.balance'"
                 @click="handleWithdraw(user); closeActionMenu()"
                 class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
               >
@@ -744,7 +745,7 @@
               <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
 
               <!-- Delete (not for admin) -->
-              <button
+              <button v-perm="'users.delete'"
                 v-if="user.role !== 'admin'"
                 @click="handleDelete(user); closeActionMenu()"
                 class="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"

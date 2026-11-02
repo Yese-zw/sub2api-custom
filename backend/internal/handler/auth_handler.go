@@ -443,6 +443,8 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	type UserResponse struct {
 		userProfileResponse
 		RunMode string `json:"run_mode"`
+		// OperatorPermissions 仅运营身份返回，前端据此决定可见的后台标签页与操作。
+		OperatorPermissions []string `json:"operator_permissions,omitempty"`
 	}
 
 	runMode := config.RunModeStandard
@@ -450,9 +452,22 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 		runMode = h.cfg.RunMode
 	}
 
+	var operatorPermissions []string
+	if user.IsOperator() && h.settingSvc != nil {
+		operatorPermissions, err = h.settingSvc.GetOperatorPermissions(c.Request.Context(), user.ID)
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		if operatorPermissions == nil {
+			operatorPermissions = []string{}
+		}
+	}
+
 	response.Success(c, UserResponse{
 		userProfileResponse: userProfileResponseFromService(user, identities),
 		RunMode:             runMode,
+		OperatorPermissions: operatorPermissions,
 	})
 }
 

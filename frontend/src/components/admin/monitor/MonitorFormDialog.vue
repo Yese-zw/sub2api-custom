@@ -170,6 +170,15 @@
         <Toggle v-model="form.enabled" />
       </div>
 
+      <!-- 缓存率展示：开启后在渠道状态卡片显示近 7 天缓存率 -->
+      <div v-if="usesProbePart" class="flex items-center justify-between">
+        <div>
+          <label class="input-label mb-0">{{ t('admin.channelMonitor.form.showCacheRate') }}</label>
+          <p class="mt-0.5 text-xs text-gray-400">{{ t('admin.channelMonitor.form.showCacheRateHint') }}</p>
+        </div>
+        <Toggle v-model="showCacheRate" />
+      </div>
+
       <!-- 智商（降智）检测：使用渠道预设的地址 / 密钥 / 模型 -->
       <div v-if="usesProbePart" class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-700">
         <div class="flex items-center justify-between">
@@ -440,6 +449,31 @@ async function saveIQ(monitorId: number) {
     })
   } catch (err: unknown) {
     appStore.showError(extractApiErrorMessage(err, t('admin.channelMonitor.form.iq.saveFailed')))
+  }
+}
+
+// 缓存率展示开关：独立接口保存，监控本体保存成功后再提交。
+const showCacheRate = ref(false)
+let cacheLoadedFromServer = false
+
+async function loadCacheSettings(monitorId: number) {
+  showCacheRate.value = false
+  cacheLoadedFromServer = false
+  try {
+    const s = await adminAPI.channelMonitor.getCacheSettings(monitorId)
+    showCacheRate.value = s.show_cache_rate
+    cacheLoadedFromServer = true
+  } catch {
+    // 读取失败时保持关闭；不阻塞渠道编辑
+  }
+}
+
+async function saveCacheSettings(monitorId: number) {
+  if (!showCacheRate.value && !cacheLoadedFromServer) return
+  try {
+    await adminAPI.channelMonitor.updateCacheSettings(monitorId, showCacheRate.value)
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.channelMonitor.form.showCacheRateSaveFailed')))
   }
 }
 
@@ -910,9 +944,12 @@ watch(
     if (m) {
       loadFromMonitor(m)
       void loadIQ(m.id)
+      void loadCacheSettings(m.id)
     } else {
       resetForm()
       resetIQ()
+      showCacheRate.value = false
+      cacheLoadedFromServer = false
     }
   },
   { immediate: true },
@@ -1006,10 +1043,12 @@ async function handleSubmit() {
       if (!usesQuotaMode.value) req.account_id = 0
       await adminAPI.channelMonitor.update(target.id, req)
       await saveIQ(target.id)
+      await saveCacheSettings(target.id)
       appStore.showSuccess(t('admin.channelMonitor.updateSuccess'))
     } else {
       const created = await adminAPI.channelMonitor.create(buildPayload())
       await saveIQ(created.id)
+      await saveCacheSettings(created.id)
       appStore.showSuccess(t('admin.channelMonitor.createSuccess'))
     }
     emit('saved')

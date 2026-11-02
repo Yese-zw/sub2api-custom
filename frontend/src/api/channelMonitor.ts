@@ -42,6 +42,10 @@ export interface UserMonitorView {
   iq_enabled?: boolean
   /** 最近若干条智商检测是否通过（旧→新，最多 10 条），用于卡片分段环 */
   iq_recent?: boolean[]
+  /** 卡片是否显示缓存率（管理员开关） */
+  show_cache_rate?: boolean
+  /** 近 7 天缓存命中率 0-100，无用量时为 null */
+  cache_rate?: number | null
 }
 
 export interface UserMonitorListResponse {

@@ -301,6 +301,9 @@ func registerDashboardRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 }
 
 func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	// 运营身份可授予权限的目录：不在运营权限映射内，因此仅管理员可访问。
+	admin.GET("/operator-permissions/catalog", h.Admin.User.OperatorPermissionCatalog)
+
 	users := admin.Group("/users")
 	{
 		users.GET("", h.Admin.User.List)
@@ -322,6 +325,8 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		users.POST("/:id/platform-quotas/reset", h.Admin.User.ResetUserPlatformQuotaWindow)
 
 		// User attribute values
+		users.GET("/:id/operator-permissions", h.Admin.User.GetOperatorPermissions)
+		users.PUT("/:id/operator-permissions", h.Admin.User.SetOperatorPermissions)
 		users.GET("/:id/attributes", h.Admin.UserAttribute.GetUserAttributes)
 		users.PUT("/:id/attributes", h.Admin.UserAttribute.UpdateUserAttributes)
 	}
@@ -817,6 +822,8 @@ func registerChannelMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers, s
 		monitors.GET("/:id/history", h.Admin.ChannelMonitor.History)
 		monitors.GET("/:id/iq-settings", h.Admin.ChannelMonitor.GetIQSettings)
 		monitors.PUT("/:id/iq-settings", h.Admin.ChannelMonitor.UpdateIQSettings)
+		monitors.GET("/:id/cache-settings", h.Admin.ChannelMonitor.GetCacheSettings)
+		monitors.PUT("/:id/cache-settings", h.Admin.ChannelMonitor.UpdateCacheSettings)
 	}
 
 	templates := admin.Group("/channel-monitor-templates")

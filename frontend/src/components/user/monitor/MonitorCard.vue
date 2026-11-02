@@ -47,6 +47,9 @@
     <!-- Metrics -->
     <MonitorMetricPair
       primary-icon="bolt"
+      :cache-label="item.show_cache_rate ? t('monitorCommon.cacheRate') : undefined"
+      :cache-value="item.show_cache_rate ? cacheRateText : undefined"
+      :cache-unit="item.show_cache_rate && item.cache_rate != null ? '%' : undefined"
       :primary-label="t('monitorCommon.dialogLatency')"
       :primary-value="formatLatency(item.primary_latency_ms)"
       primary-unit="ms"
@@ -151,6 +154,10 @@ const {
 
 const providerTintClass = computed(() =>
   PROVIDER_TINT[props.item.provider] ?? 'text-gray-500 dark:text-gray-300'
+)
+
+const cacheRateText = computed(() =>
+  props.item.cache_rate == null ? t('monitorCommon.latencyEmpty') : props.item.cache_rate.toFixed(1)
 )
 
 const quotaVisible = computed(

@@ -1059,6 +1059,7 @@ func ProvideChannelMonitorService(
 	svc := NewChannelMonitorService(repo, encryptor)
 	svc.SetRuntimeReader(settingService)
 	svc.SetIQ(NewChannelMonitorIQService(db, svc))
+	svc.SetCache(NewChannelMonitorCacheService(db, svc))
 	return svc
 }
 

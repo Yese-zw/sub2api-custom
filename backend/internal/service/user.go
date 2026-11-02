@@ -72,6 +72,11 @@ func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin
 }
 
+// IsOperator 是否为受限后台身份（介于管理员与普通用户之间）。
+func (u *User) IsOperator() bool {
+	return u.Role == RoleOperator
+}
+
 func (u *User) IsActive() bool {
 	return u.Status == StatusActive
 }

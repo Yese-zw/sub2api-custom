@@ -599,6 +599,7 @@ export default {
     latencyEmpty: '-',
     availabilityPrefix: 'Availability',
     dialogLatency: 'Dialog Latency',
+    cacheRate: 'Cache rate',
     endpointPing: 'Endpoint PING',
     history60pts: 'HISTORY ({n} PTS)',
     nextUpdateIn: 'NEXT UPDATE IN {n}s',

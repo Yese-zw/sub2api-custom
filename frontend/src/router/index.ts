@@ -6,6 +6,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
+import { canOperatorAccessPath, firstAllowedAdminPath } from '@/utils/operatorAccess'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import { useAdminComplianceStore } from '@/stores/adminCompliance'
 import { useNavigationLoadingState } from '@/composables/useNavigationLoading'
@@ -927,12 +928,18 @@ router.beforeEach(async (to, _from, next) => {
 
   // Check admin requirement
   if (requiresAdmin && !authStore.isAdmin) {
-    // User is authenticated but not admin, redirect to user dashboard
-    next('/dashboard')
-    return
+    // 运营身份：仅可进入被授予查看权限的后台页面
+    const perms = authStore.user?.operator_permissions ?? []
+    if (authStore.isOperator && canOperatorAccessPath(to.path, perms)) {
+      // fallthrough
+    } else {
+      const fallback = authStore.isOperator ? firstAllowedAdminPath(perms) : null
+      next(fallback && fallback !== to.path ? fallback : '/dashboard')
+      return
+    }
   }
 
-  if (requiresAdmin && authStore.isAdmin) {
+  if (requiresAdmin && authStore.isStaff) {
     const adminComplianceStore = useAdminComplianceStore()
     if (!adminComplianceStore.initialized) {
       try {

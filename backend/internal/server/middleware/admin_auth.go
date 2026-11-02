@@ -4,10 +4,12 @@ package middleware
 import (
 	"crypto/subtle"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/adminaccess"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/operatoraccess"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -212,10 +214,15 @@ func validateJWTForAdmin(
 		return false
 	}
 
-	// 检查管理员权限
+	// 检查管理员权限；运营身份需再通过按标签页/操作授予的权限校验
 	if !user.IsAdmin() {
-		AbortWithError(c, 403, "FORBIDDEN", "Admin access required")
-		return false
+		if !user.IsOperator() {
+			AbortWithError(c, 403, "FORBIDDEN", "Admin access required")
+			return false
+		}
+		if !authorizeOperator(c, user, userService, settingService) {
+			return false
+		}
 	}
 
 	c.Set(string(ContextKeyUser), AuthSubject{
@@ -227,6 +234,45 @@ func validateJWTForAdmin(
 	c.Set(ContextKeySessionID, claims.SessionID)
 	c.Set("auth_method", "jwt")
 
+	return true
+}
+
+// authorizeOperator 校验运营身份对当前接口的权限，未登记的接口默认拒绝。
+// 运营只能管理普通用户，不得操作管理员或其他运营账号。
+func authorizeOperator(c *gin.Context, actor *service.User, userService *service.UserService, settingService *service.SettingService) bool {
+	if settingService == nil {
+		AbortWithError(c, 403, "FORBIDDEN", "Operator permission denied")
+		return false
+	}
+	perms, err := settingService.GetOperatorPermissions(c.Request.Context(), actor.ID)
+	if err != nil {
+		AbortWithError(c, 500, "INTERNAL_ERROR", "Failed to load operator permissions")
+		return false
+	}
+	if !operatoraccess.Allowed(perms, c.Request.Method, c.FullPath()) {
+		AbortWithError(c, 403, "FORBIDDEN", "Operator permission denied")
+		return false
+	}
+	if strings.HasPrefix(c.FullPath(), "/api/v1/admin/users/:id") {
+		targetID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			AbortWithError(c, 400, "BAD_REQUEST", "Invalid user ID")
+			return false
+		}
+		target, err := userService.GetByID(c.Request.Context(), targetID)
+		if err != nil {
+			if errors.Is(err, service.ErrUserNotFound) {
+				AbortWithError(c, 404, "USER_NOT_FOUND", "User not found")
+			} else {
+				AbortWithError(c, 500, "INTERNAL_ERROR", "Failed to load user")
+			}
+			return false
+		}
+		if target.Role != service.RoleUser {
+			AbortWithError(c, 403, "FORBIDDEN", "Operators cannot manage admin or operator accounts")
+			return false
+		}
+	}
 	return true
 }
 

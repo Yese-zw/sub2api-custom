@@ -602,6 +602,9 @@ export default {
         intervalSecondsHint: '范围：15 - 3600 秒',
         jitterSeconds: '随机抖动 (± 秒)',
         jitterSecondsHint: '每次检测在间隔基础上正负随机偏移该秒数，0 表示固定间隔；需满足 间隔 - 抖动 ≥ 15 秒',
+        showCacheRate: '显示缓存率',
+        showCacheRateHint: '开启后在渠道状态卡片上显示近 7 天缓存率（按该渠道 API Key 在本站的真实用量统计，需为本站 Key）。',
+        showCacheRateSaveFailed: '渠道已保存，但缓存率设置保存失败',
         iq: {
           title: '智商检测（降智检测）',
           enabled: '开启智商检测',

@@ -84,7 +84,8 @@ export interface User {
   linuxdo_bound?: boolean
   oidc_bound?: boolean
   wechat_bound?: boolean
-  role: 'admin' | 'user' // User role for authorization
+  role: 'admin' | 'operator' | 'user' // User role for authorization
+  operator_permissions?: string[] // Granted admin tab/action permissions (operator only)
   balance: number // User balance for API usage
   frozen_balance?: number // Balance currently held by async batch jobs
   concurrency: number // Allowed concurrent requests
@@ -2182,7 +2183,7 @@ export interface UpdateUserRequest {
   password?: string
   username?: string
   notes?: string
-  role?: 'admin' | 'user'
+  role?: 'admin' | 'operator' | 'user'
   balance?: number
   concurrency?: number
   rpm_limit?: number

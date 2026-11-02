@@ -71,6 +71,9 @@ type channelMonitorUserListItem struct {
 	IQEnabled bool `json:"iq_enabled"`
 	// IQRecent 最近若干条智商检测是否通过（旧→新，最多 10 条），用于卡片的分段环。
 	IQRecent []bool `json:"iq_recent"`
+	// ShowCacheRate 卡片是否显示缓存率；CacheRate 为近 7 天缓存命中率（0-100），无用量时为 null。
+	ShowCacheRate bool     `json:"show_cache_rate"`
+	CacheRate     *float64 `json:"cache_rate"`
 }
 
 // channelMonitorUserTimelinePoint 主模型最近一次检测的 timeline 点。
@@ -180,9 +183,18 @@ func (h *ChannelMonitorUserHandler) List(c *gin.Context) {
 		iqEnabled, _ = iq.EnabledSet(c.Request.Context())
 		iqRecent, _ = iq.RecentOutcomes(c.Request.Context())
 	}
+	var cacheEnabled map[int64]bool
+	cacheSvc := h.monitorService.Cache()
+	if cacheSvc != nil {
+		cacheEnabled, _ = cacheSvc.EnabledSet(c.Request.Context())
+	}
 	items := make([]channelMonitorUserListItem, 0, len(views))
 	for _, v := range views {
 		item := userMonitorViewToItem(v, includeQuota)
+		if cacheEnabled[v.ID] {
+			item.ShowCacheRate = true
+			item.CacheRate = cacheSvc.Rate(c.Request.Context(), v.ID)
+		}
 		item.IQEnabled = iqEnabled[v.ID]
 		item.IQRecent = iqRecent[v.ID]
 		if item.IQRecent == nil {
