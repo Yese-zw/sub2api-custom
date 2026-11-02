@@ -521,6 +521,7 @@ export default {
   // Shared keys for channel monitor (admin + user views)
   monitorIQ: {
     button: '智商状态',
+    viewDetail: '查看详情',
     title: '降智检测 · {name}',
     subtitle: '滚动最近 2 小时的成功结果，每个模型最多 10 次。仅供人工对比。',
     close: '关闭',

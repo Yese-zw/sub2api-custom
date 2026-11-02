@@ -49,9 +49,12 @@ var ErrChannelMonitorIQInvalid = infraerrors.BadRequest("CHANNEL_MONITOR_IQ_INVA
 
 // ChannelMonitorIQSettings 单个监控的智商检测设置。Models 为空表示检测该监控的全部模型。
 type ChannelMonitorIQSettings struct {
-	MonitorID       int64      `json:"monitor_id"`
-	Enabled         bool       `json:"enabled"`
-	CreativeEnabled bool       `json:"creative_enabled"`
+	MonitorID       int64 `json:"monitor_id"`
+	Enabled         bool  `json:"enabled"`
+	CandyEnabled    bool  `json:"candy_enabled"`    // 糖果测试
+	PelicanEnabled  bool  `json:"pelican_enabled"`  // 鹈鹕测试
+	CreativeEnabled bool  `json:"creative_enabled"` // 鹈鹕测试的配置：开启后以自由创作替代鹈鹕请求
+
 	IntervalMinutes int        `json:"interval_minutes"`
 	Models          []string   `json:"models"`
 	LastRunAt       *time.Time `json:"last_run_at"`
@@ -96,16 +99,16 @@ func (s *ChannelMonitorService) SetIQ(iq *ChannelMonitorIQService) { s.iq = iq }
 // ---------- settings ----------
 
 func defaultIQSettings(monitorID int64) *ChannelMonitorIQSettings {
-	return &ChannelMonitorIQSettings{MonitorID: monitorID, IntervalMinutes: iqDefaultIntervalMinutes, Models: []string{}}
+	return &ChannelMonitorIQSettings{MonitorID: monitorID, CandyEnabled: true, PelicanEnabled: true, IntervalMinutes: iqDefaultIntervalMinutes, Models: []string{}}
 }
 
 func (s *ChannelMonitorIQService) GetSettings(ctx context.Context, monitorID int64) (*ChannelMonitorIQSettings, error) {
 	out := defaultIQSettings(monitorID)
 	var raw []byte
 	err := s.db.QueryRowContext(ctx, `
-		SELECT enabled, creative_enabled, interval_minutes, models, last_run_at
+		SELECT enabled, candy_enabled, pelican_enabled, creative_enabled, interval_minutes, models, last_run_at
 		FROM channel_monitor_iq_settings WHERE monitor_id = $1`, monitorID,
-	).Scan(&out.Enabled, &out.CreativeEnabled, &out.IntervalMinutes, &raw, &out.LastRunAt)
+	).Scan(&out.Enabled, &out.CandyEnabled, &out.PelicanEnabled, &out.CreativeEnabled, &out.IntervalMinutes, &raw, &out.LastRunAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return out, nil
 	}
@@ -128,6 +131,9 @@ func (s *ChannelMonitorIQService) SaveSettings(ctx context.Context, in *ChannelM
 			"detail": fmt.Sprintf("interval_minutes must be between %d and %d", iqMinIntervalMinutes, iqMaxIntervalMinutes),
 		})
 	}
+	if in.Enabled && !in.CandyEnabled && !in.PelicanEnabled {
+		return nil, ErrChannelMonitorIQInvalid.WithMetadata(map[string]string{"detail": "at least one test must be selected"})
+	}
 	seen := map[string]struct{}{}
 	models := make([]string, 0, len(in.Models))
 	for _, m := range in.Models {
@@ -146,12 +152,13 @@ func (s *ChannelMonitorIQService) SaveSettings(ctx context.Context, in *ChannelM
 	}
 	rawModels, _ := json.Marshal(models)
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO channel_monitor_iq_settings (monitor_id, enabled, creative_enabled, interval_minutes, models, updated_at)
-		VALUES ($1, $2, $3, $4, $5::jsonb, NOW())
+		INSERT INTO channel_monitor_iq_settings (monitor_id, enabled, candy_enabled, pelican_enabled, creative_enabled, interval_minutes, models, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NOW())
 		ON CONFLICT (monitor_id) DO UPDATE SET
-			enabled = EXCLUDED.enabled, creative_enabled = EXCLUDED.creative_enabled,
+			enabled = EXCLUDED.enabled, candy_enabled = EXCLUDED.candy_enabled,
+			pelican_enabled = EXCLUDED.pelican_enabled, creative_enabled = EXCLUDED.creative_enabled,
 			interval_minutes = EXCLUDED.interval_minutes, models = EXCLUDED.models, updated_at = NOW()`,
-		in.MonitorID, in.Enabled, in.CreativeEnabled, in.IntervalMinutes, string(rawModels))
+		in.MonitorID, in.Enabled, in.CandyEnabled, in.PelicanEnabled, in.CreativeEnabled, in.IntervalMinutes, string(rawModels))
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +179,38 @@ func (s *ChannelMonitorIQService) EnabledSet(ctx context.Context) (map[int64]boo
 			return nil, err
 		}
 		out[id] = true
+	}
+	return out, rows.Err()
+}
+
+// iqRingSegments 卡片智商环的分段数（取最近 N 条结果）。
+const iqRingSegments = 10
+
+// RecentOutcomes 返回每个已开启智商检测的监控最近 iqRingSegments 条结果是否通过
+// （糖果：答对；鹈鹕/自由创作：quality=normal），按时间从旧到新排列。
+func (s *ChannelMonitorIQService) RecentOutcomes(ctx context.Context) (map[int64][]bool, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT monitor_id, passed FROM (
+			SELECT r.monitor_id,
+			       (CASE WHEN r.benchmark = 'candy' THEN r.verdict = 'passed' ELSE r.quality = 'normal' END) AS passed,
+			       ROW_NUMBER() OVER (PARTITION BY r.monitor_id ORDER BY r.created_at DESC, r.id DESC) AS rn
+			FROM channel_monitor_iq_results r
+			JOIN channel_monitor_iq_settings st ON st.monitor_id = r.monitor_id AND st.enabled = true
+			WHERE r.created_at >= NOW() - make_interval(secs => $1)
+		) t WHERE rn <= $2
+		ORDER BY monitor_id, rn DESC`, iqRetention.Seconds(), iqRingSegments)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[int64][]bool{}
+	for rows.Next() {
+		var id int64
+		var passed bool
+		if err := rows.Scan(&id, &passed); err != nil {
+			return nil, err
+		}
+		out[id] = append(out[id], passed)
 	}
 	return out, rows.Err()
 }
@@ -274,13 +313,13 @@ func (s *ChannelMonitorIQService) Trigger(m *ChannelMonitor) {
 
 func (s *ChannelMonitorIQService) runIfDue(ctx context.Context, m *ChannelMonitor) {
 	// 原子占位：仅当已开启且距上次运行超过间隔时更新 last_run_at，多实例下也只会有一个执行。
-	var creative bool
+	var candy, pelican, creative bool
 	var rawModels []byte
 	err := s.db.QueryRowContext(ctx, `
 		UPDATE channel_monitor_iq_settings SET last_run_at = NOW()
 		WHERE monitor_id = $1 AND enabled = true
 		  AND (last_run_at IS NULL OR last_run_at <= NOW() - make_interval(mins => interval_minutes))
-		RETURNING creative_enabled, models`, m.ID).Scan(&creative, &rawModels)
+		RETURNING candy_enabled, pelican_enabled, creative_enabled, models`, m.ID).Scan(&candy, &pelican, &creative, &rawModels)
 	if errors.Is(err, sql.ErrNoRows) {
 		return
 	}
@@ -294,7 +333,7 @@ func (s *ChannelMonitorIQService) runIfDue(ctx context.Context, m *ChannelMonito
 		if ctx.Err() != nil {
 			return
 		}
-		s.runModel(ctx, m, model, creative)
+		s.runModel(ctx, m, model, candy, pelican, creative)
 	}
 }
 
@@ -326,29 +365,29 @@ func (s *ChannelMonitorIQService) pickModels(m *ChannelMonitor, selected []strin
 	return out
 }
 
-func (s *ChannelMonitorIQService) runModel(ctx context.Context, m *ChannelMonitor, model string, creative bool) {
-	if r, err := s.runCandy(ctx, m, model); err != nil {
-		slog.Warn("channel_monitor_iq: candy failed", "monitor_id", m.ID, "model", model, "error", err)
-	} else if err := s.saveResult(ctx, r); err != nil {
-		slog.Warn("channel_monitor_iq: save candy failed", "monitor_id", m.ID, "error", err)
+// runModel 按设置运行所选测试。creative 是鹈鹕测试的配置：开启后只请求自由创作，不再请求鹈鹕。
+func (s *ChannelMonitorIQService) runModel(ctx context.Context, m *ChannelMonitor, model string, candy, pelican, creative bool) {
+	if candy {
+		if r, err := s.runCandy(ctx, m, model); err != nil {
+			slog.Warn("channel_monitor_iq: candy failed", "monitor_id", m.ID, "model", model, "error", err)
+		} else if err := s.saveResult(ctx, r); err != nil {
+			slog.Warn("channel_monitor_iq: save candy failed", "monitor_id", m.ID, "error", err)
+		}
 	}
-
-	benchmarks := []string{IQBenchmarkPelican}
+	if !pelican || ctx.Err() != nil {
+		return
+	}
+	bm := IQBenchmarkPelican
 	if creative {
-		benchmarks = append(benchmarks, IQBenchmarkCreative)
+		bm = IQBenchmarkCreative
 	}
-	for _, bm := range benchmarks {
-		if ctx.Err() != nil {
-			return
-		}
-		r, err := s.runManxue(ctx, m, model, bm)
-		if err != nil {
-			slog.Warn("channel_monitor_iq: manxue failed", "monitor_id", m.ID, "model", model, "benchmark", bm, "error", err)
-			continue
-		}
-		if err := s.saveResult(ctx, r); err != nil {
-			slog.Warn("channel_monitor_iq: save result failed", "monitor_id", m.ID, "benchmark", bm, "error", err)
-		}
+	r, err := s.runManxue(ctx, m, model, bm)
+	if err != nil {
+		slog.Warn("channel_monitor_iq: manxue failed", "monitor_id", m.ID, "model", model, "benchmark", bm, "error", err)
+		return
+	}
+	if err := s.saveResult(ctx, r); err != nil {
+		slog.Warn("channel_monitor_iq: save result failed", "monitor_id", m.ID, "benchmark", bm, "error", err)
 	}
 }
 

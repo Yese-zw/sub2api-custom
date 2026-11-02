@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><title>渠道状态卡片预览</title><style>
+:root{--accent:#14b8a6;--line:#e5e7eb;--faint:#9ca3af}
+body{margin:0;padding:28px;background:#f3f4f6;font-family:-apple-system,"PingFang SC",sans-serif;color:#111827}
+h1{font-size:16px;margin:0 0 4px}p.d{margin:0 0 20px;font-size:13px;color:#6b7280}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px;max-width:1500px}
+.t{font:600 12px sans-serif;color:#6b7280;margin:0 0 8px}
+.card{box-sizing:border-box;padding:20px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.hd{display:flex;gap:12px;align-items:flex-start}.ic{width:36px;height:36px;border-radius:12px;background:#d1fae5;display:grid;place-items:center;color:#059669;font-weight:700}
+.meta{flex:1}.nm{font-weight:600;font-size:16px}.sub{font-size:12px;color:#6b7280;margin-top:2px;font-family:monospace}
+.badge{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;background:#d1fae5;color:#047857}
+.m{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:20px}.chip{border-radius:12px;padding:12px;background:#f9fafb;border:1px solid #f3f4f6}
+.chip i{font-style:normal;font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--faint)}.chip b{display:block;margin-top:6px;font-size:18px}.chip small{color:var(--faint);font-weight:400;font-size:12px}
+hr{border:0;border-top:1px solid #f3f4f6;margin:16px 0 0}
+.two{display:flex;align-items:flex-start;justify-content:space-around;gap:16px;margin-top:12px}
+.cell{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cellhead{text-align:center}.lab{font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}.smp{margin-top:3px;font-size:11px;color:var(--faint)}
+.ring{position:relative;display:grid;place-items:center;width:73.6px;height:73.6px}.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.tr{fill:none;stroke:var(--line);stroke-width:5}.bar{fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round;stroke-dasharray:100}
+.seg{fill:none;stroke-width:5}.seg.pass{stroke:hsl(140 60% 42%)}.seg.fail{stroke:#ef4444}.seg.empty{stroke:var(--line)}
+.val{position:relative;display:flex;align-items:baseline}.val b{font-size:15px;font-weight:800}.val small{font-size:9.6px;font-weight:700}
+.iq{cursor:pointer}.cta{display:inline-flex;border-radius:99px;border:1px solid var(--accent);padding:2px 10px;font-size:10.5px;font-weight:700;color:var(--accent);transition:.2s;white-space:nowrap}
+.iq:hover .cta,.iq.hov .cta{background:var(--accent);color:#fff}
+.tl{display:flex;gap:3px;margin-top:14px}.tl span{flex:1;height:22px;border-radius:4px;background:#34d399}
+</style>
+<h1>渠道状态卡片 · 预览</h1><p class="d">圆环分 10 段（旧→新，顺时针从 12 点开始），红段=未通过，灰段=暂无数据；中间为通过率。鼠标悬停“查看详情”会高亮，点击打开智商状态弹窗。</p>
+<div class="grid"><div><div class="t">全部通过 · 有附加模型</div><div class="card">
+<div class="hd"><div class="ic">O</div><div class="meta"><div class="nm">全部通过 · 有附加模型</div><div class="sub">OpenAI · gpt-4o-mini</div></div><span class="badge">正常</span></div>
+<div class="m"><div class="chip"><i>⚡ 对话延迟</i><b>1280<small> ms</small></b></div><div class="chip"><i>🌐 端点 PING</i><b>86<small> ms</small></b></div></div>
+<hr>
+<div class="two">
+ <div class="cell"><div class="cellhead"><div class="lab">可用率 · 7天</div><div class="smp">+2 个附加模型</div></div>
+  <div class="ring" style="color:hsl(139 60% 42%)"><svg viewBox="0 0 64 64"><circle class="tr" cx="32" cy="32" r="27"/><circle class="bar" cx="32" cy="32" r="27" pathLength="100" style="stroke-dashoffset:0.5"/></svg><span class="val"><b>99.50</b><small>%</small></span></div></div>
+ <div class="cell iq " role="button" tabindex="0"><div class="cellhead"><div class="lab">智商状态</div></div>
+  <div class="ring"><svg viewBox="0 0 64 64"><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-1"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-11"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-21"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-31"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-41"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-51"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-61"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-71"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-81"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-91"/></svg><span class="val"><b>100</b><small>%</small></span></div>
+  <span class="cta">查看详情<span> ›</span></span></div>
+</div>
+<div class="tl"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div><div><div class="t">部分未通过（红段）</div><div class="card">
+<div class="hd"><div class="ic">O</div><div class="meta"><div class="nm">部分未通过（红段）</div><div class="sub">OpenAI · gpt-4o-mini</div></div><span class="badge">正常</span></div>
+<div class="m"><div class="chip"><i>⚡ 对话延迟</i><b>1280<small> ms</small></b></div><div class="chip"><i>🌐 端点 PING</i><b>86<small> ms</small></b></div></div>
+<hr>
+<div class="two">
+ <div class="cell"><div class="cellhead"><div class="lab">可用率 · 7天</div></div>
+  <div class="ring" style="color:hsl(135 60% 42%)"><svg viewBox="0 0 64 64"><circle class="tr" cx="32" cy="32" r="27"/><circle class="bar" cx="32" cy="32" r="27" pathLength="100" style="stroke-dashoffset:3.799999999999997"/></svg><span class="val"><b>96.20</b><small>%</small></span></div></div>
+ <div class="cell iq " role="button" tabindex="0"><div class="cellhead"><div class="lab">智商状态</div></div>
+  <div class="ring"><svg viewBox="0 0 64 64"><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-1"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-11"/><circle class="seg fail" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-21"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-31"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-41"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-51"/><circle class="seg fail" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-61"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-71"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-81"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-91"/></svg><span class="val"><b>80</b><small>%</small></span></div>
+  <span class="cta">查看详情<span> ›</span></span></div>
+</div>
+<div class="tl"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div><div><div class="t">数据不足 / 悬停态</div><div class="card">
+<div class="hd"><div class="ic">O</div><div class="meta"><div class="nm">数据不足 / 悬停态</div><div class="sub">OpenAI · gpt-4o-mini</div></div><span class="badge">正常</span></div>
+<div class="m"><div class="chip"><i>⚡ 对话延迟</i><b>1280<small> ms</small></b></div><div class="chip"><i>🌐 端点 PING</i><b>86<small> ms</small></b></div></div>
+<hr>
+<div class="two">
+ <div class="cell"><div class="cellhead"><div class="lab">可用率 · 7天</div></div>
+  <div class="ring" style="color:hsl(140 60% 42%)"><svg viewBox="0 0 64 64"><circle class="tr" cx="32" cy="32" r="27"/><circle class="bar" cx="32" cy="32" r="27" pathLength="100" style="stroke-dashoffset:0"/></svg><span class="val"><b>100.00</b><small>%</small></span></div></div>
+ <div class="cell iq hov" role="button" tabindex="0"><div class="cellhead"><div class="lab">智商状态</div></div>
+  <div class="ring"><svg viewBox="0 0 64 64"><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-1"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-11"/><circle class="seg fail" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-21"/><circle class="seg pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-31"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-41"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-51"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-61"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-71"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-81"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-91"/></svg><span class="val"><b>75</b><small>%</small></span></div>
+  <span class="cta">查看详情<span> ›</span></span></div>
+</div>
+<div class="tl"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div><div><div class="t">暂无检测结果</div><div class="card">
+<div class="hd"><div class="ic">O</div><div class="meta"><div class="nm">暂无检测结果</div><div class="sub">OpenAI · gpt-4o-mini</div></div><span class="badge">正常</span></div>
+<div class="m"><div class="chip"><i>⚡ 对话延迟</i><b>1280<small> ms</small></b></div><div class="chip"><i>🌐 端点 PING</i><b>86<small> ms</small></b></div></div>
+<hr>
+<div class="two">
+ <div class="cell"><div class="cellhead"><div class="lab">可用率 · 7天</div></div>
+  <div class="ring" style="color:hsl(137 60% 42%)"><svg viewBox="0 0 64 64"><circle class="tr" cx="32" cy="32" r="27"/><circle class="bar" cx="32" cy="32" r="27" pathLength="100" style="stroke-dashoffset:1.9000000000000057"/></svg><span class="val"><b>98.10</b><small>%</small></span></div></div>
+ <div class="cell iq " role="button" tabindex="0"><div class="cellhead"><div class="lab">智商状态</div></div>
+  <div class="ring"><svg viewBox="0 0 64 64"><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-1"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-11"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-21"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-31"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-41"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-51"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-61"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-71"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-81"/><circle class="seg empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-91"/></svg><span class="val"><b>-</b></span></div>
+  <span class="cta">查看详情<span> ›</span></span></div>
+</div>
+<div class="tl"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div></div>

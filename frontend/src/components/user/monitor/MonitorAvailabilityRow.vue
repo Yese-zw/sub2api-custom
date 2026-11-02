@@ -1,7 +1,7 @@
 <template>
   <!-- 可用率环：描边按百分比展开，颜色沿用原 hsl 分档 -->
   <div class="avail-row">
-    <div class="min-w-0">
+    <div class="min-w-0 text-center">
       <div class="avail-row__label">{{ windowLabel }}</div>
       <div v-if="samplesLabel" class="avail-row__samples">{{ samplesLabel }}</div>
     </div>
@@ -57,10 +57,9 @@ const colorStyle = computed(() => {
 <style scoped>
 .avail-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 0.75rem;
+  gap: 0.4rem;
 }
 
 .avail-row__label {
@@ -73,6 +72,7 @@ const colorStyle = computed(() => {
 
 .avail-row__samples {
   margin-top: 0.2rem;
+  text-align: center;
   font-size: 0.7rem;
   color: var(--rx-faint, #9ca3af);
 }

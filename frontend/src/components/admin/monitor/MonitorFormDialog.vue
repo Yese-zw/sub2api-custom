@@ -204,14 +204,28 @@
             </div>
             <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.modelsHint') }}</p>
           </div>
-          <div class="flex items-center justify-between">
+          <div>
+            <label class="input-label">{{ t('admin.channelMonitor.form.iq.tests') }}</label>
+            <div class="flex flex-wrap gap-2">
+              <label class="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-dark-600">
+                <input type="checkbox" :checked="iq.candy_enabled" @change="toggleIQTest('candy_enabled')" />
+                <span>{{ t('admin.channelMonitor.form.iq.candy') }}</span>
+              </label>
+              <label class="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-dark-600">
+                <input type="checkbox" :checked="iq.pelican_enabled" @change="toggleIQTest('pelican_enabled')" />
+                <span>{{ t('admin.channelMonitor.form.iq.pelican') }}</span>
+              </label>
+            </div>
+            <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.testsHint') }}</p>
+          </div>
+          <div v-if="iq.pelican_enabled" class="flex items-center justify-between pl-4">
             <div>
               <label class="input-label mb-0">{{ t('admin.channelMonitor.form.iq.creative') }}</label>
               <p class="mt-0.5 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.creativeHint') }}</p>
             </div>
             <Toggle v-model="iq.creative_enabled" />
           </div>
-          <p class="text-xs text-amber-600 dark:text-amber-400">{{ t('admin.channelMonitor.form.iq.privacy') }}</p>
+          <p v-if="iq.pelican_enabled" class="text-xs text-amber-600 dark:text-amber-400">{{ t('admin.channelMonitor.form.iq.privacy') }}</p>
           <p class="text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.retention') }}</p>
         </template>
       </div>
@@ -361,6 +375,8 @@ const submitting = ref(false)
 // 智商（降智）检测设置：独立接口保存，监控本体保存成功后再提交。
 const iq = reactive({
   enabled: false,
+  candy_enabled: true,
+  pelican_enabled: true,
   creative_enabled: false,
   interval_minutes: 10,
   models: [] as string[],
@@ -377,8 +393,17 @@ function toggleIQModel(model: string) {
   else iq.models.push(model)
 }
 
+// 至少保留一个测试：不允许取消最后一个已选项。
+function toggleIQTest(key: 'candy_enabled' | 'pelican_enabled') {
+  const other = key === 'candy_enabled' ? iq.pelican_enabled : iq.candy_enabled
+  if (iq[key] && !other) return
+  iq[key] = !iq[key]
+}
+
 function resetIQ() {
   iq.enabled = false
+  iq.candy_enabled = true
+  iq.pelican_enabled = true
   iq.creative_enabled = false
   iq.interval_minutes = 10
   iq.models = []
@@ -390,6 +415,8 @@ async function loadIQ(monitorId: number) {
   try {
     const s = await adminAPI.channelMonitor.getIQSettings(monitorId)
     iq.enabled = s.enabled
+    iq.candy_enabled = s.candy_enabled
+    iq.pelican_enabled = s.pelican_enabled
     iq.creative_enabled = s.creative_enabled
     iq.interval_minutes = s.interval_minutes || 10
     iq.models = [...(s.models || [])]
@@ -405,7 +432,9 @@ async function saveIQ(monitorId: number) {
   try {
     await adminAPI.channelMonitor.updateIQSettings(monitorId, {
       enabled: iq.enabled,
-      creative_enabled: iq.creative_enabled,
+      candy_enabled: iq.candy_enabled,
+      pelican_enabled: iq.pelican_enabled,
+      creative_enabled: iq.pelican_enabled && iq.creative_enabled,
       interval_minutes: Math.min(1440, Math.max(5, Math.round(iq.interval_minutes || 10))),
       models: iq.models.filter(m => iqModelChoices.value.includes(m)),
     })

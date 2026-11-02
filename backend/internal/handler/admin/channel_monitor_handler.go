@@ -530,6 +530,8 @@ func parseHistoryLimit(raw string) int {
 
 type channelMonitorIQSettingsRequest struct {
 	Enabled         bool     `json:"enabled"`
+	CandyEnabled    bool     `json:"candy_enabled"`
+	PelicanEnabled  bool     `json:"pelican_enabled"`
 	CreativeEnabled bool     `json:"creative_enabled"`
 	IntervalMinutes int      `json:"interval_minutes" binding:"required"`
 	Models          []string `json:"models"`
@@ -577,6 +579,8 @@ func (h *ChannelMonitorHandler) UpdateIQSettings(c *gin.Context) {
 	settings, err := iq.SaveSettings(c.Request.Context(), &service.ChannelMonitorIQSettings{
 		MonitorID:       id,
 		Enabled:         req.Enabled,
+		CandyEnabled:    req.CandyEnabled,
+		PelicanEnabled:  req.PelicanEnabled,
 		CreativeEnabled: req.CreativeEnabled,
 		IntervalMinutes: req.IntervalMinutes,
 		Models:          req.Models,

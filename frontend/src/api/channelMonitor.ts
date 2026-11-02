@@ -40,6 +40,8 @@ export interface UserMonitorView {
   latest_quota?: MonitorQuotaSnapshot | null
   /** 该监控是否开启了智商检测（卡片显示「智商状态」按钮） */
   iq_enabled?: boolean
+  /** 最近若干条智商检测是否通过（旧→新，最多 10 条），用于卡片分段环 */
+  iq_recent?: boolean[]
 }
 
 export interface UserMonitorListResponse {

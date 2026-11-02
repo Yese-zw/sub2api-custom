@@ -69,6 +69,8 @@ type channelMonitorUserListItem struct {
 	LatestQuota *domain.MonitorQuotaSnapshot `json:"latest_quota,omitempty"`
 	// IQEnabled 该监控是否开启了智商检测（卡片据此显示「智商状态」按钮）。
 	IQEnabled bool `json:"iq_enabled"`
+	// IQRecent 最近若干条智商检测是否通过（旧→新，最多 10 条），用于卡片的分段环。
+	IQRecent []bool `json:"iq_recent"`
 }
 
 // channelMonitorUserTimelinePoint 主模型最近一次检测的 timeline 点。
@@ -172,14 +174,20 @@ func (h *ChannelMonitorUserHandler) List(c *gin.Context) {
 	}
 	includeQuota := h.quotaVisible(c)
 	var iqEnabled map[int64]bool
+	var iqRecent map[int64][]bool
 	if iq := h.monitorService.IQ(); iq != nil {
 		// 智商检测元数据读取失败不应影响状态列表。
 		iqEnabled, _ = iq.EnabledSet(c.Request.Context())
+		iqRecent, _ = iq.RecentOutcomes(c.Request.Context())
 	}
 	items := make([]channelMonitorUserListItem, 0, len(views))
 	for _, v := range views {
 		item := userMonitorViewToItem(v, includeQuota)
 		item.IQEnabled = iqEnabled[v.ID]
+		item.IQRecent = iqRecent[v.ID]
+		if item.IQRecent == nil {
+			item.IQRecent = []bool{}
+		}
 		items = append(items, item)
 	}
 	response.Success(c, gin.H{"items": items})

@@ -348,6 +348,11 @@ export async function listHistory(
 export interface MonitorIQSettings {
   monitor_id: number
   enabled: boolean
+  /** 糖果测试 */
+  candy_enabled: boolean
+  /** 鹈鹕测试 */
+  pelican_enabled: boolean
+  /** 鹈鹕测试的配置：开启后以自由创作替代鹈鹕请求 */
   creative_enabled: boolean
   interval_minutes: number
   /** 为空表示检测该监控的全部模型 */
@@ -357,7 +362,7 @@ export interface MonitorIQSettings {
 
 export type MonitorIQSettingsInput = Pick<
   MonitorIQSettings,
-  'enabled' | 'creative_enabled' | 'interval_minutes' | 'models'
+  'enabled' | 'candy_enabled' | 'pelican_enabled' | 'creative_enabled' | 'interval_minutes' | 'models'
 >
 
 /** 获取监控的智商（降智）检测设置 */
