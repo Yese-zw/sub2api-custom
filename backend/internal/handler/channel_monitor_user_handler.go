@@ -248,6 +248,7 @@ func (h *ChannelMonitorUserHandler) ListIQResults(c *gin.Context) {
 		"retention_hours":  2,
 		"max_per_model":    10,
 		"items":            results,
+		"failures":         iq.ListFailures(id),
 	})
 }
 

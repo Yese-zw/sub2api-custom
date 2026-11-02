@@ -517,6 +517,7 @@ export default {
   monitorIQ: {
     button: 'IQ status',
     viewDetail: 'View details',
+    failuresTitle: 'Reason for the latest failed check',
     title: 'Degradation check · {name}',
     subtitle: 'Rolling successful results from the last 2 hours, up to 10 per model. For manual comparison only.',
     close: 'Close',

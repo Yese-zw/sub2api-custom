@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -84,6 +85,44 @@ type ChannelMonitorIQService struct {
 	monitors *ChannelMonitorService
 	client   *http.Client
 	running  sync.Map // monitorID -> struct{}
+	failures sync.Map // "monitorID|model|benchmark" -> *ChannelMonitorIQFailure（仅内存，成功后清除）
+}
+
+// ChannelMonitorIQFailure 最近一次失败的检测（结果表只存成功记录，失败原因另存内存供弹窗展示）。
+type ChannelMonitorIQFailure struct {
+	MonitorID int64     `json:"-"`
+	Model     string    `json:"model"`
+	Benchmark string    `json:"benchmark"`
+	Message   string    `json:"message"`
+	At        time.Time `json:"at"`
+}
+
+func iqFailureKey(monitorID int64, model, benchmark string) string {
+	return fmt.Sprintf("%d|%s|%s", monitorID, model, benchmark)
+}
+
+func (s *ChannelMonitorIQService) recordFailure(monitorID int64, model, benchmark string, err error) {
+	s.failures.Store(iqFailureKey(monitorID, model, benchmark), &ChannelMonitorIQFailure{
+		MonitorID: monitorID, Model: model, Benchmark: benchmark,
+		Message: truncateForIQ(sanitizeErrorMessage(err.Error()), 300), At: time.Now(),
+	})
+}
+
+func (s *ChannelMonitorIQService) clearFailure(monitorID int64, model, benchmark string) {
+	s.failures.Delete(iqFailureKey(monitorID, model, benchmark))
+}
+
+// ListFailures 返回某监控各 (模型, 检测类型) 最近一次失败原因，最新在前。
+func (s *ChannelMonitorIQService) ListFailures(monitorID int64) []*ChannelMonitorIQFailure {
+	out := []*ChannelMonitorIQFailure{}
+	s.failures.Range(func(_, v any) bool {
+		if f := v.(*ChannelMonitorIQFailure); f.MonitorID == monitorID {
+			out = append(out, f)
+		}
+		return true
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].At.After(out[j].At) })
+	return out
 }
 
 func NewChannelMonitorIQService(db *sql.DB, monitors *ChannelMonitorService) *ChannelMonitorIQService {
@@ -370,8 +409,11 @@ func (s *ChannelMonitorIQService) runModel(ctx context.Context, m *ChannelMonito
 	if candy {
 		if r, err := s.runCandy(ctx, m, model); err != nil {
 			slog.Warn("channel_monitor_iq: candy failed", "monitor_id", m.ID, "model", model, "error", err)
+			s.recordFailure(m.ID, model, IQBenchmarkCandy, err)
 		} else if err := s.saveResult(ctx, r); err != nil {
 			slog.Warn("channel_monitor_iq: save candy failed", "monitor_id", m.ID, "error", err)
+		} else {
+			s.clearFailure(m.ID, model, IQBenchmarkCandy)
 		}
 	}
 	if !pelican || ctx.Err() != nil {
@@ -384,11 +426,14 @@ func (s *ChannelMonitorIQService) runModel(ctx context.Context, m *ChannelMonito
 	r, err := s.runManxue(ctx, m, model, bm)
 	if err != nil {
 		slog.Warn("channel_monitor_iq: manxue failed", "monitor_id", m.ID, "model", model, "benchmark", bm, "error", err)
+		s.recordFailure(m.ID, model, bm, err)
 		return
 	}
 	if err := s.saveResult(ctx, r); err != nil {
 		slog.Warn("channel_monitor_iq: save result failed", "monitor_id", m.ID, "benchmark", bm, "error", err)
+		return
 	}
+	s.clearFailure(m.ID, model, bm)
 }
 
 // ---------- candy (local) ----------

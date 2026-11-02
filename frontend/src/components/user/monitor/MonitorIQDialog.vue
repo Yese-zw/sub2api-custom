@@ -27,7 +27,22 @@
         <div class="min-h-0 flex-1 overflow-y-auto p-4">
           <p v-if="loading" class="text-sm text-gray-500">{{ t('monitorIQ.loading') }}</p>
           <p v-else-if="error" class="text-sm text-red-600">{{ error }}</p>
-          <p v-else-if="items.length === 0" class="text-sm text-gray-500">{{ t('monitorIQ.empty') }}</p>
+          <template v-else-if="items.length === 0">
+            <p class="text-sm text-gray-500">{{ t('monitorIQ.empty') }}</p>
+            <div v-if="failures.length" class="mt-4 space-y-2">
+              <p class="text-xs font-semibold text-red-600 dark:text-red-400">{{ t('monitorIQ.failuresTitle') }}</p>
+              <div
+                v-for="f in failures"
+                :key="`${f.model}|${f.benchmark}`"
+                class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs dark:border-red-900/50 dark:bg-red-900/10"
+              >
+                <div class="font-medium text-gray-800 dark:text-gray-200">
+                  {{ f.model }} · {{ t(`monitorIQ.tabs.${f.benchmark}`) }} · {{ formatTime(f.at) }}
+                </div>
+                <p class="mt-1 break-words text-red-700 dark:text-red-300">{{ f.message }}</p>
+              </div>
+            </div>
+          </template>
           <template v-else>
             <div
               role="tablist"
@@ -159,7 +174,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { channelMonitorUserAPI, type MonitorIQResult } from '@/api/channelMonitor'
+import { channelMonitorUserAPI, type MonitorIQFailure, type MonitorIQResult } from '@/api/channelMonitor'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps<{
@@ -187,6 +202,7 @@ const CSP =
 const loading = ref(false)
 const error = ref('')
 const items = ref<MonitorIQResult[]>([])
+const failures = ref<MonitorIQFailure[]>([])
 const model = ref('')
 // 测试分组：candy = 糖果测试；pelican = 鹈鹕测试（含自由创作结果）。
 type IQKind = 'candy' | 'pelican'
@@ -258,11 +274,13 @@ async function load() {
   loading.value = true
   error.value = ''
   items.value = []
+  failures.value = []
   detailCache.clear()
   try {
     const res = await channelMonitorUserAPI.iqResults(props.monitorId)
     if (seq !== loadSeq) return
     items.value = res.items ?? []
+    failures.value = res.failures ?? []
   } catch (e: unknown) {
     if (seq !== loadSeq) return
     error.value = extractApiErrorMessage(e, t('monitorIQ.loadFailed'))

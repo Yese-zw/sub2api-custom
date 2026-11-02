@@ -106,7 +106,16 @@ export interface MonitorIQResult {
   finished_at: string
 }
 
+export interface MonitorIQFailure {
+  model: string
+  benchmark: MonitorIQBenchmark
+  message: string
+  at: string
+}
+
 export interface MonitorIQResultsResponse {
+  /** 各 (模型, 检测类型) 最近一次失败原因（成功后清除，服务重启后丢失） */
+  failures?: MonitorIQFailure[]
   creative_enabled: boolean
   interval_minutes: number
   retention_hours: number
