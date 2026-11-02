@@ -521,12 +521,12 @@
                       size="sm"
                       :class="[
                         'inline transition-transform duration-200',
-                        collapsedIQReplyIds.has(result.id) ? '' : 'rotate-180'
+                        expandedIQReplyIds.has(result.id) ? 'rotate-180' : ''
                       ]"
                     />
                   </div>
                   <pre
-                    v-if="!collapsedIQReplyIds.has(result.id)"
+                    v-if="expandedIQReplyIds.has(result.id)"
                     class="mt-1 max-h-60 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-300"
                   >{{ result.response_text }}</pre>
                 </div>
@@ -594,11 +594,11 @@ watch(expandedPlanId, () => {
 }, { flush: 'sync' })
 onBeforeUnmount(() => { resultsRequestId++ })
 const expandedResultIds = reactive(new Set<number>())
-// IQ check replies are expanded by default; ids here have been collapsed by the user.
-const collapsedIQReplyIds = reactive(new Set<number>())
+// IQ check replies are collapsed by default; ids here have been expanded by the user.
+const expandedIQReplyIds = reactive(new Set<number>())
 const toggleIQReply = (resultId: number) => {
-  if (collapsedIQReplyIds.has(resultId)) collapsedIQReplyIds.delete(resultId)
-  else collapsedIQReplyIds.add(resultId)
+  if (expandedIQReplyIds.has(resultId)) expandedIQReplyIds.delete(resultId)
+  else expandedIQReplyIds.add(resultId)
 }
 const showAddForm = ref(false)
 const showDeleteConfirm = ref(false)
