@@ -554,7 +554,7 @@ export default {
     stopPreview: 'Stop preview',
     startPreview: 'Start preview',
     noHtml: 'No source available to preview',
-    pelicanNote: 'Pelican / free creation results are generated and classified by a third-party service and reflect a single artwork only.'
+    pelicanNote: 'Pelican / free creation results are rated by this server using simple rules (shape count, animation present) and reflect a single artwork only. For manual comparison.'
   },
   monitorCommon: {
     status: {

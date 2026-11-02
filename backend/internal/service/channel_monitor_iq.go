@@ -1,29 +1,25 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/tidwall/gjson"
 )
 
 // 渠道监控的智商（降智）检测：
-//   - candy（糖果）：完全在本服务内完成，用渠道自身的 endpoint / api key / 模型直接请求；
-//   - pelican（鹈鹕）与 creative（自由创作）：由第三方检测服务 manxue.ai 生成并分类，
-//     该服务会收到渠道的 base_url 与 api key，仅在管理员显式开启时使用。
+// 所有检测都在本服务内完成，用渠道自身的 endpoint / api key / 模型（监控的主模型或自定义模型）直接请求：
+//   - candy（糖果）：算术推理题，答案是否正确；
+//   - pelican（鹈鹕）：让模型生成「鹈鹕骑自行车」的 HTML/SVG 动画，按规则初步判定质量（见 channel_monitor_iq_pelican.go）；
+//   - creative（自由创作）：鹈鹕测试的配置，让模型自由创作一个 HTML 动画，判定规则相同。
 //
 // 只保留最近 iqRetention 内的成功结果，每个 (监控, 模型, 检测类型) 最多 iqMaxPerModel 条。
 const (
@@ -31,22 +27,18 @@ const (
 	IQBenchmarkPelican  = "pelican"
 	IQBenchmarkCreative = "creative"
 
-	// iqPelicanModel 鹈鹕/自由创作测试固定使用的模型（第三方服务只接受该模型），不跟随监控的主模型。
-	iqPelicanModel = "gpt-6-astra"
-
 	iqRetention              = 2 * time.Hour
 	iqMaxPerModel            = 10
 	iqDefaultIntervalMinutes = 10
 	iqMinIntervalMinutes     = 5
 	iqMaxIntervalMinutes     = 1440
 	iqMaxModels              = 20
-	iqManxueEndpoint         = "https://manxue.ai/api/v1/tests"
-	iqManxuePollInterval     = 3 * time.Second
-	iqManxueMaxWait          = 10 * time.Minute
 	iqRunTimeout             = 40 * time.Minute
 	iqCandyTimeout           = 3 * time.Minute
+	iqPelicanTimeout         = 5 * time.Minute
+	iqCandyMaxTokens         = 4096
+	iqPelicanMaxTokens       = 16384
 	iqMaxHTMLBytes           = 2 << 20
-	iqManxueMaxBodyBytes     = 8 << 20
 )
 
 var ErrChannelMonitorIQInvalid = infraerrors.BadRequest("CHANNEL_MONITOR_IQ_INVALID", "invalid iq settings")
@@ -86,7 +78,6 @@ type ChannelMonitorIQResult struct {
 type ChannelMonitorIQService struct {
 	db       *sql.DB
 	monitors *ChannelMonitorService
-	client   *http.Client
 	running  sync.Map // monitorID -> struct{}
 	failures sync.Map // "monitorID|model|benchmark" -> *ChannelMonitorIQFailure（仅内存，成功后清除）
 }
@@ -129,7 +120,7 @@ func (s *ChannelMonitorIQService) ListFailures(monitorID int64) []*ChannelMonito
 }
 
 func NewChannelMonitorIQService(db *sql.DB, monitors *ChannelMonitorService) *ChannelMonitorIQService {
-	return &ChannelMonitorIQService{db: db, monitors: monitors, client: &http.Client{Timeout: 30 * time.Second}}
+	return &ChannelMonitorIQService{db: db, monitors: monitors}
 }
 
 // IQ 返回注入的智商检测服务（可能为 nil）。
@@ -372,17 +363,16 @@ func (s *ChannelMonitorIQService) runIfDue(ctx context.Context, m *ChannelMonito
 	}
 	var selected []string
 	_ = json.Unmarshal(rawModels, &selected)
-	if candy {
-		for _, model := range s.pickModels(m, selected) {
-			if ctx.Err() != nil {
-				return
-			}
+	for _, model := range s.pickModels(m, selected) {
+		if ctx.Err() != nil {
+			return
+		}
+		if candy {
 			s.runCandyModel(ctx, m, model)
 		}
-	}
-	// 鹈鹕/自由创作固定模型，每轮只请求一次，不随监控的模型数量重复。
-	if pelican && ctx.Err() == nil {
-		s.runPelican(ctx, m, creative)
+		if pelican && ctx.Err() == nil {
+			s.runPelicanModel(ctx, m, model, creative)
+		}
 	}
 }
 
@@ -429,52 +419,12 @@ func (s *ChannelMonitorIQService) runCandyModel(ctx context.Context, m *ChannelM
 	s.clearFailure(m.ID, model, IQBenchmarkCandy)
 }
 
-// runPelican 运行鹈鹕测试，模型固定为 iqPelicanModel。creative 是鹈鹕测试的配置：
-// 开启后只请求自由创作，不再请求鹈鹕。
-func (s *ChannelMonitorIQService) runPelican(ctx context.Context, m *ChannelMonitor, creative bool) {
-	bm := IQBenchmarkPelican
-	if creative {
-		bm = IQBenchmarkCreative
-	}
-	r, err := s.runManxue(ctx, m, iqPelicanModel, bm)
-	if err != nil {
-		slog.Warn("channel_monitor_iq: manxue failed", "monitor_id", m.ID, "model", iqPelicanModel, "benchmark", bm, "error", err)
-		s.recordFailure(m.ID, iqPelicanModel, bm, err)
-		return
-	}
-	if err := s.saveResult(ctx, r); err != nil {
-		slog.Warn("channel_monitor_iq: save result failed", "monitor_id", m.ID, "benchmark", bm, "error", err)
-		return
-	}
-	s.clearFailure(m.ID, iqPelicanModel, bm)
-}
-
 // ---------- candy (local) ----------
 
 func (s *ChannelMonitorIQService) runCandy(ctx context.Context, m *ChannelMonitor, model string) (*ChannelMonitorIQResult, error) {
-	if _, ok := providerAdapters[m.Provider]; !ok {
-		return nil, fmt.Errorf("provider %q not supported", m.Provider)
-	}
-	// 只沿用渠道的 api_mode 与自定义请求头；不套用探活用的 body 覆盖，改为放宽输出上限。
-	opts := &CheckOptions{
-		APIMode:          m.APIMode,
-		ExtraHeaders:     m.ExtraHeaders,
-		BodyOverrideMode: MonitorBodyOverrideModeMerge,
-		BodyOverride:     iqBodyOverride(m.Provider, m.APIMode),
-	}
-	callCtx, cancel := context.WithTimeout(ctx, iqCandyTimeout)
-	defer cancel()
-	started := time.Now()
-	text, raw, status, err := callProvider(callCtx, m.Provider, m.Endpoint, m.APIKey, model, iqCheckQuestion, opts)
-	finished := time.Now()
+	text, started, finished, err := s.callUpstream(ctx, m, model, iqCheckQuestion, iqCandyTimeout, iqCandyMaxTokens)
 	if err != nil {
-		return nil, sanitizeIQError(err.Error())
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("HTTP %d: %s", status, truncateForIQ(sanitizeErrorMessage(raw), 200))
-	}
-	if strings.TrimSpace(text) == "" {
-		return nil, errors.New("empty answer")
+		return nil, err
 	}
 	verdict := IQVerdictIncorrect
 	if iqAnswerPasses(text) {
@@ -486,134 +436,47 @@ func (s *ChannelMonitorIQService) runCandy(ctx context.Context, m *ChannelMonito
 	}, nil
 }
 
+// callUpstream 用渠道自身的 endpoint / api key 请求上游并返回回答文本。
+// 只沿用渠道的 api_mode 与自定义请求头；不套用探活用的 body 覆盖，改为放宽输出上限。
+func (s *ChannelMonitorIQService) callUpstream(ctx context.Context, m *ChannelMonitor, model, prompt string, timeout time.Duration, maxTokens int) (text string, started, finished time.Time, err error) {
+	if _, ok := providerAdapters[m.Provider]; !ok {
+		return "", time.Time{}, time.Time{}, fmt.Errorf("provider %q not supported", m.Provider)
+	}
+	opts := &CheckOptions{
+		APIMode:          m.APIMode,
+		ExtraHeaders:     m.ExtraHeaders,
+		BodyOverrideMode: MonitorBodyOverrideModeMerge,
+		BodyOverride:     iqBodyOverride(m.Provider, m.APIMode, maxTokens),
+	}
+	callCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	started = time.Now()
+	text, raw, status, callErr := callProvider(callCtx, m.Provider, m.Endpoint, m.APIKey, model, prompt, opts)
+	finished = time.Now()
+	if callErr != nil {
+		return "", started, finished, sanitizeIQError(callErr.Error())
+	}
+	if status < 200 || status >= 300 {
+		return "", started, finished, fmt.Errorf("HTTP %d: %s", status, truncateForIQ(sanitizeErrorMessage(raw), 200))
+	}
+	if strings.TrimSpace(text) == "" {
+		return "", started, finished, errors.New("empty answer")
+	}
+	return text, started, finished, nil
+}
+
 // iqBodyOverride 放宽输出长度上限，让推理型模型有足够空间作答。
-func iqBodyOverride(provider, apiMode string) map[string]any {
+func iqBodyOverride(provider, apiMode string, maxTokens int) map[string]any {
 	switch {
 	case provider == MonitorProviderOpenAI && apiMode == MonitorAPIModeResponses:
-		return map[string]any{"max_output_tokens": 4096}
+		return map[string]any{"max_output_tokens": maxTokens}
 	case provider == MonitorProviderGemini:
-		return map[string]any{"generationConfig": map[string]any{"maxOutputTokens": 4096}}
+		return map[string]any{"generationConfig": map[string]any{"maxOutputTokens": maxTokens}}
 	default:
-		return map[string]any{"max_tokens": 4096}
+		return map[string]any{"max_tokens": maxTokens}
 	}
 }
 
 func sanitizeIQError(msg string) error {
 	return errors.New(truncateForIQ(sanitizeErrorMessage(msg), 300))
-}
-
-// ---------- pelican / creative (manxue.ai) ----------
-
-func iqManxueBaseURL(endpoint string) (string, error) {
-	u, err := url.Parse(strings.TrimSpace(endpoint))
-	if err != nil || u.Host == "" {
-		return "", errors.New("invalid endpoint")
-	}
-	if u.Scheme != "https" {
-		return "", errors.New("endpoint must be https for manxue.ai")
-	}
-	if strings.Trim(u.Path, "/") == "" {
-		u.Path = "/v1"
-	} else {
-		u.Path = "/" + strings.Trim(u.Path, "/")
-	}
-	u.RawQuery, u.Fragment = "", ""
-	return u.String(), nil
-}
-
-func (s *ChannelMonitorIQService) runManxue(ctx context.Context, m *ChannelMonitor, model, benchmark string) (*ChannelMonitorIQResult, error) {
-	if m.Provider != MonitorProviderOpenAI {
-		return nil, fmt.Errorf("provider %q not supported by %s", m.Provider, benchmark)
-	}
-	baseURL, err := iqManxueBaseURL(m.Endpoint)
-	if err != nil {
-		return nil, err
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"benchmark": benchmark, "base_url": baseURL, "api_key": m.APIKey, "model": model,
-	})
-	started := time.Now()
-	body, err := s.manxueDo(ctx, http.MethodPost, iqManxueEndpoint, payload)
-	if err != nil {
-		return nil, err
-	}
-	id := gjson.GetBytes(body, "id").String()
-	if !validIQTaskID(id) {
-		return nil, errors.New("manxue.ai returned no task id")
-	}
-	deadline := time.NewTimer(iqManxueMaxWait)
-	defer deadline.Stop()
-	ticker := time.NewTicker(iqManxuePollInterval)
-	defer ticker.Stop()
-	for {
-		switch gjson.GetBytes(body, "status").String() {
-		case "succeeded":
-			return parseManxueResult(m.ID, model, benchmark, body, started, time.Now())
-		case "failed", "cancelled":
-			msg := firstNonEmpty(gjson.GetBytes(body, "error.message").String(), gjson.GetBytes(body, "error").String(), gjson.GetBytes(body, "status").String())
-			return nil, fmt.Errorf("manxue.ai task %s: %s", gjson.GetBytes(body, "status").String(), truncateForIQ(msg, 200))
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-deadline.C:
-			return nil, errors.New("manxue.ai task timed out")
-		case <-ticker.C:
-		}
-		if body, err = s.manxueDo(ctx, http.MethodGet, iqManxueEndpoint+"/"+url.PathEscape(id), nil); err != nil {
-			return nil, err
-		}
-	}
-}
-
-func (s *ChannelMonitorIQService) manxueDo(ctx context.Context, method, endpoint string, payload []byte) ([]byte, error) {
-	var reader io.Reader
-	if payload != nil {
-		reader = bytes.NewReader(payload)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, reader)
-	if err != nil {
-		return nil, err
-	}
-	if payload != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("manxue.ai request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, iqManxueMaxBodyBytes))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("manxue.ai HTTP %d: %s", resp.StatusCode, truncateForIQ(string(raw), 200))
-	}
-	return raw, nil
-}
-
-func parseManxueResult(monitorID int64, model, benchmark string, body []byte, started, finished time.Time) (*ChannelMonitorIQResult, error) {
-	j := string(body)
-	html := firstNonEmpty(gjson.Get(j, "result.html").String(), gjson.Get(j, "html").String())
-	r := &ChannelMonitorIQResult{
-		MonitorID: monitorID, Model: model, Benchmark: benchmark, HTML: html,
-		Quality:    gjson.Get(j, "assessment.quality").String(),
-		Label:      gjson.Get(j, "assessment.label").String(),
-		Reason:     gjson.Get(j, "assessment.reason").String(),
-		DurationMs: finished.Sub(started).Milliseconds(), StartedAt: started, FinishedAt: finished,
-	}
-	if r.Quality == "" && r.Label == "" && html == "" {
-		return nil, errors.New("manxue.ai returned an empty result")
-	}
-	return r, nil
-}
-
-func validIQTaskID(id string) bool {
-	if id == "" || len(id) > 128 {
-		return false
-	}
-	for _, r := range id {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
-			return false
-		}
-	}
-	return true
 }

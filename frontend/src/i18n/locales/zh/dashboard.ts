@@ -559,7 +559,7 @@ export default {
     stopPreview: '停止预览',
     startPreview: '开始预览',
     noHtml: '该结果没有可预览的源码',
-    pelicanNote: '鹈鹕/自由创作由第三方服务生成并分类，仅代表单次作品。'
+    pelicanNote: '鹈鹕/自由创作由本服务按规则初步判定（图形元素数量、是否含动画），仅代表单次作品，仅供人工对比。'
   },
   monitorCommon: {
     status: {
