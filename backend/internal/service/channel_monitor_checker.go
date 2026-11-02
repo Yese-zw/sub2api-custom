@@ -27,13 +27,19 @@ var monitorPingHTTPClient = newSSRFSafeHTTPClient(monitorPingTimeout)
 // newSSRFSafeHTTPClient 返回一个使用 safeDialContext 的 http.Client。
 // 仅供监控模块对外发起请求使用——所有目标都应是公网 endpoint。
 func newSSRFSafeHTTPClient(timeout time.Duration) *http.Client {
+	return newSSRFSafeHTTPClientWithHeaderTimeout(timeout, monitorResponseHeaderTimeout)
+}
+
+// newSSRFSafeHTTPClientWithHeaderTimeout 同 newSSRFSafeHTTPClient，但可自定义等待响应头的超时
+// （非流式长输出的请求要等上游生成完才会返回响应头）。
+func newSSRFSafeHTTPClientWithHeaderTimeout(timeout, headerTimeout time.Duration) *http.Client {
 	tr := &http.Transport{
 		DialContext:           safeDialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          16,
 		IdleConnTimeout:       monitorIdleConnTimeout,
 		TLSHandshakeTimeout:   monitorTLSHandshakeTimeout,
-		ResponseHeaderTimeout: monitorResponseHeaderTimeout,
+		ResponseHeaderTimeout: headerTimeout,
 	}
 	return &http.Client{Timeout: timeout, Transport: servertiming.WrapRoundTripper(tr)}
 }
@@ -47,6 +53,8 @@ type CheckOptions struct {
 	ExtraHeaders map[string]string
 	// BodyOverrideMode: off | merge | replace
 	BodyOverrideMode string
+	// HTTPClient 覆盖默认的监控 HTTP 客户端（智商检测的长输出请求需要更长的超时）；nil 用默认客户端。
+	HTTPClient *http.Client
 	// BodyOverride 在 merge 模式下做浅合并（key 命中黑名单时静默丢弃），
 	// 在 replace 模式下直接当作完整 body。
 	BodyOverride map[string]any
@@ -278,7 +286,11 @@ func callProvider(ctx context.Context, provider, endpoint, apiKey, model, prompt
 	}
 	headers := mergeHeaders(adapter.buildHeaders(apiKey), opts)
 	full := joinURL(endpoint, monitorRequestPath(provider, endpoint, adapter, model))
-	respBytes, status, err := postRawJSON(ctx, full, body, headers)
+	client := monitorHTTPClient
+	if opts != nil && opts.HTTPClient != nil {
+		client = opts.HTTPClient
+	}
+	respBytes, status, err := postRawJSONWithClient(ctx, client, full, body, headers)
 	if err != nil {
 		return "", "", status, err
 	}
@@ -513,6 +525,10 @@ func hasNonEmptyBodyValue(v any) bool {
 // postRawJSON 发送 POST + 已序列化好的 JSON 字节，限制响应体大小，返回响应字节、HTTP status、错误。
 // adapter 自行 marshal 是为了精确控制字段顺序与类型，所以这里直接收 []byte 而不是 any。
 func postRawJSON(ctx context.Context, fullURL string, payload []byte, headers map[string]string) ([]byte, int, error) {
+	return postRawJSONWithClient(ctx, monitorHTTPClient, fullURL, payload, headers)
+}
+
+func postRawJSONWithClient(ctx context.Context, client *http.Client, fullURL string, payload []byte, headers map[string]string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, fmt.Errorf("build request: %w", err)
@@ -523,7 +539,7 @@ func postRawJSON(ctx context.Context, fullURL string, payload []byte, headers ma
 		req.Header.Set(k, v)
 	}
 
-	resp, err := monitorHTTPClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("do request: %w", err)
 	}

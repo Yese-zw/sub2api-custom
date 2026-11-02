@@ -436,6 +436,10 @@ func (s *ChannelMonitorIQService) runCandy(ctx context.Context, m *ChannelMonito
 	}, nil
 }
 
+// iqHTTPClient 智商检测专用 HTTP 客户端：请求是非流式长输出，要等上游生成完才返回响应头，
+// 监控默认客户端的 45s 总超时 / 30s 响应头超时会误判超时。仍使用 SSRF 安全的拨号。
+var iqHTTPClient = newSSRFSafeHTTPClientWithHeaderTimeout(iqPelicanTimeout+30*time.Second, iqPelicanTimeout)
+
 // callUpstream 用渠道自身的 endpoint / api key 请求上游并返回回答文本。
 // 只沿用渠道的 api_mode 与自定义请求头；不套用探活用的 body 覆盖，改为放宽输出上限。
 func (s *ChannelMonitorIQService) callUpstream(ctx context.Context, m *ChannelMonitor, model, prompt string, timeout time.Duration, maxTokens int) (text string, started, finished time.Time, err error) {
@@ -447,6 +451,7 @@ func (s *ChannelMonitorIQService) callUpstream(ctx context.Context, m *ChannelMo
 		ExtraHeaders:     m.ExtraHeaders,
 		BodyOverrideMode: MonitorBodyOverrideModeMerge,
 		BodyOverride:     iqBodyOverride(m.Provider, m.APIMode, maxTokens),
+		HTTPClient:       iqHTTPClient,
 	}
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
