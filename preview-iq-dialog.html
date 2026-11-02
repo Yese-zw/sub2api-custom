@@ -1,0 +1,273 @@
+<!doctype html><html><meta charset="utf-8"><title>智商状态弹窗预览</title><style>
+.rx-theme{--rx-ink:#0f172a;--rx-ink-2:#334155;--rx-muted:#64748b;--rx-faint:#94a3b8;--rx-surface:rgba(255,255,255,.72);--rx-surface-2:rgba(248,250,252,.7);--rx-surface-hover:#fff;--rx-line:rgba(15,23,42,.09);--rx-line-soft:rgba(15,23,42,.05);--rx-line-strong:rgba(15,23,42,.16);--rx-highlight:inset 0 1px 0 rgba(255,255,255,.9);--rx-accent:#0d9488;--rx-on-accent:#fff;--rx-accent-soft:rgba(13,148,136,.14);--rx-radius-lg:24px;--rx-radius-md:16px;--rx-radius-sm:12px;--rx-shadow-lg:0 24px 56px -24px rgba(15,23,42,.32);--rx-display:inherit;--rx-display-style:normal;--rx-display-weight:750;--rx-ease:cubic-bezier(.22,1,.36,1);--rx-spring:cubic-bezier(.34,1.56,.64,1)}
+html.dark .rx-theme{--rx-ink:#f1f5f9;--rx-ink-2:#cbd5e1;--rx-muted:#94a3b8;--rx-faint:#64748b;--rx-surface:rgba(30,41,59,.5);--rx-surface-2:rgba(15,23,42,.45);--rx-surface-hover:rgba(51,65,85,.6);--rx-line:rgba(255,255,255,.08);--rx-line-soft:rgba(255,255,255,.05);--rx-line-strong:rgba(255,255,255,.15);--rx-highlight:inset 0 1px 0 rgba(255,255,255,.05);--rx-accent:#2dd4bf;--rx-on-accent:#042f2e;--rx-accent-soft:rgba(45,212,191,.16);--rx-shadow-lg:0 28px 64px -24px rgba(0,0,0,.7)}
+body{margin:0;font-family:-apple-system,"PingFang SC",sans-serif;background:#e8edf3}html.dark body{background:#0b1220}
+.tg{position:fixed;right:16px;top:12px;z-index:5;padding:4px 12px;border-radius:99px;border:1px solid #94a3b8;background:#fff;cursor:pointer;font-size:12px}
+.iq-panel{height:auto!important;max-height:none!important;animation:none!important}.iq-body{overflow:visible!important}.iq-overlay{align-items:flex-start;padding:24px 12px}
+
+/* 与渠道状态页同一套 rx 主题令牌（浮层 Teleport 到 body，靠 .rx-theme 取值） */
+.iq-overlay {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(17, 17, 15, 0.3);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+html.dark .iq-overlay { background: rgba(0, 0, 0, 0.55); }
+
+.iq-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: min(1240px, 100%);
+  height: min(92dvh, 900px);
+  border-radius: var(--rx-radius-lg, 1rem);
+  color: var(--rx-ink, #0f172a);
+  background: color-mix(in srgb, var(--rx-surface-hover, #fff) 96%, transparent);
+  border: 1px solid var(--rx-line, rgba(15, 23, 42, 0.09));
+  box-shadow: var(--rx-highlight, 0 0 0 transparent), var(--rx-shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.12));
+  animation: iq-in 0.4s var(--rx-ease, ease) both;
+}
+@keyframes iq-in { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: none; } }
+
+/* ---------- 头部 ---------- */
+.iq-head { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.5rem; }
+.iq-head__text { display: flex; min-width: 0; flex: 1; align-items: center; gap: 0.9rem; }
+.iq-head__eyebrow {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--rx-accent, #0d9488);
+  background: var(--rx-accent-soft, rgba(13, 148, 136, 0.14));
+}
+.iq-head__title {
+  margin: 0;
+  font-family: var(--rx-display, inherit);
+  font-style: var(--rx-display-style, normal);
+  font-weight: var(--rx-display-weight, 700);
+  font-size: 1.15rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.iq-head__sub { margin: 0.15rem 0 0; font-size: 0.75rem; color: var(--rx-faint, #94a3b8); }
+.iq-close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--rx-line, rgba(15, 23, 42, 0.09));
+  color: var(--rx-ink-2, #334155);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.3s var(--rx-spring, ease);
+}
+.iq-close:hover { background: var(--rx-surface-2, rgba(248, 250, 252, 0.7)); transform: rotate(90deg); }
+
+/* ---------- 工具栏：模型切换 ---------- */
+.iq-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.5rem;
+  border-top: 1px solid var(--rx-line-soft, rgba(15, 23, 42, 0.05));
+  border-bottom: 1px solid var(--rx-line-soft, rgba(15, 23, 42, 0.05));
+  background: var(--rx-surface-2, rgba(248, 250, 252, 0.7));
+}
+.iq-toolbar__label { flex-shrink: 0; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; color: var(--rx-faint, #94a3b8); }
+.iq-models { display: flex; flex-wrap: wrap; gap: 0.4rem; min-width: 0; }
+.iq-model {
+  max-width: 100%;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--rx-line, rgba(15, 23, 42, 0.09));
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  color: var(--rx-ink-2, #334155);
+  background: var(--rx-surface-hover, #fff);
+  word-break: break-all;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.iq-model:hover { border-color: var(--rx-line-strong, rgba(15, 23, 42, 0.16)); }
+.iq-model.is-active { border-color: var(--rx-accent, #0d9488); color: var(--rx-on-accent, #fff); background: var(--rx-accent, #0d9488); }
+
+/* ---------- 主体：两张测试卡片并排 ---------- */
+.iq-body { min-height: 0; flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem 1.5rem; }
+.iq-state { padding: 2.5rem 0; text-align: center; font-size: 0.85rem; color: var(--rx-faint, #94a3b8); }
+.iq-state--error { color: #ef4444; }
+.iq-state--inline { padding: 1.25rem 0; }
+
+.iq-grid { display: grid; gap: 1.1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.iq-grid.is-single { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 899px) { .iq-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.iq-card {
+  min-width: 0;
+  padding: 1.1rem 1.2rem 1rem;
+  border-radius: var(--rx-radius-md, 1rem);
+  border: 1px solid var(--rx-line, rgba(15, 23, 42, 0.09));
+  background: var(--rx-surface, rgba(255, 255, 255, 0.72));
+  box-shadow: var(--rx-highlight, 0 0 0 transparent);
+}
+.iq-card__head { display: flex; align-items: baseline; gap: 0.6rem; }
+.iq-card__idx { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; color: var(--rx-faint, #94a3b8); font-variant-numeric: tabular-nums; }
+.iq-card__title { margin: 0; font-size: 1.02rem; font-weight: 700; }
+
+/* 概览 */
+.iq-hero { display: flex; align-items: center; gap: 1.1rem; margin-top: 0.9rem; }
+.iq-hero__big { font-size: 2rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.iq-hero__big small { margin-left: 0.3rem; font-size: 0.95rem; font-weight: 700; color: var(--rx-faint, #94a3b8); letter-spacing: 0; }
+.iq-hero__label { margin-top: 0.3rem; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; color: var(--rx-faint, #94a3b8); }
+.iq-hero__last { margin-top: 0.35rem; font-size: 0.72rem; color: var(--rx-muted, #64748b); font-variant-numeric: tabular-nums; }
+
+/* 时间条 */
+.iq-strip { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 0.3rem; margin-top: 1.1rem; }
+.iq-slot {
+  height: 1.7rem;
+  border: 0;
+  border-radius: 0.4rem;
+  padding: 0;
+  background: currentColor;
+  cursor: pointer;
+  transition: transform 0.25s var(--rx-spring, ease), box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.iq-slot.is-empty { cursor: default; background: var(--rx-line, #e5e7eb); }
+.iq-slot:not(.is-empty):hover { transform: translateY(-2px); }
+.iq-slot.is-active { box-shadow: 0 0 0 2px var(--rx-surface-hover, #fff), 0 0 0 4px currentColor; }
+.iq-axis { display: flex; justify-content: space-between; margin-top: 0.4rem; font-size: 0.62rem; letter-spacing: 0.1em; color: var(--rx-faint, #94a3b8); }
+
+.is-pass { color: hsl(140 60% 40%); }
+.is-fail { color: #ef4444; }
+.is-neutral { color: var(--rx-muted, #64748b); }
+
+/* 选中那次的详情 */
+.iq-run {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--rx-radius-sm, 0.75rem);
+  background: var(--rx-surface-2, rgba(248, 250, 252, 0.7));
+  border: 1px solid var(--rx-line-soft, rgba(15, 23, 42, 0.05));
+}
+.iq-run__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem; }
+.iq-run__verdict { display: inline-flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 1.05rem; font-weight: 800; }
+.iq-run__dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: currentColor; }
+.iq-run__meta { margin-left: auto; font-size: 0.72rem; color: var(--rx-muted, #64748b); font-variant-numeric: tabular-nums; }
+.iq-pill { padding: 0.05rem 0.55rem; border-radius: 999px; font-size: 0.66rem; font-weight: 700; color: var(--rx-accent, #0d9488); background: var(--rx-accent-soft, rgba(13, 148, 136, 0.14)); }
+
+.iq-kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin: 0.8rem 0 0; }
+.iq-kv > div { padding: 0.55rem 0.75rem; border-radius: 0.6rem; background: var(--rx-surface-hover, #fff); border: 1px solid var(--rx-line-soft, rgba(15, 23, 42, 0.05)); }
+.iq-kv dt { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em; color: var(--rx-faint, #94a3b8); }
+.iq-kv dd { margin: 0.2rem 0 0; }
+.iq-kv__answer { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; word-break: break-word; white-space: pre-wrap; }
+.iq-details { margin-top: 0.7rem; font-size: 0.76rem; color: var(--rx-ink-2, #334155); }
+.iq-details summary { cursor: pointer; font-weight: 600; }
+.iq-details pre { margin: 0.5rem 0 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 0.72rem; color: var(--rx-muted, #64748b); }
+
+.iq-reason { margin: 0.75rem 0 0; font-size: 0.8rem; line-height: 1.6; color: var(--rx-ink-2, #334155); }
+.iq-reason span { display: block; margin-bottom: 0.15rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em; color: var(--rx-faint, #94a3b8); }
+.iq-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.iq-btn {
+  padding: 0.28rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--rx-accent, #0d9488);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--rx-accent, #0d9488);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.iq-btn:hover { background: var(--rx-accent, #0d9488); color: var(--rx-on-accent, #fff); }
+.iq-btn--ghost { border-color: var(--rx-line-strong, rgba(15, 23, 42, 0.16)); color: var(--rx-ink-2, #334155); }
+.iq-btn--ghost:hover { background: var(--rx-surface-hover, #fff); color: var(--rx-ink, #0f172a); }
+.iq-frame { display: block; width: 100%; aspect-ratio: 16 / 10; margin-top: 0.75rem; border-radius: var(--rx-radius-sm, 0.75rem); border: 1px solid var(--rx-line, rgba(15, 23, 42, 0.09)); background: #fff; }
+.iq-source { max-height: 18rem; margin: 0.75rem 0 0; padding: 0.8rem; overflow: auto; white-space: pre-wrap; word-break: break-word; border-radius: var(--rx-radius-sm, 0.75rem); font-size: 0.7rem; color: var(--rx-ink-2, #334155); background: var(--rx-surface-hover, #fff); }
+.iq-note { margin: 0.8rem 0 0; font-size: 0.68rem; color: var(--rx-faint, #94a3b8); }
+
+/* 失败原因 */
+.iq-fails { display: grid; gap: 0.5rem; margin-top: 0.8rem; }
+.iq-fail { padding: 0.6rem 0.8rem; border-radius: var(--rx-radius-sm, 0.75rem); border: 1px solid rgba(239, 68, 68, 0.28); background: rgba(239, 68, 68, 0.07); }
+.iq-fail__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; font-size: 0.7rem; color: var(--rx-ink-2, #334155); }
+.iq-fail__badge { padding: 0 0.5rem; border-radius: 999px; font-size: 0.62rem; font-weight: 800; color: #fff; background: #ef4444; }
+.iq-fail__msg { margin: 0.3rem 0 0; font-size: 0.74rem; word-break: break-word; color: #dc2626; }
+html.dark .iq-fail__msg { color: #fca5a5; }
+
+@media (max-width: 599px) {
+  .iq-kv { grid-template-columns: minmax(0, 1fr); }
+  .iq-run__meta { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iq-panel { animation: none; }
+  .iq-close:hover, .iq-slot:not(.is-empty):hover { transform: none; }
+}
+
+.iq-ring {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: var(--iq-ring-size);
+  height: var(--iq-ring-size);
+}
+
+.iq-ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.iq-ring__seg {
+  fill: none;
+  stroke-width: 5;
+  transition: stroke 0.3s ease;
+}
+.iq-ring__seg.is-pass { stroke: hsl(140 60% 42%); }
+.iq-ring__seg.is-fail { stroke: #ef4444; }
+.iq-ring__seg.is-empty { stroke: var(--rx-line, #e5e7eb); }
+
+.iq-ring__value {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  color: var(--rx-ink, inherit);
+}
+.iq-ring__value b { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.03em; }
+.iq-ring__value small { font-size: 0.6rem; font-weight: 700; }
+</style>
+<button class="tg" onclick="document.documentElement.classList.toggle('dark')">切换深色</button>
+<div class="iq-overlay rx-theme"><section class="iq-panel">
+<header class="iq-head"><div class="iq-head__text"><span class="iq-head__eyebrow">IQ</span><div class="min-w-0"><h2 class="iq-head__title">降智检测 · OpenAI 主线路</h2><p class="iq-head__sub">滚动最近 2 小时的成功结果，每个模型最多 10 次。仅供人工对比。</p></div></div><button class="iq-close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+<div class="iq-toolbar"><span class="iq-toolbar__label">模型</span><div class="iq-models"><button class="iq-model is-active">gpt-4o-mini</button><button class="iq-model">gpt-4.1</button></div></div>
+<div class="iq-body"><div class="iq-grid">
+<article class="iq-card"><header class="iq-card__head"><span class="iq-card__idx">01</span><h3 class="iq-card__title">糖果测试</h3></header>
+<div class="iq-hero"><div class="iq-ring" style="--iq-ring-size:6rem"><svg viewBox="0 0 64 64"><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-1"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-11"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-21"/><circle class="iq-ring__seg is-fail" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-31"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-41"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-51"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-61"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-71"/><circle class="iq-ring__seg is-fail" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-81"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-91"/></svg><span class="iq-ring__value"><b>80</b><small>%</small></span></div><div class="iq-hero__text"><div class="iq-hero__big">8<small>/ 10</small></div><div class="iq-hero__label">通过</div><div class="iq-hero__last">最近检测 · 2026/11/2 10:50:07</div></div></div>
+<div class="iq-strip"><button class="iq-slot is-pass"></button><button class="iq-slot is-pass"></button><button class="iq-slot is-pass"></button><button class="iq-slot is-fail"></button><button class="iq-slot is-pass"></button><button class="iq-slot is-pass"></button><button class="iq-slot is-pass"></button><button class="iq-slot is-pass"></button><button class="iq-slot is-fail"></button><button class="iq-slot is-pass is-active"></button></div><div class="iq-axis"><span>较早</span><span>最新</span></div>
+<div class="iq-run"><div class="iq-run__head"><h4 class="iq-run__verdict is-pass"><span class="iq-run__dot"></span>正确</h4><span class="iq-run__meta">2026/11/2 10:50:07 · 耗时 12.4s</span></div>
+<dl class="iq-kv"><div><dt>模型原始回答</dt><dd class="iq-kv__answer">21</dd></div><div><dt>标准答案</dt><dd class="iq-kv__answer">21</dd></div></dl>
+<details class="iq-details"><summary>本次提示词快照</summary><pre>在一个黑色的袋子里放有三种口味的糖果……</pre></details></div>
+<p class="iq-note">统计仅含保留窗口内的成功结果；列表仅显示最近 10 条。</p></article>
+<article class="iq-card"><header class="iq-card__head"><span class="iq-card__idx">02</span><h3 class="iq-card__title">鹈鹕测试</h3></header>
+<div class="iq-fails"><div class="iq-fail"><div class="iq-fail__meta"><span class="iq-fail__badge">最近一次检测失败原因</span><span>gpt-4o-mini · 2026/11/2 10:55:00</span></div><p class="iq-fail__msg">manxue.ai HTTP 400: model is required and must be gpt-6-astra for pelican, creative and html</p></div></div>
+<div class="iq-hero"><div class="iq-ring" style="--iq-ring-size:6rem"><svg viewBox="0 0 64 64"><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-1"/><circle class="iq-ring__seg is-fail" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-11"/><circle class="iq-ring__seg is-pass" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-21"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-31"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-41"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-51"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-61"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-71"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-81"/><circle class="iq-ring__seg is-empty" cx="32" cy="32" r="27" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-91"/></svg><span class="iq-ring__value"><b>67</b><small>%</small></span></div><div class="iq-hero__text"><div class="iq-hero__big">2<small>/ 3</small></div><div class="iq-hero__label">通过</div><div class="iq-hero__last">最近检测 · 2026/11/2 10:45:12</div></div></div>
+<div class="iq-strip"><span class="iq-slot is-empty"></span><span class="iq-slot is-empty"></span><span class="iq-slot is-empty"></span><span class="iq-slot is-empty"></span><span class="iq-slot is-empty"></span><span class="iq-slot is-empty"></span><span class="iq-slot is-empty"></span><button class="iq-slot is-pass"></button><button class="iq-slot is-fail"></button><button class="iq-slot is-pass is-active"></button></div><div class="iq-axis"><span>较早</span><span>最新</span></div>
+<div class="iq-run"><div class="iq-run__head"><h4 class="iq-run__verdict is-pass"><span class="iq-run__dot"></span>正常</h4><span class="iq-pill">自由创作</span><span class="iq-run__meta">2026/11/2 10:45:12 · 耗时 21.3s</span></div>
+<p class="iq-reason"><span>判定依据</span>画面结构完整，鹈鹕与自行车比例合理，细节丰富。</p>
+<div class="iq-actions"><button class="iq-btn">停止预览</button><button class="iq-btn iq-btn--ghost">查看源码</button></div>
+<div class="iq-frame" style="display:grid;place-items:center;color:#94a3b8;font-size:13px">（鹈鹕动画 iframe 预览）</div></div>
+<p class="iq-note">鹈鹕/自由创作由第三方服务生成并分类，仅代表单次作品。</p></article>
+</div></div></section></div></html>

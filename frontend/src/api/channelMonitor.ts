@@ -118,6 +118,9 @@ export interface MonitorIQFailure {
 }
 
 export interface MonitorIQResultsResponse {
+  /** 当前开启的测试；旧后端未返回时为 undefined（按有数据的类型显示） */
+  candy_enabled?: boolean
+  pelican_enabled?: boolean
   /** 各 (模型, 检测类型) 最近一次失败原因（成功后清除，服务重启后丢失） */
   failures?: MonitorIQFailure[]
   creative_enabled: boolean

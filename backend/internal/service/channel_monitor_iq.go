@@ -236,6 +236,7 @@ func (s *ChannelMonitorIQService) RecentOutcomes(ctx context.Context) (map[int64
 			FROM channel_monitor_iq_results r
 			JOIN channel_monitor_iq_settings st ON st.monitor_id = r.monitor_id AND st.enabled = true
 			WHERE r.created_at >= NOW() - make_interval(secs => $1)
+			  AND ((r.benchmark = 'candy' AND st.candy_enabled) OR (r.benchmark <> 'candy' AND st.pelican_enabled))
 		) t WHERE rn <= $2
 		ORDER BY monitor_id, rn DESC`, iqRetention.Seconds(), iqRingSegments)
 	if err != nil {

@@ -11,57 +11,21 @@
     @keydown.space.stop.prevent="emit('open')"
   >
     <div class="iq-entry__label">{{ label }}</div>
-    <div class="iq-ring">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <circle
-          v-for="(seg, i) in segments"
-          :key="i"
-          :class="['iq-ring__seg', `is-${seg}`]"
-          cx="32"
-          cy="32"
-          r="27"
-          pathLength="100"
-          :stroke-dasharray="`${SEG_LEN} ${100 - SEG_LEN}`"
-          :stroke-dashoffset="`${-(i * SEG_STEP + SEG_GAP / 2)}`"
-        />
-      </svg>
-      <span class="iq-ring__value">
-        <b>{{ percentText }}</b><small v-if="total > 0">%</small>
-      </span>
-    </div>
+    <MonitorIQRing :recent="recent" />
     <span class="iq-entry__cta">{{ detailLabel }}<span aria-hidden="true"> ›</span></span>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import MonitorIQRing from './MonitorIQRing.vue'
 
-const SEGMENTS = 10
-const SEG_STEP = 100 / SEGMENTS
-const SEG_GAP = 2
-const SEG_LEN = SEG_STEP - SEG_GAP
-
-const props = defineProps<{
+defineProps<{
   label: string
   detailLabel: string
   /** 最近若干条检测是否通过（旧→新，最多 10 条） */
   recent: boolean[]
 }>()
 const emit = defineEmits<{ (e: 'open'): void }>()
-
-const recent = computed(() => props.recent.slice(-SEGMENTS))
-const total = computed(() => recent.value.length)
-const segments = computed<Array<'pass' | 'fail' | 'empty'>>(() =>
-  Array.from({ length: SEGMENTS }, (_, i) => {
-    if (i >= recent.value.length) return 'empty'
-    return recent.value[i] ? 'pass' : 'fail'
-  })
-)
-const percentText = computed(() => {
-  if (total.value === 0) return '-'
-  const passed = recent.value.filter(Boolean).length
-  return String(Math.round((passed / total.value) * 100))
-})
 </script>
 
 <style scoped>
@@ -87,39 +51,6 @@ const percentText = computed(() => {
   color: var(--rx-faint, #9ca3af);
   white-space: nowrap;
 }
-
-.iq-ring {
-  position: relative;
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 4.6rem;
-  height: 4.6rem;
-}
-
-.iq-ring svg {
-  position: absolute;
-  inset: 0;
-  transform: rotate(-90deg);
-}
-
-.iq-ring__seg {
-  fill: none;
-  stroke-width: 5;
-  transition: stroke 0.3s ease;
-}
-.iq-ring__seg.is-pass { stroke: hsl(140 60% 42%); }
-.iq-ring__seg.is-fail { stroke: #ef4444; }
-.iq-ring__seg.is-empty { stroke: var(--rx-line, #e5e7eb); }
-
-.iq-ring__value {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  font-variant-numeric: tabular-nums;
-}
-.iq-ring__value b { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.03em; }
-.iq-ring__value small { font-size: 0.6rem; font-weight: 700; }
 
 /* 「查看详情」胶囊：提示此处可点击 */
 .iq-entry__cta {
