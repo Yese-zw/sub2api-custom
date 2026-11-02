@@ -603,7 +603,7 @@ export default {
         jitterSeconds: 'Random Jitter (± seconds)',
         jitterSecondsHint: 'Each check fires at interval ± a random offset within this value; 0 means fixed interval. Interval minus jitter must be ≥ 15s',
         showCacheRate: 'Show cache rate',
-        showCacheRateHint: 'Show the 7-day cache hit rate on the channel status card (computed from real usage on this site for the channel API key; the key must be an API key of this site).',
+        showCacheRateHint: 'Show the 7-day cache hit rate on the channel status card (computed as cache-read tokens / input-side tokens (input + cache creation + cache read, output excluded) over real usage of the group the channel API key belongs to; the key must be an API key of this site).',
         showCacheRateSaveFailed: 'Channel saved, but saving the cache rate setting failed',
         iq: {
           title: 'IQ check (degradation check)',
@@ -612,7 +612,7 @@ export default {
           interval: 'Check interval (minutes)',
           intervalHint: 'After each channel probe, one round runs if the last IQ check is older than this interval (5–1440).',
           models: 'Models to check',
-          modelsHint: 'Leave empty to check all models (primary + extra).',
+          modelsHint: 'Leave empty to check all models (primary + extra). Applies to the candy test only; the pelican test always uses gpt-6-astra.',
           tests: 'Tests',
           candy: 'Candy test',
           pelican: 'Pelican test',

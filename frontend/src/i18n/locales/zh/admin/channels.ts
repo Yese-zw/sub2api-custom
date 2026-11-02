@@ -603,7 +603,7 @@ export default {
         jitterSeconds: '随机抖动 (± 秒)',
         jitterSecondsHint: '每次检测在间隔基础上正负随机偏移该秒数，0 表示固定间隔；需满足 间隔 - 抖动 ≥ 15 秒',
         showCacheRate: '显示缓存率',
-        showCacheRateHint: '开启后在渠道状态卡片上显示近 7 天缓存率（按该渠道 API Key 在本站的真实用量统计，需为本站 Key）。',
+        showCacheRateHint: '开启后在渠道状态卡片上显示近 7 天缓存率（按该渠道 API Key 所在分组在本站的真实用量统计：缓存读取 ÷ 输入侧 Token（输入 + 缓存创建 + 缓存读取，不含输出），需为本站 Key）。',
         showCacheRateSaveFailed: '渠道已保存，但缓存率设置保存失败',
         iq: {
           title: '智商检测（降智检测）',
@@ -612,7 +612,7 @@ export default {
           interval: '检测间隔（分钟）',
           intervalHint: '每次渠道探活后，若距上次智商检测已超过该间隔则执行一轮（5–1440）。',
           models: '检测模型',
-          modelsHint: '不勾选表示检测全部模型（主模型 + 附加模型）。',
+          modelsHint: '不勾选表示检测全部模型（主模型 + 附加模型）。仅用于糖果测试；鹈鹕测试固定使用 gpt-6-astra，不跟随这里的模型。',
           tests: '检测项目',
           candy: '糖果测试',
           pelican: '鹈鹕测试',

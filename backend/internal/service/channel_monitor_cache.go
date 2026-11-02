@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-// 渠道监控「缓存率」：按监控所用 API Key 汇总本站 usage_logs 近 cacheRateWindow 的真实用量，
+// 渠道监控「缓存率」：取监控所用 API Key 所在分组，汇总该分组在 usage_logs 近 cacheRateWindow 的真实用量，
 //
-//	缓存率 = cache_read_tokens / (input_tokens + cache_creation_tokens + cache_read_tokens)
+//	缓存率 = cache_read_tokens / 输入侧 token（input + cache_creation + cache_read，不含输出）
 //
-// 仅当监控的 API Key 是本站 API Key 时才有数据（否则无用量，返回 nil）。
+// 仅当监控的 API Key 是本站 API Key 且已绑定分组时才有数据（否则返回 nil）。
 const (
 	cacheRateWindow   = 7 * 24 * time.Hour
 	cacheRateCacheTTL = time.Minute
@@ -127,8 +127,8 @@ func (s *ChannelMonitorCacheService) compute(ctx context.Context, monitorID int6
 		SELECT COALESCE(SUM(u.cache_read_tokens), 0),
 		       COALESCE(SUM(u.input_tokens + u.cache_creation_tokens + u.cache_read_tokens), 0)
 		FROM usage_logs u
-		JOIN api_keys k ON k.id = u.api_key_id
-		WHERE k.key = $1 AND u.created_at >= NOW() - make_interval(secs => $2)`,
+		WHERE u.group_id = (SELECT k.group_id FROM api_keys k WHERE k.key = $1 LIMIT 1)
+		  AND u.created_at >= NOW() - make_interval(secs => $2)`,
 		m.APIKey, cacheRateWindow.Seconds()).Scan(&cacheRead, &total)
 	if err != nil {
 		return nil, err

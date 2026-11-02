@@ -202,8 +202,14 @@ let loadSeq = 0
 
 const kindOf = (i: MonitorIQResult): IQKind => (i.benchmark === 'candy' ? 'candy' : 'pelican')
 
+// 模型切换只针对糖果测试；鹈鹕测试固定使用 gpt-6-astra，不跟随所选模型。
 const models = computed(() =>
-  Array.from(new Set([...items.value.map(i => i.model), ...failures.value.map(f => f.model)]))
+  Array.from(
+    new Set([
+      ...items.value.filter(i => kindOf(i) === 'candy').map(i => i.model),
+      ...failures.value.filter(f => f.benchmark === 'candy').map(f => f.model),
+    ])
+  )
 )
 // 按当前开启的测试决定显示哪些区块（关闭的测试不再显示旧结果）；
 // 开启但还没有成功结果的测试也显示区块，以便展示失败原因。
@@ -216,10 +222,14 @@ const kinds = computed<IQKind[]>(() =>
 )
 
 function itemsOf(kind: IQKind): MonitorIQResult[] {
-  return items.value.filter(i => i.model === model.value && kindOf(i) === kind).slice(0, MAX_VISIBLE)
+  return items.value
+    .filter(i => kindOf(i) === kind && (kind === 'pelican' || i.model === model.value))
+    .slice(0, MAX_VISIBLE)
 }
 function failuresOf(kind: IQKind): MonitorIQFailure[] {
-  return failures.value.filter(f => f.model === model.value && (f.benchmark === 'candy' ? 'candy' : 'pelican') === kind)
+  return failures.value.filter(
+    f => (f.benchmark === 'candy' ? 'candy' : 'pelican') === kind && (kind === 'pelican' || f.model === model.value)
+  )
 }
 function selectedOf(kind: IQKind): MonitorIQResult | null {
   const list = itemsOf(kind)

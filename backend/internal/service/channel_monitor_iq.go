@@ -31,6 +31,9 @@ const (
 	IQBenchmarkPelican  = "pelican"
 	IQBenchmarkCreative = "creative"
 
+	// iqPelicanModel 鹈鹕/自由创作测试固定使用的模型（第三方服务只接受该模型），不跟随监控的主模型。
+	iqPelicanModel = "gpt-6-astra"
+
 	iqRetention              = 2 * time.Hour
 	iqMaxPerModel            = 10
 	iqDefaultIntervalMinutes = 10
@@ -369,11 +372,17 @@ func (s *ChannelMonitorIQService) runIfDue(ctx context.Context, m *ChannelMonito
 	}
 	var selected []string
 	_ = json.Unmarshal(rawModels, &selected)
-	for _, model := range s.pickModels(m, selected) {
-		if ctx.Err() != nil {
-			return
+	if candy {
+		for _, model := range s.pickModels(m, selected) {
+			if ctx.Err() != nil {
+				return
+			}
+			s.runCandyModel(ctx, m, model)
 		}
-		s.runModel(ctx, m, model, candy, pelican, creative)
+	}
+	// 鹈鹕/自由创作固定模型，每轮只请求一次，不随监控的模型数量重复。
+	if pelican && ctx.Err() == nil {
+		s.runPelican(ctx, m, creative)
 	}
 }
 
@@ -405,36 +414,39 @@ func (s *ChannelMonitorIQService) pickModels(m *ChannelMonitor, selected []strin
 	return out
 }
 
-// runModel 按设置运行所选测试。creative 是鹈鹕测试的配置：开启后只请求自由创作，不再请求鹈鹕。
-func (s *ChannelMonitorIQService) runModel(ctx context.Context, m *ChannelMonitor, model string, candy, pelican, creative bool) {
-	if candy {
-		if r, err := s.runCandy(ctx, m, model); err != nil {
-			slog.Warn("channel_monitor_iq: candy failed", "monitor_id", m.ID, "model", model, "error", err)
-			s.recordFailure(m.ID, model, IQBenchmarkCandy, err)
-		} else if err := s.saveResult(ctx, r); err != nil {
-			slog.Warn("channel_monitor_iq: save candy failed", "monitor_id", m.ID, "error", err)
-		} else {
-			s.clearFailure(m.ID, model, IQBenchmarkCandy)
-		}
-	}
-	if !pelican || ctx.Err() != nil {
+// runCandyModel 对单个模型运行糖果测试，失败原因记入内存供弹窗展示。
+func (s *ChannelMonitorIQService) runCandyModel(ctx context.Context, m *ChannelMonitor, model string) {
+	r, err := s.runCandy(ctx, m, model)
+	if err != nil {
+		slog.Warn("channel_monitor_iq: candy failed", "monitor_id", m.ID, "model", model, "error", err)
+		s.recordFailure(m.ID, model, IQBenchmarkCandy, err)
 		return
 	}
+	if err := s.saveResult(ctx, r); err != nil {
+		slog.Warn("channel_monitor_iq: save candy failed", "monitor_id", m.ID, "error", err)
+		return
+	}
+	s.clearFailure(m.ID, model, IQBenchmarkCandy)
+}
+
+// runPelican 运行鹈鹕测试，模型固定为 iqPelicanModel。creative 是鹈鹕测试的配置：
+// 开启后只请求自由创作，不再请求鹈鹕。
+func (s *ChannelMonitorIQService) runPelican(ctx context.Context, m *ChannelMonitor, creative bool) {
 	bm := IQBenchmarkPelican
 	if creative {
 		bm = IQBenchmarkCreative
 	}
-	r, err := s.runManxue(ctx, m, model, bm)
+	r, err := s.runManxue(ctx, m, iqPelicanModel, bm)
 	if err != nil {
-		slog.Warn("channel_monitor_iq: manxue failed", "monitor_id", m.ID, "model", model, "benchmark", bm, "error", err)
-		s.recordFailure(m.ID, model, bm, err)
+		slog.Warn("channel_monitor_iq: manxue failed", "monitor_id", m.ID, "model", iqPelicanModel, "benchmark", bm, "error", err)
+		s.recordFailure(m.ID, iqPelicanModel, bm, err)
 		return
 	}
 	if err := s.saveResult(ctx, r); err != nil {
 		slog.Warn("channel_monitor_iq: save result failed", "monitor_id", m.ID, "benchmark", bm, "error", err)
 		return
 	}
-	s.clearFailure(m.ID, model, bm)
+	s.clearFailure(m.ID, iqPelicanModel, bm)
 }
 
 // ---------- candy (local) ----------
