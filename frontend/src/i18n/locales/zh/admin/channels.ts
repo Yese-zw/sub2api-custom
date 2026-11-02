@@ -602,6 +602,20 @@ export default {
         intervalSecondsHint: '范围：15 - 3600 秒',
         jitterSeconds: '随机抖动 (± 秒)',
         jitterSecondsHint: '每次检测在间隔基础上正负随机偏移该秒数，0 表示固定间隔；需满足 间隔 - 抖动 ≥ 15 秒',
+        iq: {
+          title: '智商检测（降智检测）',
+          enabled: '开启智商检测',
+          enabledHint: '使用本渠道预设的地址、密钥和模型，定时检测是否降智；结果展示在渠道状态卡片的「智商状态」中。',
+          interval: '检测间隔（分钟）',
+          intervalHint: '每次渠道探活后，若距上次智商检测已超过该间隔则执行一轮（5–1440）。',
+          models: '检测模型',
+          modelsHint: '不勾选表示检测全部模型（主模型 + 附加模型）。',
+          creative: '同时开启自由创作',
+          creativeHint: '额外运行 creative（自由创作）检测。',
+          privacy: '糖果测试由本服务直接请求上游；鹈鹕与自由创作由第三方服务 manxue.ai 生成并分类，会收到本渠道的上游地址和密钥，且要求 HTTPS 的 OpenAI 兼容地址。',
+          retention: '仅滚动保留最近 2 小时的成功结果，每个模型每类最多 10 条，仅供人工对比。',
+          saveFailed: '渠道已保存，但智商检测设置保存失败'
+        },
         enabled: '启用监控',
         kindRequired: '请选择供应商'
       },

@@ -38,6 +38,8 @@ export interface UserMonitorView {
    * 服务端才会下发（关闭时服务端已剥离，前端 flag 仅作纵深防御）。
    */
   latest_quota?: MonitorQuotaSnapshot | null
+  /** 该监控是否开启了智商检测（卡片显示「智商状态」按钮） */
+  iq_enabled?: boolean
 }
 
 export interface UserMonitorListResponse {
@@ -80,9 +82,53 @@ export async function status(id: number): Promise<UserMonitorDetail> {
   return data
 }
 
+export type MonitorIQBenchmark = 'candy' | 'pelican' | 'creative'
+
+export interface MonitorIQResult {
+  id: number
+  monitor_id: number
+  model: string
+  benchmark: MonitorIQBenchmark
+  /** candy: passed / incorrect */
+  verdict?: string
+  /** pelican / creative: normal / degraded / unknown / suspicious */
+  quality?: string
+  label?: string
+  reason?: string
+  answer?: string
+  has_html: boolean
+  /** 仅详情接口返回 */
+  html?: string
+  duration_ms: number
+  started_at: string
+  finished_at: string
+}
+
+export interface MonitorIQResultsResponse {
+  creative_enabled: boolean
+  interval_minutes: number
+  retention_hours: number
+  max_per_model: number
+  items: MonitorIQResult[]
+}
+
+/** 最近 2 小时的智商检测成功结果（每个模型每类最多 10 条） */
+export async function iqResults(id: number): Promise<MonitorIQResultsResponse> {
+  const { data } = await apiClient.get<MonitorIQResultsResponse>(`/channel-monitors/${id}/iq-results`)
+  return data
+}
+
+/** 单条结果详情（含 html） */
+export async function iqResult(id: number, resultId: number): Promise<MonitorIQResult> {
+  const { data } = await apiClient.get<MonitorIQResult>(`/channel-monitors/${id}/iq-results/${resultId}`)
+  return data
+}
+
 export const channelMonitorUserAPI = {
   list,
   status,
+  iqResults,
+  iqResult,
 }
 
 export default channelMonitorUserAPI

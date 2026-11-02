@@ -63,11 +63,8 @@ func runCheckForModel(ctx context.Context, provider, endpoint, apiKey, model str
 		CheckedAt: time.Now(),
 	}
 
-	challenge := generateChallenge()
-	mode := bodyOverrideMode(opts)
-
 	start := time.Now()
-	respText, rawBody, statusCode, err := callProvider(ctx, provider, endpoint, apiKey, model, challenge.Prompt, opts)
+	_, rawBody, statusCode, err := callProvider(ctx, provider, endpoint, apiKey, model, monitorProbePrompt, opts)
 	latency := time.Since(start)
 	latencyMs := int(latency / time.Millisecond)
 	res.LatencyMs = &latencyMs
@@ -86,24 +83,7 @@ func runCheckForModel(ctx context.Context, provider, endpoint, apiKey, model str
 		return res
 	}
 
-	// Replace 模式：跳过 challenge 校验（用户 body 是静态的，challenge 没法嵌入）。
-	// 改用「HTTP 2xx + 响应文本（adapter.textPath 抽取）非空」作为 operational 判定。
-	// 响应文本为空则降级为 failed（视为上游回了 200 但没实际内容）。
-	if mode == MonitorBodyOverrideModeReplace {
-		if strings.TrimSpace(respText) == "" {
-			res.Status = MonitorStatusFailed
-			res.Message = truncateMessage("replace-mode: upstream returned 2xx with empty text")
-			return res
-		}
-		return finalizeOperationalOrDegraded(res, latency, latencyMs)
-	}
-
-	if !validateChallenge(respText, challenge.Expected) {
-		res.Status = MonitorStatusFailed
-		res.Message = truncateMessage(sanitizeErrorMessage(fmt.Sprintf("challenge mismatch (expected %s, got %q)", challenge.Expected, respText)))
-		return res
-	}
-
+	// 只要求请求连通（HTTP 2xx）即视为可用，不再校验响应内容。
 	return finalizeOperationalOrDegraded(res, latency, latencyMs)
 }
 

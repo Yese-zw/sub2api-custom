@@ -345,6 +345,36 @@ export async function listHistory(
   return data
 }
 
+export interface MonitorIQSettings {
+  monitor_id: number
+  enabled: boolean
+  creative_enabled: boolean
+  interval_minutes: number
+  /** 为空表示检测该监控的全部模型 */
+  models: string[]
+  last_run_at: string | null
+}
+
+export type MonitorIQSettingsInput = Pick<
+  MonitorIQSettings,
+  'enabled' | 'creative_enabled' | 'interval_minutes' | 'models'
+>
+
+/** 获取监控的智商（降智）检测设置 */
+export async function getIQSettings(id: number): Promise<MonitorIQSettings> {
+  const { data } = await apiClient.get<MonitorIQSettings>(`/admin/channel-monitors/${id}/iq-settings`)
+  return data
+}
+
+/** 保存监控的智商（降智）检测设置 */
+export async function updateIQSettings(
+  id: number,
+  params: MonitorIQSettingsInput
+): Promise<MonitorIQSettings> {
+  const { data } = await apiClient.put<MonitorIQSettings>(`/admin/channel-monitors/${id}/iq-settings`, params)
+  return data
+}
+
 export const channelMonitorAPI = {
   list,
   get,
@@ -354,6 +384,8 @@ export const channelMonitorAPI = {
   del,
   runNow,
   listHistory,
+  getIQSettings,
+  updateIQSettings,
 }
 
 export default channelMonitorAPI

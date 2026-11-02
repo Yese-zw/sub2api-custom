@@ -170,6 +170,52 @@
         <Toggle v-model="form.enabled" />
       </div>
 
+      <!-- 智商（降智）检测：使用渠道预设的地址 / 密钥 / 模型 -->
+      <div v-if="usesProbePart" class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-700">
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.channelMonitor.form.iq.enabled') }}</label>
+            <p class="mt-0.5 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.enabledHint') }}</p>
+          </div>
+          <Toggle v-model="iq.enabled" />
+        </div>
+        <template v-if="iq.enabled">
+          <div>
+            <label class="input-label">{{ t('admin.channelMonitor.form.iq.interval') }}</label>
+            <input v-model.number="iq.interval_minutes" type="number" min="5" max="1440" class="input" />
+            <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.intervalHint') }}</p>
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.channelMonitor.form.iq.models') }}</label>
+            <div class="flex flex-wrap gap-2">
+              <label
+                v-for="m in iqModelChoices"
+                :key="m"
+                class="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-dark-600"
+              >
+                <input
+                  type="checkbox"
+                  :checked="iq.models.includes(m)"
+                  @change="toggleIQModel(m)"
+                />
+                <span class="font-mono">{{ m }}</span>
+              </label>
+              <span v-if="iqModelChoices.length === 0" class="text-xs text-gray-400">-</span>
+            </div>
+            <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.modelsHint') }}</p>
+          </div>
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="input-label mb-0">{{ t('admin.channelMonitor.form.iq.creative') }}</label>
+              <p class="mt-0.5 text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.creativeHint') }}</p>
+            </div>
+            <Toggle v-model="iq.creative_enabled" />
+          </div>
+          <p class="text-xs text-amber-600 dark:text-amber-400">{{ t('admin.channelMonitor.form.iq.privacy') }}</p>
+          <p class="text-xs text-gray-400">{{ t('admin.channelMonitor.form.iq.retention') }}</p>
+        </template>
+      </div>
+
       <!-- 高级设置区：请求模板 + 自定义 headers/body（仅探活模式有意义） -->
       <details v-if="usesProbePart" class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-dark-700 dark:bg-dark-900/30">
         <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -311,6 +357,62 @@ const systemDefaultInterval = computed<number>(() => {
 const editing = computed<ChannelMonitor | null>(() => props.monitor)
 
 const submitting = ref(false)
+
+// 智商（降智）检测设置：独立接口保存，监控本体保存成功后再提交。
+const iq = reactive({
+  enabled: false,
+  creative_enabled: false,
+  interval_minutes: 10,
+  models: [] as string[],
+})
+let iqLoadedFromServer = false
+const iqModelChoices = computed<string[]>(() => {
+  const all = [form.primary_model.trim(), ...form.extra_models.map(m => m.trim())].filter(Boolean)
+  return Array.from(new Set(all))
+})
+
+function toggleIQModel(model: string) {
+  const idx = iq.models.indexOf(model)
+  if (idx >= 0) iq.models.splice(idx, 1)
+  else iq.models.push(model)
+}
+
+function resetIQ() {
+  iq.enabled = false
+  iq.creative_enabled = false
+  iq.interval_minutes = 10
+  iq.models = []
+  iqLoadedFromServer = false
+}
+
+async function loadIQ(monitorId: number) {
+  resetIQ()
+  try {
+    const s = await adminAPI.channelMonitor.getIQSettings(monitorId)
+    iq.enabled = s.enabled
+    iq.creative_enabled = s.creative_enabled
+    iq.interval_minutes = s.interval_minutes || 10
+    iq.models = [...(s.models || [])]
+    iqLoadedFromServer = true
+  } catch {
+    // 读取失败时保持默认关闭；不阻塞渠道编辑
+  }
+}
+
+async function saveIQ(monitorId: number) {
+  // 新建且未开启、或从未读到过设置且保持关闭时无需请求。
+  if (!iq.enabled && !iqLoadedFromServer) return
+  try {
+    await adminAPI.channelMonitor.updateIQSettings(monitorId, {
+      enabled: iq.enabled,
+      creative_enabled: iq.creative_enabled,
+      interval_minutes: Math.min(1440, Math.max(5, Math.round(iq.interval_minutes || 10))),
+      models: iq.models.filter(m => iqModelChoices.value.includes(m)),
+    })
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.channelMonitor.form.iq.saveFailed')))
+  }
+}
 
 // API key picker
 const showKeyPicker = ref(false)
@@ -776,8 +878,13 @@ watch(
   ([show, m]) => {
     if (!show) return
     void loadTemplates()
-    if (m) loadFromMonitor(m)
-    else resetForm()
+    if (m) {
+      loadFromMonitor(m)
+      void loadIQ(m.id)
+    } else {
+      resetForm()
+      resetIQ()
+    }
   },
   { immediate: true },
 )
@@ -869,9 +976,11 @@ async function handleSubmit() {
       // （后端 0=清空、null=不动）。仅 update——create 发 0 会落 &0 触发 FK 违约。
       if (!usesQuotaMode.value) req.account_id = 0
       await adminAPI.channelMonitor.update(target.id, req)
+      await saveIQ(target.id)
       appStore.showSuccess(t('admin.channelMonitor.updateSuccess'))
     } else {
-      await adminAPI.channelMonitor.create(buildPayload())
+      const created = await adminAPI.channelMonitor.create(buildPayload())
+      await saveIQ(created.id)
       appStore.showSuccess(t('admin.channelMonitor.createSuccess'))
     }
     emit('saved')

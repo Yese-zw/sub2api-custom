@@ -519,6 +519,36 @@ export default {
   },
 
   // Shared keys for channel monitor (admin + user views)
+  monitorIQ: {
+    button: '智商状态',
+    title: '降智检测 · {name}',
+    subtitle: '滚动最近 2 小时的成功结果，每个模型最多 10 次。仅供人工对比。',
+    close: '关闭',
+    loading: '加载中…',
+    empty: '暂无检测结果',
+    loadFailed: '加载失败，请稍后重试',
+    tabs: { candy: '糖果测试', pelican: '鹈鹕测试', creative: '自由创作' },
+    statsTotal: '近期检测次数 · 正确率',
+    statsValid: '有效答题 / 正确',
+    statsNote: '统计仅含保留窗口内的成功结果；列表仅显示最近 10 条。',
+    correct: '正确',
+    incorrect: '错误',
+    standardAnswer: '标准答案：21',
+    rawAnswer: '模型原始回答',
+    started: '开始',
+    finished: '完成',
+    promptSnapshot: '本次提示词快照',
+    quality: { normal: '正常', degraded: '疑似降智', unknown: '无法判定', suspicious: '可疑' },
+    reason: '判定依据',
+    preview: '鹈鹕动画隔离预览',
+    viewSource: '查看源码',
+    hideSource: '隐藏源码',
+    fitWindow: '适应窗口',
+    stopPreview: '停止预览',
+    startPreview: '开始预览',
+    noHtml: '该结果没有可预览的源码',
+    pelicanNote: '鹈鹕/自由创作由第三方服务生成并分类，仅代表单次作品。'
+  },
   monitorCommon: {
     status: {
       operational: '正常',

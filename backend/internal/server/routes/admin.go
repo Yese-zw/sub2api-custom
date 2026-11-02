@@ -815,6 +815,8 @@ func registerChannelMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers, s
 		monitors.DELETE("/:id", h.Admin.ChannelMonitor.Delete)
 		monitors.POST("/:id/run", h.Admin.ChannelMonitor.Run)
 		monitors.GET("/:id/history", h.Admin.ChannelMonitor.History)
+		monitors.GET("/:id/iq-settings", h.Admin.ChannelMonitor.GetIQSettings)
+		monitors.PUT("/:id/iq-settings", h.Admin.ChannelMonitor.UpdateIQSettings)
 	}
 
 	templates := admin.Group("/channel-monitor-templates")

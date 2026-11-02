@@ -602,6 +602,20 @@ export default {
         intervalSecondsHint: 'Range: 15 - 3600 seconds',
         jitterSeconds: 'Random Jitter (± seconds)',
         jitterSecondsHint: 'Each check fires at interval ± a random offset within this value; 0 means fixed interval. Interval minus jitter must be ≥ 15s',
+        iq: {
+          title: 'IQ check (degradation check)',
+          enabled: 'Enable IQ check',
+          enabledHint: "Uses this channel's endpoint, key and models to check for degradation on a schedule; results appear under the IQ status button on the channel status card.",
+          interval: 'Check interval (minutes)',
+          intervalHint: 'After each channel probe, one round runs if the last IQ check is older than this interval (5–1440).',
+          models: 'Models to check',
+          modelsHint: 'Leave empty to check all models (primary + extra).',
+          creative: 'Also run free creation',
+          creativeHint: 'Additionally runs the creative benchmark.',
+          privacy: 'The candy test calls the upstream directly from this server. Pelican and creative are generated and classified by the third-party service manxue.ai, which receives this channel\'s upstream URL and key, and requires an HTTPS OpenAI-compatible endpoint.',
+          retention: 'Only successful results from the last 2 hours are kept, up to 10 per model per benchmark. For manual comparison only.',
+          saveFailed: 'Channel saved, but saving IQ check settings failed'
+        },
         enabled: 'Enable monitor',
         kindRequired: 'Please select a provider'
       },

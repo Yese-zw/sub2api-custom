@@ -74,11 +74,31 @@
       :buckets="item.timeline"
       :countdown-seconds="countdownSeconds"
     />
+
+    <!-- 智商状态：卡片本身是 button，这里用 role=button 的 span 避免嵌套 button -->
+    <span
+      v-if="item.iq_enabled"
+      role="button"
+      tabindex="0"
+      class="mt-3 inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-lg border border-primary-200 px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-900/20"
+      @click.stop="showIQ = true"
+      @keydown.enter.stop.prevent="showIQ = true"
+      @keydown.space.stop.prevent="showIQ = true"
+    >
+      {{ t('monitorIQ.button') }}
+    </span>
+    <MonitorIQDialog
+      v-if="item.iq_enabled"
+      :show="showIQ"
+      :monitor-id="item.id"
+      :monitor-name="item.name"
+      @close="showIQ = false"
+    />
   </button>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { UserMonitorView } from '@/api/channelMonitor'
 import {
@@ -91,6 +111,7 @@ import ProviderIcon from './ProviderIcon.vue'
 import MonitorMetricPair from './MonitorMetricPair.vue'
 import MonitorAvailabilityRow from './MonitorAvailabilityRow.vue'
 import MonitorTimeline from './MonitorTimeline.vue'
+import MonitorIQDialog from './MonitorIQDialog.vue'
 import MonitorQuotaView from '@/components/common/MonitorQuotaView.vue'
 
 // 图标配色与 utils/platformColors.ts 的平台色对齐（新 4 家）。
@@ -118,6 +139,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const showIQ = ref(false)
 const {
   statusLabel,
   statusBadgeClass,

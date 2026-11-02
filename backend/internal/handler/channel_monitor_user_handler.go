@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
@@ -66,6 +67,8 @@ type channelMonitorUserListItem struct {
 	// LatestQuota 主模型最近配额快照；channel_monitor_show_quota=false 时
 	// 由 userMonitorViewToItem 的调用方传入 false 剥离（服务端脱敏，非仅前端隐藏）。
 	LatestQuota *domain.MonitorQuotaSnapshot `json:"latest_quota,omitempty"`
+	// IQEnabled 该监控是否开启了智商检测（卡片据此显示「智商状态」按钮）。
+	IQEnabled bool `json:"iq_enabled"`
 }
 
 // channelMonitorUserTimelinePoint 主模型最近一次检测的 timeline 点。
@@ -168,9 +171,16 @@ func (h *ChannelMonitorUserHandler) List(c *gin.Context) {
 		return
 	}
 	includeQuota := h.quotaVisible(c)
+	var iqEnabled map[int64]bool
+	if iq := h.monitorService.IQ(); iq != nil {
+		// 智商检测元数据读取失败不应影响状态列表。
+		iqEnabled, _ = iq.EnabledSet(c.Request.Context())
+	}
 	items := make([]channelMonitorUserListItem, 0, len(views))
 	for _, v := range views {
-		items = append(items, userMonitorViewToItem(v, includeQuota))
+		item := userMonitorViewToItem(v, includeQuota)
+		item.IQEnabled = iqEnabled[v.ID]
+		items = append(items, item)
 	}
 	response.Success(c, gin.H{"items": items})
 }
@@ -192,4 +202,67 @@ func (h *ChannelMonitorUserHandler) GetStatus(c *gin.Context) {
 		return
 	}
 	response.Success(c, userMonitorDetailToResponse(detail))
+}
+
+// ListIQResults GET /api/v1/channel-monitors/:id/iq-results
+// 返回最近 2 小时内的成功检测结果（不含 html），以及该监控的模型/设置概览。
+func (h *ChannelMonitorUserHandler) ListIQResults(c *gin.Context) {
+	if !h.featureEnabled(c) {
+		response.ErrorFrom(c, service.ErrChannelMonitorNotFound)
+		return
+	}
+	id, ok := admin.ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	iq := h.monitorService.IQ()
+	if iq == nil {
+		response.ErrorFrom(c, service.ErrChannelMonitorNotFound)
+		return
+	}
+	settings, err := iq.GetSettings(c.Request.Context(), id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if !settings.Enabled {
+		response.ErrorFrom(c, service.ErrChannelMonitorNotFound)
+		return
+	}
+	results, err := iq.ListResults(c.Request.Context(), id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{
+		"creative_enabled": settings.CreativeEnabled,
+		"interval_minutes": settings.IntervalMinutes,
+		"retention_hours":  2,
+		"max_per_model":    10,
+		"items":            results,
+	})
+}
+
+// GetIQResult GET /api/v1/channel-monitors/:id/iq-results/:result_id（含 html，供预览）
+func (h *ChannelMonitorUserHandler) GetIQResult(c *gin.Context) {
+	if !h.featureEnabled(c) {
+		response.ErrorFrom(c, service.ErrChannelMonitorNotFound)
+		return
+	}
+	id, ok := admin.ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	resultID, err := strconv.ParseInt(c.Param("result_id"), 10, 64)
+	iq := h.monitorService.IQ()
+	if err != nil || resultID <= 0 || iq == nil {
+		response.ErrorFrom(c, service.ErrChannelMonitorNotFound)
+		return
+	}
+	result, err := iq.GetResult(c.Request.Context(), id, resultID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
 }

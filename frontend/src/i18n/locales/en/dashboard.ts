@@ -514,6 +514,36 @@ export default {
   },
 
   // Shared keys for channel monitor (admin + user views)
+  monitorIQ: {
+    button: 'IQ status',
+    title: 'Degradation check · {name}',
+    subtitle: 'Rolling successful results from the last 2 hours, up to 10 per model. For manual comparison only.',
+    close: 'Close',
+    loading: 'Loading…',
+    empty: 'No results yet',
+    loadFailed: 'Failed to load, please retry',
+    tabs: { candy: 'Candy test', pelican: 'Pelican test', creative: 'Free creation' },
+    statsTotal: 'Recent checks · accuracy',
+    statsValid: 'Valid answers / correct',
+    statsNote: 'Counts only include successful results inside the retention window; the list shows the latest 10.',
+    correct: 'Correct',
+    incorrect: 'Incorrect',
+    standardAnswer: 'Standard answer: 21',
+    rawAnswer: 'Raw model answer',
+    started: 'Started',
+    finished: 'Finished',
+    promptSnapshot: 'Prompt snapshot',
+    quality: { normal: 'Normal', degraded: 'Possibly degraded', unknown: 'Inconclusive', suspicious: 'Suspicious' },
+    reason: 'Reason',
+    preview: 'Isolated animation preview',
+    viewSource: 'View source',
+    hideSource: 'Hide source',
+    fitWindow: 'Fit window',
+    stopPreview: 'Stop preview',
+    startPreview: 'Start preview',
+    noHtml: 'No source available to preview',
+    pelicanNote: 'Pelican / free creation results are generated and classified by a third-party service and reflect a single artwork only.'
+  },
   monitorCommon: {
     status: {
       operational: 'Operational',

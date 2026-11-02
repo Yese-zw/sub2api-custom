@@ -525,3 +525,65 @@ func parseHistoryLimit(raw string) int {
 	}
 	return v
 }
+
+// --- 智商（降智）检测设置 ---
+
+type channelMonitorIQSettingsRequest struct {
+	Enabled         bool     `json:"enabled"`
+	CreativeEnabled bool     `json:"creative_enabled"`
+	IntervalMinutes int      `json:"interval_minutes" binding:"required"`
+	Models          []string `json:"models"`
+}
+
+// GetIQSettings GET /api/v1/admin/channel-monitors/:id/iq-settings
+func (h *ChannelMonitorHandler) GetIQSettings(c *gin.Context) {
+	id, ok := ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	iq := h.monitorService.IQ()
+	if iq == nil {
+		response.ErrorFrom(c, service.ErrChannelMonitorDisabled)
+		return
+	}
+	if _, err := h.monitorService.Get(c.Request.Context(), id); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	settings, err := iq.GetSettings(c.Request.Context(), id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
+
+// UpdateIQSettings PUT /api/v1/admin/channel-monitors/:id/iq-settings
+func (h *ChannelMonitorHandler) UpdateIQSettings(c *gin.Context) {
+	id, ok := ParseChannelMonitorID(c)
+	if !ok {
+		return
+	}
+	iq := h.monitorService.IQ()
+	if iq == nil {
+		response.ErrorFrom(c, service.ErrChannelMonitorDisabled)
+		return
+	}
+	var req channelMonitorIQSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorFrom(c, infraerrors.BadRequest("VALIDATION_ERROR", err.Error()))
+		return
+	}
+	settings, err := iq.SaveSettings(c.Request.Context(), &service.ChannelMonitorIQSettings{
+		MonitorID:       id,
+		Enabled:         req.Enabled,
+		CreativeEnabled: req.CreativeEnabled,
+		IntervalMinutes: req.IntervalMinutes,
+		Models:          req.Models,
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
