@@ -20,6 +20,8 @@ const ROUTE_PERMISSIONS: Array<[string, string]> = [
   ['/admin/redeem', 'redeem.view'],
   ['/admin/promo-codes', 'promo.view'],
   ['/admin/affiliates', 'affiliates.view'],
+  ['/admin/orders/dashboard', 'payment_dashboard.view'],
+  ['/admin/orders/plans', 'payment_plans.view'],
   ['/admin/orders', 'orders.view'],
   ['/admin/usage', 'usage.view'],
   ['/admin/audit-logs', 'audit_logs.view']

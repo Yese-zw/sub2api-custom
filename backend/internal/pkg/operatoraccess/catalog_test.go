@@ -21,6 +21,9 @@ func TestResolve(t *testing.T) {
 		{"GET", "/api/v1/admin/users-evil", "", false},
 		{"GET", "/api/v1/admin/payment/config", "", false},
 		{"POST", "/api/v1/admin/payment/orders/:id/refund", "orders.refund", true},
+		{"GET", "/api/v1/admin/payment/dashboard", "payment_dashboard.view", true},
+		{"POST", "/api/v1/admin/payment/plans", "payment_plans.create", true},
+		{"GET", "/api/v1/admin/payment/plans", "payment_plans.view", true},
 		{"GET", "/api/v1/other", "", false},
 	}
 	for _, c := range cases {

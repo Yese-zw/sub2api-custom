@@ -66,7 +66,9 @@ var tabs = []tabRule{
 	{Tab{"redeem", "卡密管理", []Action{actView, actCreate, actEdit, actDelete}}, []string{"/redeem-codes"}, crud},
 	{Tab{"promo", "优惠码管理", []Action{actView, actCreate, actEdit, actDelete}}, []string{"/promo-codes"}, crud},
 	{Tab{"affiliates", "邀请返利", []Action{actView, actEdit}}, []string{"/affiliates"}, rw},
-	{Tab{"orders", "支付订单", []Action{actView, {"manage", "取消/重试"}, {"refund", "退款"}, {"plans", "管理支付套餐"}}}, []string{"/payment"}, map[string]string{"GET": "view", "POST": "manage", "PUT": "manage", "DELETE": "manage"}},
+	{Tab{"payment_dashboard", "支付仪表盘", []Action{actView}}, []string{"/payment/dashboard"}, view},
+	{Tab{"orders", "支付订单", []Action{actView, {"manage", "取消/重试"}, {"refund", "退款"}}}, []string{"/payment/orders"}, map[string]string{"GET": "view", "POST": "manage", "PUT": "manage", "DELETE": "manage"}},
+	{Tab{"payment_plans", "支付套餐", []Action{actView, actCreate, actEdit, actDelete}}, []string{"/payment/plans"}, crud},
 	{Tab{"usage", "使用记录", []Action{actView, actEdit}}, []string{"/usage"}, rw},
 	{Tab{"audit_logs", "审计日志", []Action{actView}}, []string{"/audit-logs"}, view},
 }
@@ -131,10 +133,7 @@ var overrides = map[string]string{
 	"POST /payment/providers":                     adminOnly,
 	"PUT /payment/providers/:id":                  adminOnly,
 	"DELETE /payment/providers/:id":               adminOnly,
-	"POST /payment/plans":                         "orders.plans",
-	"PUT /payment/plans/:id":                      "orders.plans",
-	"DELETE /payment/plans/:id":                   "orders.plans",
-	"GET /payment/plans":                          "orders.view",
+	"GET /payment/plans":                          "payment_plans.view",
 }
 
 // lookups 是页面下拉框等通用只读候选接口：持有任意一项权限即可调用。

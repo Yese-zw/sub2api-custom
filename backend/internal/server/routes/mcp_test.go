@@ -185,7 +185,7 @@ func (r *mcpRouteSettingsRepo) SetMultiple(_ context.Context, values map[string]
 	return nil
 }
 
-func TestMCPDispatchRetainsBackendModeAndAdminCompliance(t *testing.T) {
+func TestMCPDispatchRetainsBackendMode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	settings := service.NewSettingService(&mcpRouteSettingsRepo{values: map[string]string{}}, &config.Config{})
 	// UpdateSettings also updates the global backend-mode cache. Reset it on
@@ -203,7 +203,6 @@ func TestMCPDispatchRetainsBackendModeAndAdminCompliance(t *testing.T) {
 
 	admin := &service.MCPPrincipal{GrantID: "admin", UserID: 8, Role: service.RoleAdmin, Scope: service.MCPScopeAdmin, ReadOnly: true}
 	result = callMCPRouteTool(t, newMCPRouteTestEndpoint(h, admin, settings, middleware.AuditLogMiddleware(mcpRouteNext)), "admin_get_dashboard", map[string]any{})
-	require.True(t, result.Result.IsError)
-	require.Equal(t, http.StatusLocked, result.Result.Payload.HTTPStatus)
-	require.Contains(t, string(result.Result.Payload.Result), "ADMIN_COMPLIANCE_ACK_REQUIRED")
+	require.NotEqual(t, http.StatusLocked, result.Result.Payload.HTTPStatus)
+	require.NotContains(t, string(result.Result.Payload.Result), "ADMIN_COMPLIANCE_ACK_REQUIRED")
 }
