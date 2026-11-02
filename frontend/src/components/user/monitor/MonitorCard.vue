@@ -157,7 +157,7 @@ const providerTintClass = computed(() =>
 )
 
 const cacheRateText = computed(() =>
-  props.item.cache_rate == null ? t('monitorCommon.latencyEmpty') : props.item.cache_rate.toFixed(1)
+  props.item.cache_rate == null ? t('monitorCommon.latencyEmpty') : props.item.cache_rate.toFixed(2)
 )
 
 const quotaVisible = computed(
