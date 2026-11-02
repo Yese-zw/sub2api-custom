@@ -615,6 +615,7 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    groupIssues: '{n} with issues',
     hero: {
       healthy: 'Healthy',
       issues: 'Issues',

@@ -620,6 +620,7 @@ export default {
 
   // Channel Status (user-facing read-only view)
   channelStatus: {
+    groupIssues: '{n} 个异常',
     hero: {
       healthy: '正常渠道',
       issues: '异常渠道',
