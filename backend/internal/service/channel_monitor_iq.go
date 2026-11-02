@@ -456,7 +456,7 @@ func (s *ChannelMonitorIQService) callUpstream(ctx context.Context, m *ChannelMo
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	started = time.Now()
-	text, raw, status, callErr := callProvider(callCtx, m.Provider, m.Endpoint, m.APIKey, model, prompt, opts)
+	text, raw, status, callErr := streamProviderText(callCtx, m.Provider, m.Endpoint, m.APIKey, model, prompt, opts)
 	finished = time.Now()
 	if callErr != nil {
 		return "", started, finished, sanitizeIQError(callErr.Error())
