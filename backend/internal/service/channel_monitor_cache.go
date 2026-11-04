@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 )
 
 // 渠道监控「缓存率」：取监控所用 API Key 所在分组，汇总该分组在 usage_logs 近 cacheRateWindow 的真实用量，
 //
-//	缓存率 = cache_read_tokens / 输入侧 token（input + cache_creation + cache_read，不含输出）
+//	缓存率 = 所有缓存 / (所有缓存 + 所有输入)，所有缓存 = cache_creation + cache_read，不含输出；百分比保留两位小数
 //
 // 仅当监控的 API Key 是本站 API Key 且已绑定分组时才有数据（否则返回 nil）。
 const (
@@ -122,20 +123,20 @@ func (s *ChannelMonitorCacheService) compute(ctx context.Context, monitorID int6
 	if m.APIKeyDecryptFailed || m.APIKey == "" {
 		return nil, nil
 	}
-	var cacheRead, total int64
+	var cache, total int64
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(u.cache_read_tokens), 0),
-		       COALESCE(SUM(u.input_tokens + u.cache_creation_tokens + u.cache_read_tokens), 0)
+		SELECT COALESCE(SUM(u.cache_creation_tokens + u.cache_read_tokens), 0),
+		       COALESCE(SUM(u.cache_creation_tokens + u.cache_read_tokens + u.input_tokens), 0)
 		FROM usage_logs u
 		WHERE u.group_id = (SELECT k.group_id FROM api_keys k WHERE k.key = $1 LIMIT 1)
 		  AND u.created_at >= NOW() - make_interval(secs => $2)`,
-		m.APIKey, cacheRateWindow.Seconds()).Scan(&cacheRead, &total)
+		m.APIKey, cacheRateWindow.Seconds()).Scan(&cache, &total)
 	if err != nil {
 		return nil, err
 	}
 	if total <= 0 {
 		return nil, nil
 	}
-	rate := float64(cacheRead) / float64(total) * 100
+	rate := math.Round(float64(cache)/float64(total)*100*100) / 100
 	return &rate, nil
 }

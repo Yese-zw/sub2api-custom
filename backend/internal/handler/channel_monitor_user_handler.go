@@ -259,7 +259,6 @@ func (h *ChannelMonitorUserHandler) ListIQResults(c *gin.Context) {
 		"candy_enabled":    settings.CandyEnabled,
 		"pelican_enabled":  settings.PelicanEnabled,
 		"interval_minutes": settings.IntervalMinutes,
-		"retention_hours":  2,
 		"max_per_model":    10,
 		"items":            results,
 		"failures":         iq.ListFailures(id),

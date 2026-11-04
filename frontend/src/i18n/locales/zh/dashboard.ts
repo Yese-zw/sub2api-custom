@@ -534,7 +534,7 @@ export default {
     statRate: '通过率',
     duration: '耗时',
     title: '降智检测 · {name}',
-    subtitle: '滚动最近 2 小时的成功结果，每个模型最多 10 次。仅供人工对比。',
+    subtitle: '保留每个模型最近 10 次成功结果，仅供人工对比。',
     close: '关闭',
     loading: '加载中…',
     empty: '暂无检测结果',
@@ -542,7 +542,7 @@ export default {
     tabs: { candy: '糖果测试', pelican: '鹈鹕测试', creative: '自由创作' },
     statsTotal: '近期检测次数 · 正确率',
     statsValid: '有效答题 / 正确',
-    statsNote: '统计仅含保留窗口内的成功结果；列表仅显示最近 10 条。',
+    statsNote: '统计仅含最近 10 次成功结果。',
     correct: '正确',
     incorrect: '错误',
     standardAnswer: '标准答案：21',
@@ -559,7 +559,7 @@ export default {
     stopPreview: '停止预览',
     startPreview: '开始预览',
     noHtml: '该结果没有可预览的源码',
-    pelicanNote: '鹈鹕/自由创作由本服务按规则初步判定（图形元素数量、是否含动画），仅代表单次作品，仅供人工对比。'
+    pelicanNote: '鹈鹕/自由创作展示模型生成的 HTML 动画，请求成功即为绿色，仅供人工对比。'
   },
   monitorCommon: {
     status: {

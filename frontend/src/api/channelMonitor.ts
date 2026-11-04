@@ -125,12 +125,11 @@ export interface MonitorIQResultsResponse {
   failures?: MonitorIQFailure[]
   creative_enabled: boolean
   interval_minutes: number
-  retention_hours: number
   max_per_model: number
   items: MonitorIQResult[]
 }
 
-/** 最近 2 小时的智商检测成功结果（每个模型每类最多 10 条） */
+/** 智商检测成功结果（每个模型每类保留最近 10 条） */
 export async function iqResults(id: number): Promise<MonitorIQResultsResponse> {
   const { data } = await apiClient.get<MonitorIQResultsResponse>(`/channel-monitors/${id}/iq-results`)
   return data

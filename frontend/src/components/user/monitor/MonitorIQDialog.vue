@@ -65,8 +65,14 @@
                 <div class="iq-hero">
                   <MonitorIQRing :recent="ringOf(kind)" size="6rem" />
                   <div class="iq-hero__text">
-                    <div class="iq-hero__big">{{ statsOf(kind).passed }}<small>/ {{ statsOf(kind).total }}</small></div>
-                    <div class="iq-hero__label">{{ t('monitorIQ.statPassed') }}</div>
+                    <template v-if="kind === 'candy'">
+                      <div class="iq-hero__big">{{ statsOf(kind).passed }}<small>/ {{ statsOf(kind).total }}</small></div>
+                      <div class="iq-hero__label">{{ t('monitorIQ.statPassed') }}</div>
+                    </template>
+                    <template v-else>
+                      <div class="iq-hero__big">{{ statsOf(kind).total }}</div>
+                      <div class="iq-hero__label">{{ t('monitorIQ.statRuns') }}</div>
+                    </template>
                     <div class="iq-hero__last">{{ t('monitorIQ.lastRun') }} · {{ formatTime(statsOf(kind).last) }}</div>
                   </div>
                 </div>
@@ -91,7 +97,7 @@
                 <!-- 选中那次的详情 -->
                 <div v-if="selectedByKind[kind]" class="iq-run">
                   <div class="iq-run__head">
-                    <h4 :class="['iq-run__verdict', itemTone(selectedByKind[kind]!)]">
+                    <h4 v-if="kind === 'candy'" :class="['iq-run__verdict', itemTone(selectedByKind[kind]!)]">
                       <span class="iq-run__dot" aria-hidden="true"></span>{{ itemLabel(selectedByKind[kind]!) }}
                     </h4>
                     <span v-if="selectedByKind[kind]!.benchmark === 'creative'" class="iq-pill">{{ t('monitorIQ.tabs.creative') }}</span>
@@ -118,9 +124,6 @@
                   </template>
 
                   <template v-else>
-                    <p v-if="selectedByKind[kind]!.reason" class="iq-reason">
-                      <span>{{ t('monitorIQ.reason') }}</span>{{ selectedByKind[kind]!.reason }}
-                    </p>
                     <p v-if="!selectedByKind[kind]!.has_html" class="iq-state iq-state--inline">{{ t('monitorIQ.noHtml') }}</p>
                     <template v-else>
                       <div class="iq-actions">
@@ -232,9 +235,9 @@ const selectedByKind = computed<Record<IQKind, MonitorIQResult | null>>(() => ({
 }))
 const pelicanSelected = computed(() => selectedByKind.value.pelican)
 
-// 是否通过：糖果=答对；鹈鹕/自由创作=判定为正常。
+// 是否为绿色：糖果=答对；鹈鹕/自由创作=请求成功即为绿色（列表里都是成功结果）。
 function isPass(item: MonitorIQResult): boolean {
-  return item.benchmark === 'candy' ? item.verdict === 'passed' : item.quality === 'normal'
+  return item.benchmark === 'candy' ? item.verdict === 'passed' : true
 }
 // 分段环数据：旧→新，最多 10 条。
 function ringOf(kind: IQKind): boolean[] {
@@ -246,6 +249,7 @@ function slotsOf(kind: IQKind): Array<MonitorIQResult | null> {
   return [...Array.from({ length: MAX_VISIBLE - list.length }, () => null), ...list]
 }
 function slotTitle(item: MonitorIQResult): string {
+  if (item.benchmark !== 'candy') return `${formatTime(item.started_at)} · ${formatDuration(item.duration_ms)}`
   return `${formatTime(item.started_at)} · ${itemLabel(item)} · ${formatDuration(item.duration_ms)}`
 }
 function statsOf(kind: IQKind) {
@@ -259,21 +263,14 @@ const previewDoc = computed(() => {
   return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="no-referrer">${html}`
 })
 
+// 仅糖果测试展示对错；鹈鹕/自由创作只展示 HTML 作品、时间与耗时。
 function itemLabel(item: MonitorIQResult): string {
-  if (item.benchmark === 'candy') {
-    return item.verdict === 'passed' ? t('monitorIQ.correct') : t('monitorIQ.incorrect')
-  }
-  if (item.label) return item.label
-  return item.quality && t(`monitorIQ.quality.${item.quality}`) !== `monitorIQ.quality.${item.quality}`
-    ? t(`monitorIQ.quality.${item.quality}`)
-    : item.quality || '-'
+  return item.verdict === 'passed' ? t('monitorIQ.correct') : t('monitorIQ.incorrect')
 }
 
-// 状态色：通过=绿，明确未通过=红，其余（无法判定等）=中性。
-function itemTone(item: MonitorIQResult): 'is-pass' | 'is-fail' | 'is-neutral' {
-  if (isPass(item)) return 'is-pass'
-  if (item.benchmark === 'candy' || item.quality === 'degraded' || item.quality === 'suspicious') return 'is-fail'
-  return 'is-neutral'
+// 状态色：糖果答对 / 鹈鹕请求成功=绿，糖果答错=红。
+function itemTone(item: MonitorIQResult): 'is-pass' | 'is-fail' {
+  return isPass(item) ? 'is-pass' : 'is-fail'
 }
 
 function formatTime(iso: string): string {
@@ -537,8 +534,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .iq-details summary { cursor: pointer; font-weight: 600; }
 .iq-details pre { margin: 0.5rem 0 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 0.72rem; color: var(--rx-muted, #64748b); }
 
-.iq-reason { margin: 0.75rem 0 0; font-size: 0.8rem; line-height: 1.6; color: var(--rx-ink-2, #334155); }
-.iq-reason span { display: block; margin-bottom: 0.15rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em; color: var(--rx-faint, #94a3b8); }
 .iq-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .iq-btn {
   padding: 0.28rem 0.85rem;

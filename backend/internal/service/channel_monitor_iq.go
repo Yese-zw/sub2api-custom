@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -21,13 +22,12 @@ import (
 //   - pelican（鹈鹕）：让模型生成「鹈鹕骑自行车」的 HTML/SVG 动画，按规则初步判定质量（见 channel_monitor_iq_pelican.go）；
 //   - creative（自由创作）：鹈鹕测试的配置，让模型自由创作一个 HTML 动画，判定规则相同。
 //
-// 只保留最近 iqRetention 内的成功结果，每个 (监控, 模型, 检测类型) 最多 iqMaxPerModel 条。
+// 只保留最近的成功结果，每个 (监控, 模型, 检测类型) 最多 iqMaxPerModel 条（不按时间过期）。
 const (
 	IQBenchmarkCandy    = "candy"
 	IQBenchmarkPelican  = "pelican"
 	IQBenchmarkCreative = "creative"
 
-	iqRetention              = 2 * time.Hour
 	iqMaxPerModel            = 10
 	iqDefaultIntervalMinutes = 10
 	iqMinIntervalMinutes     = 5
@@ -48,6 +48,7 @@ type ChannelMonitorIQSettings struct {
 	MonitorID       int64 `json:"monitor_id"`
 	Enabled         bool  `json:"enabled"`
 	CandyEnabled    bool  `json:"candy_enabled"`    // 糖果测试
+	CandyMock       bool  `json:"candy_mock"`       // 糖果测试的配置：开启后不请求上游，直接写入正确答案的模拟结果
 	PelicanEnabled  bool  `json:"pelican_enabled"`  // 鹈鹕测试
 	CreativeEnabled bool  `json:"creative_enabled"` // 鹈鹕测试的配置：开启后以自由创作替代鹈鹕请求
 
@@ -139,9 +140,9 @@ func (s *ChannelMonitorIQService) GetSettings(ctx context.Context, monitorID int
 	out := defaultIQSettings(monitorID)
 	var raw []byte
 	err := s.db.QueryRowContext(ctx, `
-		SELECT enabled, candy_enabled, pelican_enabled, creative_enabled, interval_minutes, models, last_run_at
+		SELECT enabled, candy_enabled, candy_mock, pelican_enabled, creative_enabled, interval_minutes, models, last_run_at
 		FROM channel_monitor_iq_settings WHERE monitor_id = $1`, monitorID,
-	).Scan(&out.Enabled, &out.CandyEnabled, &out.PelicanEnabled, &out.CreativeEnabled, &out.IntervalMinutes, &raw, &out.LastRunAt)
+	).Scan(&out.Enabled, &out.CandyEnabled, &out.CandyMock, &out.PelicanEnabled, &out.CreativeEnabled, &out.IntervalMinutes, &raw, &out.LastRunAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return out, nil
 	}
@@ -185,13 +186,13 @@ func (s *ChannelMonitorIQService) SaveSettings(ctx context.Context, in *ChannelM
 	}
 	rawModels, _ := json.Marshal(models)
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO channel_monitor_iq_settings (monitor_id, enabled, candy_enabled, pelican_enabled, creative_enabled, interval_minutes, models, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NOW())
+		INSERT INTO channel_monitor_iq_settings (monitor_id, enabled, candy_enabled, candy_mock, pelican_enabled, creative_enabled, interval_minutes, models, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, NOW())
 		ON CONFLICT (monitor_id) DO UPDATE SET
-			enabled = EXCLUDED.enabled, candy_enabled = EXCLUDED.candy_enabled,
+			enabled = EXCLUDED.enabled, candy_enabled = EXCLUDED.candy_enabled, candy_mock = EXCLUDED.candy_mock,
 			pelican_enabled = EXCLUDED.pelican_enabled, creative_enabled = EXCLUDED.creative_enabled,
 			interval_minutes = EXCLUDED.interval_minutes, models = EXCLUDED.models, updated_at = NOW()`,
-		in.MonitorID, in.Enabled, in.CandyEnabled, in.PelicanEnabled, in.CreativeEnabled, in.IntervalMinutes, string(rawModels))
+		in.MonitorID, in.Enabled, in.CandyEnabled, in.CandyEnabled && in.CandyMock, in.PelicanEnabled, in.CreativeEnabled, in.IntervalMinutes, string(rawModels))
 	if err != nil {
 		return nil, err
 	}
@@ -219,20 +220,19 @@ func (s *ChannelMonitorIQService) EnabledSet(ctx context.Context) (map[int64]boo
 // iqRingSegments 卡片智商环的分段数（取最近 N 条结果）。
 const iqRingSegments = 10
 
-// RecentOutcomes 返回每个已开启智商检测的监控最近 iqRingSegments 条结果是否通过
-// （糖果：答对；鹈鹕/自由创作：quality=normal），按时间从旧到新排列。
+// RecentOutcomes 返回每个已开启智商检测的监控最近 iqRingSegments 条结果是否为绿色
+// （糖果：答对；鹈鹕/自由创作：请求成功即为绿色），按时间从旧到新排列。
 func (s *ChannelMonitorIQService) RecentOutcomes(ctx context.Context) (map[int64][]bool, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT monitor_id, passed FROM (
 			SELECT r.monitor_id,
-			       (CASE WHEN r.benchmark = 'candy' THEN r.verdict = 'passed' ELSE r.quality = 'normal' END) AS passed,
+			       (r.benchmark <> 'candy' OR r.verdict = 'passed') AS passed,
 			       ROW_NUMBER() OVER (PARTITION BY r.monitor_id ORDER BY r.created_at DESC, r.id DESC) AS rn
 			FROM channel_monitor_iq_results r
 			JOIN channel_monitor_iq_settings st ON st.monitor_id = r.monitor_id AND st.enabled = true
-			WHERE r.created_at >= NOW() - make_interval(secs => $1)
-			  AND ((r.benchmark = 'candy' AND st.candy_enabled) OR (r.benchmark <> 'candy' AND st.pelican_enabled))
-		) t WHERE rn <= $2
-		ORDER BY monitor_id, rn DESC`, iqRetention.Seconds(), iqRingSegments)
+			WHERE ((r.benchmark = 'candy' AND st.candy_enabled) OR (r.benchmark <> 'candy' AND st.pelican_enabled))
+		) t WHERE rn <= $1
+		ORDER BY monitor_id, rn DESC`, iqRingSegments)
 	if err != nil {
 		return nil, err
 	}
@@ -251,14 +251,14 @@ func (s *ChannelMonitorIQService) RecentOutcomes(ctx context.Context) (map[int64
 
 // ---------- results ----------
 
-// ListResults 返回最近 iqRetention 内的成功结果（不含 html），最新在前。
+// ListResults 返回保留的成功结果（不含 html），最新在前。
 func (s *ChannelMonitorIQService) ListResults(ctx context.Context, monitorID int64) ([]*ChannelMonitorIQResult, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, monitor_id, model, benchmark, verdict, quality, label, reason, answer, (html <> '') AS has_html,
 		       duration_ms, started_at, finished_at
 		FROM channel_monitor_iq_results
-		WHERE monitor_id = $1 AND created_at >= NOW() - make_interval(secs => $2)
-		ORDER BY created_at DESC, id DESC`, monitorID, iqRetention.Seconds())
+		WHERE monitor_id = $1
+		ORDER BY created_at DESC, id DESC`, monitorID)
 	if err != nil {
 		return nil, err
 	}
@@ -282,8 +282,8 @@ func (s *ChannelMonitorIQService) GetResult(ctx context.Context, monitorID, resu
 		SELECT id, monitor_id, model, benchmark, verdict, quality, label, reason, answer, html, (html <> ''),
 		       duration_ms, started_at, finished_at
 		FROM channel_monitor_iq_results
-		WHERE id = $1 AND monitor_id = $2 AND created_at >= NOW() - make_interval(secs => $3)`,
-		resultID, monitorID, iqRetention.Seconds(),
+		WHERE id = $1 AND monitor_id = $2`,
+		resultID, monitorID,
 	).Scan(&r.ID, &r.MonitorID, &r.Model, &r.Benchmark, &r.Verdict, &r.Quality, &r.Label, &r.Reason, &r.Answer,
 		&r.HTML, &r.HasHTML, &r.DurationMs, &r.StartedAt, &r.FinishedAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -304,18 +304,15 @@ func (s *ChannelMonitorIQService) saveResult(ctx context.Context, r *ChannelMoni
 		r.DurationMs, r.StartedAt, r.FinishedAt); err != nil {
 		return err
 	}
-	// 滚动保留：仅保留最近 iqRetention，且每个 (监控, 模型, 检测类型) 最多 iqMaxPerModel 条。
+	// 滚动保留：每个 (监控, 模型, 检测类型) 只保留最近 iqMaxPerModel 条。
 	_, err := s.db.ExecContext(ctx, `
 		DELETE FROM channel_monitor_iq_results
-		WHERE monitor_id = $1 AND (
-			created_at < NOW() - make_interval(secs => $2)
-			OR id IN (
-				SELECT id FROM (
-					SELECT id, ROW_NUMBER() OVER (PARTITION BY model, benchmark ORDER BY created_at DESC, id DESC) AS rn
-					FROM channel_monitor_iq_results WHERE monitor_id = $1
-				) ranked WHERE rn > $3
-			)
-		)`, r.MonitorID, iqRetention.Seconds(), iqMaxPerModel)
+		WHERE monitor_id = $1 AND id IN (
+			SELECT id FROM (
+				SELECT id, ROW_NUMBER() OVER (PARTITION BY model, benchmark ORDER BY created_at DESC, id DESC) AS rn
+				FROM channel_monitor_iq_results WHERE monitor_id = $1
+			) ranked WHERE rn > $2
+		)`, r.MonitorID, iqMaxPerModel)
 	return err
 }
 
@@ -347,13 +344,13 @@ func (s *ChannelMonitorIQService) Trigger(m *ChannelMonitor) {
 
 func (s *ChannelMonitorIQService) runIfDue(ctx context.Context, m *ChannelMonitor) {
 	// 原子占位：仅当已开启且距上次运行超过间隔时更新 last_run_at，多实例下也只会有一个执行。
-	var candy, pelican, creative bool
+	var candy, candyMock, pelican, creative bool
 	var rawModels []byte
 	err := s.db.QueryRowContext(ctx, `
 		UPDATE channel_monitor_iq_settings SET last_run_at = NOW()
 		WHERE monitor_id = $1 AND enabled = true
 		  AND (last_run_at IS NULL OR last_run_at <= NOW() - make_interval(mins => interval_minutes))
-		RETURNING candy_enabled, pelican_enabled, creative_enabled, models`, m.ID).Scan(&candy, &pelican, &creative, &rawModels)
+		RETURNING candy_enabled, candy_mock, pelican_enabled, creative_enabled, models`, m.ID).Scan(&candy, &candyMock, &pelican, &creative, &rawModels)
 	if errors.Is(err, sql.ErrNoRows) {
 		return
 	}
@@ -368,7 +365,7 @@ func (s *ChannelMonitorIQService) runIfDue(ctx context.Context, m *ChannelMonito
 			return
 		}
 		if candy {
-			s.runCandyModel(ctx, m, model)
+			s.runCandyModel(ctx, m, model, candyMock)
 		}
 		if pelican && ctx.Err() == nil {
 			s.runPelicanModel(ctx, m, model, creative)
@@ -405,8 +402,15 @@ func (s *ChannelMonitorIQService) pickModels(m *ChannelMonitor, selected []strin
 }
 
 // runCandyModel 对单个模型运行糖果测试，失败原因记入内存供弹窗展示。
-func (s *ChannelMonitorIQService) runCandyModel(ctx context.Context, m *ChannelMonitor, model string) {
-	r, err := s.runCandy(ctx, m, model)
+// mock 为 true 时不请求上游，直接写入正确答案的模拟结果。
+func (s *ChannelMonitorIQService) runCandyModel(ctx context.Context, m *ChannelMonitor, model string, mock bool) {
+	var r *ChannelMonitorIQResult
+	var err error
+	if mock {
+		r = mockCandyResult(m, model)
+	} else {
+		r, err = s.runCandy(ctx, m, model)
+	}
 	if err != nil {
 		slog.Warn("channel_monitor_iq: candy failed", "monitor_id", m.ID, "model", model, "error", err)
 		s.recordFailure(m.ID, model, IQBenchmarkCandy, err)
@@ -434,6 +438,20 @@ func (s *ChannelMonitorIQService) runCandy(ctx context.Context, m *ChannelMonito
 		MonitorID: m.ID, Model: model, Benchmark: IQBenchmarkCandy, Verdict: verdict, Answer: text,
 		DurationMs: finished.Sub(started).Milliseconds(), StartedAt: started, FinishedAt: finished,
 	}, nil
+}
+
+// iqCandyAnswer 糖果测试的标准答案（与 iqCheckQuestion 对应）。
+const iqCandyAnswer = "21"
+
+// mockCandyResult 构造一条糖果测试模拟结果：答案为标准答案，耗时取 2~8 秒之间的随机值。
+func mockCandyResult(m *ChannelMonitor, model string) *ChannelMonitorIQResult {
+	finished := time.Now()
+	duration := 2*time.Second + time.Duration(rand.Int63n(int64(6*time.Second)))
+	started := finished.Add(-duration)
+	return &ChannelMonitorIQResult{
+		MonitorID: m.ID, Model: model, Benchmark: IQBenchmarkCandy, Verdict: IQVerdictPassed, Answer: iqCandyAnswer,
+		DurationMs: duration.Milliseconds(), StartedAt: started, FinishedAt: finished,
+	}
 }
 
 // iqHTTPClient 智商检测专用 HTTP 客户端：请求是非流式长输出，要等上游生成完才返回响应头，

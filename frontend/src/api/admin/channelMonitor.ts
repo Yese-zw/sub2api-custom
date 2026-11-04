@@ -350,6 +350,8 @@ export interface MonitorIQSettings {
   enabled: boolean
   /** 糖果测试 */
   candy_enabled: boolean
+  /** 糖果测试的配置：true 时使用模拟数据（直接写入正确答案，不请求上游） */
+  candy_mock: boolean
   /** 鹈鹕测试 */
   pelican_enabled: boolean
   /** 鹈鹕测试的配置：开启后以自由创作替代鹈鹕请求 */
@@ -362,7 +364,7 @@ export interface MonitorIQSettings {
 
 export type MonitorIQSettingsInput = Pick<
   MonitorIQSettings,
-  'enabled' | 'candy_enabled' | 'pelican_enabled' | 'creative_enabled' | 'interval_minutes' | 'models'
+  'enabled' | 'candy_enabled' | 'candy_mock' | 'pelican_enabled' | 'creative_enabled' | 'interval_minutes' | 'models'
 >
 
 /** 获取监控的智商（降智）检测设置 */

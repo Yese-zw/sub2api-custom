@@ -26,7 +26,7 @@ const pelicanItem = {
 }
 
 async function mountDialog(res: Record<string, unknown>) {
-  iqResults.mockResolvedValue({ interval_minutes: 20, retention_hours: 2, max_per_model: 10, ...res })
+  iqResults.mockResolvedValue({ interval_minutes: 20, max_per_model: 10, ...res })
   const wrapper = mount(MonitorIQDialog, {
     props: { show: true, monitorId: 9, monitorName: 'm' },
     global: { stubs: { Teleport: true } },
