@@ -1151,7 +1151,7 @@ func (s *BalanceNotifyService) sendUpstreamBalanceLowAlertEmails(recipients []st
 		html.EscapeString(formatUpstreamBalanceAmount(adjustedBalance, unit)),
 		html.EscapeString(formatUpstreamBalanceAmount(threshold, unit)),
 	)
-	s.sendEmails(recipients, subject, body, "account_id", accountID, "account_name", accountName)
+	s.sendEmails(context.Background(), recipients, subject, body, "account_id", accountID, "account_name", accountName)
 }
 
 func formatUpstreamBalanceAmount(value float64, unit string) string {
