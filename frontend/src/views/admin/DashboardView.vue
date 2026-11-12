@@ -7,6 +7,52 @@
       </div>
 
       <template v-else-if="stats">
+        <section class="card p-4">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {{ t('admin.dashboard.systemAvailableBalance') }}
+              </p>
+              <p
+                class="mt-1 text-2xl font-bold"
+                :class="systemBalanceValue < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'"
+              >
+                ${{ formatSystemBalance(systemAvailableBalance) }}
+              </p>
+              <p class="mt-1 max-w-2xl text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.dashboard.systemAvailableBalanceHint') }}
+              </p>
+            </div>
+            <form
+              v-if="authStore.isAdmin"
+              class="flex flex-wrap items-center gap-2"
+              @submit.prevent="adjustSystemBalance('recharge')"
+            >
+              <label class="sr-only" for="system-available-balance-amount">
+                {{ t('admin.dashboard.systemAvailableBalanceAmount') }}
+              </label>
+              <input
+                id="system-available-balance-amount"
+                v-model="systemBalanceAmount"
+                class="input w-36"
+                inputmode="decimal"
+                autocomplete="off"
+                :placeholder="t('admin.dashboard.systemAvailableBalanceAmount')"
+              />
+              <button type="submit" class="btn btn-primary btn-sm" :disabled="adjustingSystemBalance">
+                {{ t('admin.dashboard.systemAvailableBalanceRecharge') }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                :disabled="adjustingSystemBalance"
+                @click="adjustSystemBalance('deduct')"
+              >
+                {{ t('admin.dashboard.systemAvailableBalanceDeduct') }}
+              </button>
+            </form>
+          </div>
+        </section>
         <!-- Row 1: Core Stats -->
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <!-- Total API Keys -->
@@ -399,6 +445,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 import { adminAPI } from '@/api/admin'
@@ -443,6 +490,7 @@ ChartJS.register(
 )
 
 const appStore = useAppStore()
+const authStore = useAuthStore()
 const router = useRouter()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
 const stats = ref<DashboardStats | null>(null)
@@ -452,6 +500,13 @@ const userTrendLoading = ref(false)
 const rankingLoading = ref(false)
 const rankingError = ref(false)
 const profitSummary = ref<ProfitTrendResponse | null>(null)
+const systemAvailableBalance = ref('0')
+const systemBalanceAmount = ref('')
+const adjustingSystemBalance = ref(false)
+const systemBalanceValue = computed(() => {
+  const value = Number(systemAvailableBalance.value)
+  return Number.isFinite(value) ? value : 0
+})
 
 // Chart data
 const trendData = ref<TrendDataPoint[]>([])
@@ -653,6 +708,43 @@ const formatNumber = (value: number | null | undefined): string => {
   return toFiniteNumber(value).toLocaleString()
 }
 
+const formatSystemBalance = (value: string | null | undefined): string => {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return value || '0.00'
+  return numberValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })
+}
+
+const loadSystemAvailableBalance = async () => {
+  try {
+    const response = await adminAPI.dashboard.getSystemAvailableBalance()
+    systemAvailableBalance.value = response.balance || '0'
+  } catch (error) {
+    console.error('Error loading system available balance:', error)
+  }
+}
+
+const adjustSystemBalance = async (action: 'recharge' | 'deduct') => {
+  const amount = systemBalanceAmount.value.trim()
+  if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(amount) || Number(amount) <= 0) {
+    appStore.showError(t('admin.dashboard.systemAvailableBalanceInvalid'))
+    return
+  }
+  adjustingSystemBalance.value = true
+  try {
+    const response = action === 'recharge'
+      ? await adminAPI.dashboard.rechargeSystemAvailableBalance(amount)
+      : await adminAPI.dashboard.deductSystemAvailableBalance(amount)
+    systemAvailableBalance.value = response.balance || '0'
+    systemBalanceAmount.value = ''
+    appStore.showSuccess(t('admin.dashboard.systemAvailableBalanceUpdated'))
+  } catch (error) {
+    console.error('Error adjusting system available balance:', error)
+    appStore.showError(t('admin.dashboard.systemAvailableBalanceInvalid'))
+  } finally {
+    adjustingSystemBalance.value = false
+  }
+}
+
 const formatCost = (value: number | null | undefined): string => {
   const safeValue = toFiniteNumber(value)
   if (safeValue >= 1000) {
@@ -817,7 +909,8 @@ const loadDashboardStats = async () => {
     loadDashboardSnapshot(true),
     loadUsersTrend(),
     loadUserSpendingRanking(),
-    loadProfitSummary()
+    loadProfitSummary(),
+    loadSystemAvailableBalance()
   ])
 }
 

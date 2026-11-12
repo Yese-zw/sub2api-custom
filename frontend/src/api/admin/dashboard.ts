@@ -20,6 +20,25 @@ import type {
  * Get dashboard statistics
  * @returns Dashboard statistics including users, keys, accounts, and token usage
  */
+export interface SystemAvailableBalance {
+  balance: string
+}
+
+export async function getSystemAvailableBalance(): Promise<SystemAvailableBalance> {
+  const { data } = await apiClient.get<SystemAvailableBalance>('/admin/dashboard/system-available-balance')
+  return data
+}
+
+export async function rechargeSystemAvailableBalance(amount: string): Promise<SystemAvailableBalance> {
+  const { data } = await apiClient.post<SystemAvailableBalance>('/admin/dashboard/system-available-balance/recharge', { amount })
+  return data
+}
+
+export async function deductSystemAvailableBalance(amount: string): Promise<SystemAvailableBalance> {
+  const { data } = await apiClient.post<SystemAvailableBalance>('/admin/dashboard/system-available-balance/deduct', { amount })
+  return data
+}
+
 export async function getStats(): Promise<DashboardStats> {
   const { data } = await apiClient.get<DashboardStats>('/admin/dashboard/stats')
   return data
@@ -362,6 +381,9 @@ export async function getBatchApiKeysUsage(
 }
 
 export const dashboardAPI = {
+  getSystemAvailableBalance,
+  rechargeSystemAvailableBalance,
+  deductSystemAvailableBalance,
   getStats,
   getRealtimeMetrics,
   getUsageTrend,

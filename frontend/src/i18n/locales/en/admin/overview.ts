@@ -3,6 +3,13 @@ export default {
     dashboard: {
       title: 'Admin Dashboard',
       description: 'System overview and real-time statistics',
+      systemAvailableBalance: 'System available balance',
+      systemAvailableBalanceHint: 'A site-wide cost ledger. Successful requests deduct account billing and never touch user balances. Deleting usage records does not change this number.',
+      systemAvailableBalanceAmount: 'Amount',
+      systemAvailableBalanceRecharge: 'Recharge',
+      systemAvailableBalanceDeduct: 'Deduct',
+      systemAvailableBalanceInvalid: 'Enter an amount greater than 0',
+      systemAvailableBalanceUpdated: 'System available balance updated',
       apiKeys: 'API Keys',
       totalApiKeys: 'Total API Keys',
       activeApiKeys: 'Active Keys',

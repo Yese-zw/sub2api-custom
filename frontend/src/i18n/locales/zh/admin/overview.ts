@@ -3,6 +3,13 @@ export default {
     dashboard: {
       title: '管理控制台',
       description: '系统概览与统计数据',
+      systemAvailableBalance: '系统可用余额',
+      systemAvailableBalanceHint: '全站成本账。成功请求按账号计费扣减，和用户余额无关。使用记录删除后这笔账不变。',
+      systemAvailableBalanceAmount: '金额',
+      systemAvailableBalanceRecharge: '充值',
+      systemAvailableBalanceDeduct: '扣除',
+      systemAvailableBalanceInvalid: '请输入大于 0 的金额',
+      systemAvailableBalanceUpdated: '系统可用余额已更新',
       apiKeys: 'API 密钥',
       totalApiKeys: 'API 密钥总数',
       activeApiKeys: '活跃密钥',
