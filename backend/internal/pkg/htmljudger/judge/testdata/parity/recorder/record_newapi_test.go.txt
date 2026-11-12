@@ -1,0 +1,63 @@
+// Recorder for newapi-recorded.jsonl. Copy this file into the `service`
+// package of the original New API service checkout (as record_parity_test.go) and run:
+//
+//	INTELLIGENCE_JUDGE_DIR=<dir with model.json and references.json> \
+//	PARITY_CASES=<path>/cases.jsonl PARITY_OUT=<path>/newapi-recorded.jsonl \
+//	go test ./service -run TestRecordJudgeParity -count=1
+//
+// It calls the original JudgeIntelligenceHTML on every case and records its
+// outputs. It is kept as .txt so it is not compiled in this module.
+package service
+
+import (
+	"bufio"
+	"encoding/base64"
+	"encoding/json"
+	"os"
+	"testing"
+)
+
+func TestRecordJudgeParity(t *testing.T) {
+	in, err := os.Open(os.Getenv("PARITY_CASES"))
+	if err != nil {
+		t.Skip("PARITY_CASES is not set")
+	}
+	defer in.Close()
+	out, err := os.Create(os.Getenv("PARITY_OUT"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	enc := json.NewEncoder(out)
+	enc.SetEscapeHTML(false)
+	scanner := bufio.NewScanner(in)
+	scanner.Buffer(make([]byte, 1<<20), 16<<20)
+	for scanner.Scan() {
+		var c struct {
+			Case, Prompt, HTML string
+			HTMLB64            string `json:"html_b64"`
+		}
+		if err := json.Unmarshal(scanner.Bytes(), &c); err != nil {
+			t.Fatal(err)
+		}
+		html := c.HTML
+		if c.HTMLB64 != "" {
+			raw, err := base64.StdEncoding.DecodeString(c.HTMLB64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			html = string(raw)
+		}
+		got, err := JudgeIntelligenceHTML(c.Prompt, html)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := enc.Encode(map[string]any{"case": c.Case, "quality": got.Quality, "borderline": got.Borderline,
+			"method": got.Method, "score": got.Score, "margin": got.Margin, "reason": got.Reason}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+}

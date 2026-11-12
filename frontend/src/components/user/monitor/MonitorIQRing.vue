@@ -30,8 +30,8 @@ const SEG_LEN = SEG_STEP - SEG_GAP
 
 const props = withDefaults(
   defineProps<{
-    /** 最近若干条检测是否通过（旧→新，最多 10 条） */
-    recent: boolean[]
+    /** 最近若干条检测：true=通过，false=未通过，border=边界（旧→新，最多 10 条） */
+    recent: Array<boolean | 'border'>
     size?: string
   }>(),
   { size: '4.6rem' }
@@ -39,15 +39,16 @@ const props = withDefaults(
 
 const recent = computed(() => props.recent.slice(-SEGMENTS))
 const total = computed(() => recent.value.length)
-const segments = computed<Array<'pass' | 'fail' | 'empty'>>(() =>
+const segments = computed<Array<'pass' | 'fail' | 'border' | 'empty'>>(() =>
   Array.from({ length: SEGMENTS }, (_, i) => {
     if (i >= recent.value.length) return 'empty'
+    if (recent.value[i] === 'border') return 'border'
     return recent.value[i] ? 'pass' : 'fail'
   })
 )
 const percentText = computed(() => {
   if (total.value === 0) return '-'
-  const passed = recent.value.filter(Boolean).length
+  const passed = recent.value.filter(v => v === true).length
   return String(Math.round((passed / total.value) * 100))
 })
 </script>
@@ -75,6 +76,7 @@ const percentText = computed(() => {
 }
 .iq-ring__seg.is-pass { stroke: hsl(140 60% 42%); }
 .iq-ring__seg.is-fail { stroke: #ef4444; }
+.iq-ring__seg.is-border { stroke: #d97706; }
 .iq-ring__seg.is-empty { stroke: var(--rx-line, #e5e7eb); }
 
 .iq-ring__value {

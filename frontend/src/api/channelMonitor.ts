@@ -97,7 +97,7 @@ export interface MonitorIQResult {
   benchmark: MonitorIQBenchmark
   /** candy: passed / incorrect */
   verdict?: string
-  /** pelican / creative: normal / degraded / unknown / suspicious */
+  /** pelican / creative: normal / degraded / borderline */
   quality?: string
   label?: string
   reason?: string

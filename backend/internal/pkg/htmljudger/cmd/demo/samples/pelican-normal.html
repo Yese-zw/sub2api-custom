@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>鹈鹕骑自行车</title>
+<style>
+  body {
+    margin: 0;
+    background: #f4efe6;
+    font-family: system-ui, sans-serif;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+  }
+  .wheel-spin {
+    animation: spin 1.2s linear infinite;
+    transform-origin: center;
+    transform-box: view-box;
+  }
+  .rider {
+    animation: bob 0.6s ease-in-out infinite alternate;
+  }
+  footer {
+    margin-top: 12px;
+    color: #6b6257;
+    font-size: 14px;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+</style>
+</head>
+<body>
+<div class="stage">
+<svg width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="title desc">
+<title id="title">鹈鹕骑自行车</title>
+<desc id="desc">A pelican pedals a bicycle along a road while the background scrolls past.</desc>
+<defs>
+<!-- Sky gradient: light blue at the top, warm paper at the bottom. -->
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#bfe3f5"/>
+<stop offset=".6" stop-color="#e3f1f7"/>
+<stop offset="1" stop-color="#f4efe6"/>
+</linearGradient>
+<!-- One spoked wheel, defined once and reused for the front and the second wheel. -->
+<g id="wheel">
+<circle r="46" fill="none" stroke="#333" stroke-width="6"/>
+<circle r="5" fill="#333"/>
+<path d="M0 -46 L0 46 M-46 0 L46 0 M-32 -32 L32 32 M-32 32 L32 -32" stroke="#666" stroke-width="1.5"/>
+</g>
+<!-- Pedal crank; it turns with the same period as the wheels. -->
+<g id="crank">
+<path d="M0 0 L0 -18" stroke="#444" stroke-width="4" stroke-linecap="round"/>
+<rect x="-7" y="-21" width="14" height="5" rx="1.5" fill="#222"/>
+</g>
+<!-- A cloud shape, reused for the sky. -->
+<path id="cloud" d="M0 20 Q0 0 20 4 Q30 -10 48 2 Q66 -2 66 16 Q80 20 70 30 L4 30 Q-8 28 0 20 Z" fill="#fff"/>
+</defs>
+
+<!-- Background: the sky and the clouds drift to the left. -->
+<rect width="640" height="400" fill="url(#sky)"/>
+<g opacity=".9">
+<use href="#cloud" x="80" y="50"/>
+<use href="#cloud" x="380" y="80"/>
+<use href="#cloud" x="560" y="40" opacity=".6"/>
+<use href="#cloud" x="700" y="96" opacity=".4"/>
+<animateTransform attributeName="transform" type="translate" from="0 0" to="-120 0" dur="12s" repeatCount="indefinite"/>
+</g>
+
+<!-- Road with dashes that move to sell the speed. -->
+<rect y="330" width="640" height="70" fill="#8d8173"/>
+<path d="M0 365 H640" stroke="#f4efe6" stroke-width="4" stroke-dasharray="30 24">
+<animate attributeName="stroke-dashoffset" from="0" to="54" dur="0.8s" repeatCount="indefinite"/>
+</path>
+
+<!-- Bicycle: frame, wheels, seat and the handlebar. -->
+<g transform="translate(200 0)">
+<g transform="translate(70 284)"><g class="wheel-spin"><use href="#wheel"/></g></g>
+<g transform="translate(230 284)"><g class="wheel-spin"><use href="#wheel"/></g></g>
+<path d="M70 284 L140 284 L200 210 L120 210 Z M140 284 L120 196 M200 210 L230 284 M200 210 L206 186" fill="none" stroke="#c0392b" stroke-width="6" stroke-linejoin="round"/>
+<!-- Seat and handlebar. -->
+<path d="M106 194 H136" stroke="#222" stroke-width="7" stroke-linecap="round"/>
+<path d="M196 186 Q212 178 220 188" fill="none" stroke="#222" stroke-width="5" stroke-linecap="round"/>
+<g transform="translate(140 284)">
+<use href="#crank">
+<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.2s" repeatCount="indefinite"/>
+</use>
+</g>
+
+<!-- Pelican: the rider bobs up and down with the pedals. -->
+<g class="rider">
+<!-- Body. -->
+<ellipse cx="128" cy="160" rx="44" ry="34" fill="#fdfdfd" stroke="#333" stroke-width="2"/>
+<!-- Wing, slightly lifted for balance. -->
+<path d="M100 150 Q128 128 158 156 Q130 172 100 150 Z" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+<!-- Neck and head. -->
+<path d="M160 140 Q176 104 168 84" fill="none" stroke="#fdfdfd" stroke-width="14" stroke-linecap="round"/>
+<circle cx="170" cy="80" r="14" fill="#fdfdfd" stroke="#333" stroke-width="2"/>
+<circle cx="175" cy="76" r="2.5" fill="#222"/>
+<!-- Beak with the throat pouch. -->
+<path d="M182 80 L236 92 L184 90 Z" fill="#f5b041" stroke="#a04000" stroke-width="1.5"/>
+<path d="M184 90 Q210 112 234 93" fill="#f8c471" stroke="#a04000" stroke-width="1.5"/>
+<!-- Legs follow the pedals. -->
+<path d="M120 188 L136 230 L140 266" fill="none" stroke="#f39c12" stroke-width="4" stroke-linecap="round">
+<animate attributeName="d" values="M120 188 L136 230 L140 266;M120 188 L150 226 L158 284;M120 188 L136 230 L140 266" dur="1.2s" repeatCount="indefinite"/>
+</path>
+</g>
+</g>
+</svg>
+<footer>SVG 动画 · 鹈鹕骑自行车</footer>
+</div>
+</body>
+</html>

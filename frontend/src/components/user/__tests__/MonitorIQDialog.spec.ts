@@ -44,6 +44,7 @@ describe('MonitorIQDialog sections', () => {
   it('shows both candy and pelican when both are enabled and both have results', async () => {
     const w = await mountDialog({ candy_enabled: true, pelican_enabled: true, items: [candyItem, pelicanItem] })
     expect(headings(w)).toEqual(['monitorIQ.tabs.candy', 'monitorIQ.tabs.pelican'])
+    expect(w.text()).toContain('monitorIQ.quality.normal')
   })
 
   it('still shows the pelican section with its failure reason when only candy has results', async () => {

@@ -19,8 +19,8 @@ import (
 // 渠道监控的智商（降智）检测：
 // 所有检测都在本服务内完成，用渠道自身的 endpoint / api key / 模型（监控的主模型或自定义模型）直接请求：
 //   - candy（糖果）：算术推理题，答案是否正确；
-//   - pelican（鹈鹕）：让模型生成「鹈鹕骑自行车」的 HTML/SVG 动画，按规则初步判定质量（见 channel_monitor_iq_pelican.go）；
-//   - creative（自由创作）：鹈鹕测试的配置，让模型自由创作一个 HTML 动画，判定规则相同。
+//   - pelican（鹈鹕）：用 html-judger 题库原文轮换出题，再按该判定器给出 normal / degraded / borderline；
+//   - creative（自由创作）：鹈鹕测试的配置，改用题库外提示词，仍用同一判定器（无同题参照）。
 //
 // 只保留最近的成功结果，每个 (监控, 模型, 检测类型) 最多 iqMaxPerModel 条（不按时间过期）。
 const (
@@ -64,7 +64,7 @@ type ChannelMonitorIQResult struct {
 	Model      string    `json:"model"`
 	Benchmark  string    `json:"benchmark"`
 	Verdict    string    `json:"verdict,omitempty"` // candy: passed / incorrect
-	Quality    string    `json:"quality,omitempty"` // pelican/creative: normal / degraded / unknown / suspicious
+	Quality    string    `json:"quality,omitempty"` // pelican/creative: normal / degraded / borderline
 	Label      string    `json:"label,omitempty"`
 	Reason     string    `json:"reason,omitempty"`
 	Answer     string    `json:"answer,omitempty"`
@@ -221,12 +221,12 @@ func (s *ChannelMonitorIQService) EnabledSet(ctx context.Context) (map[int64]boo
 const iqRingSegments = 10
 
 // RecentOutcomes 返回每个已开启智商检测的监控最近 iqRingSegments 条结果是否为绿色
-// （糖果：答对；鹈鹕/自由创作：请求成功即为绿色），按时间从旧到新排列。
+// （糖果：答对；鹈鹕/自由创作：判定为 normal 才是绿色，边界和降智都不是），按时间从旧到新排列。
 func (s *ChannelMonitorIQService) RecentOutcomes(ctx context.Context) (map[int64][]bool, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT monitor_id, passed FROM (
 			SELECT r.monitor_id,
-			       (r.benchmark <> 'candy' OR r.verdict = 'passed') AS passed,
+			       (CASE WHEN r.benchmark = 'candy' THEN r.verdict = 'passed' ELSE r.quality = 'normal' END) AS passed,
 			       ROW_NUMBER() OVER (PARTITION BY r.monitor_id ORDER BY r.created_at DESC, r.id DESC) AS rn
 			FROM channel_monitor_iq_results r
 			JOIN channel_monitor_iq_settings st ON st.monitor_id = r.monitor_id AND st.enabled = true

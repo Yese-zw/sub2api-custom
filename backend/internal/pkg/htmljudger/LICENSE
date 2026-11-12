@@ -1,0 +1,25 @@
+INTERNAL USE ONLY — PROPRIETARY
+
+Copyright (c) 2026 The html-judger authors. All rights reserved.
+
+This package, including its source code, documentation and bundled assets
+(model.json, references.json, prompts.json), is provided to you privately
+for internal evaluation and integration within your own services only.
+
+You may:
+  - use, build and modify this package inside your own internal systems;
+  - run it in your own production services that do not distribute it.
+
+You may not, without prior written permission from the copyright holder:
+  - redistribute, publish, sublicense or sell this package or any part of it,
+    in source or binary form, including the bundled assets;
+  - share it with any third party outside the arrangement under which you
+    received it;
+  - open-source it or include it in any publicly available repository,
+    image or package.
+
+THIS PACKAGE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THIS PACKAGE OR ITS USE.

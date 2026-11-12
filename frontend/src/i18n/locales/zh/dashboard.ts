@@ -532,6 +532,7 @@ export default {
     standardAnswerLabel: '标准答案',
     statRuns: '检测次数',
     statPassed: '通过',
+    statNormal: '正常',
     statRate: '通过率',
     duration: '耗时',
     title: '降智检测 · {name}',
@@ -551,7 +552,7 @@ export default {
     started: '开始',
     finished: '完成',
     promptSnapshot: '本次提示词快照',
-    quality: { normal: '正常', degraded: '疑似降智', unknown: '无法判定', suspicious: '可疑' },
+    quality: { normal: '正常', degraded: '疑似降智', borderline: '边界', unknown: '无法判定', suspicious: '可疑' },
     reason: '判定依据',
     preview: '鹈鹕动画隔离预览',
     viewSource: '查看源码',
@@ -560,7 +561,7 @@ export default {
     stopPreview: '停止预览',
     startPreview: '开始预览',
     noHtml: '该结果没有可预览的源码',
-    pelicanNote: '鹈鹕/自由创作展示模型生成的 HTML 动画，请求成功即为绿色，仅供人工对比。'
+    pelicanNote: '鹈鹕测试按题库原文轮换出题，并用降智判定器打分。绿色是正常，红色是疑似降智，黄色是边界，边界需要人工看。'
   },
   monitorCommon: {
     status: {

@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	judgerassets "github.com/Wei-Shaw/sub2api/internal/pkg/htmljudger/assets"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/htmljudger/judge"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,20 +24,38 @@ func TestExtractIQHTML(t *testing.T) {
 	})
 }
 
-func TestAssessIQHTML(t *testing.T) {
-	shapes := func(n int) string { return strings.Repeat(`<circle cx="1" cy="1" r="1"/>`, n) }
-	pad := strings.Repeat(" ", iqPelicanMinBytes)
+func TestIQBankPromptAt(t *testing.T) {
+	prompts := []string{"a", "b", "c"}
+	got, err := iqBankPromptAt(prompts, 0)
+	require.NoError(t, err)
+	require.Equal(t, "a", got)
+	got, err = iqBankPromptAt(prompts, 3)
+	require.NoError(t, err)
+	require.Equal(t, "a", got)
+	got, err = iqBankPromptAt(prompts, 4)
+	require.NoError(t, err)
+	require.Equal(t, "b", got)
+	_, err = iqBankPromptAt(nil, 0)
+	require.Error(t, err)
+}
 
-	q, _ := assessIQHTML("<svg>" + shapes(3) + "</svg>")
-	require.Equal(t, "degraded", q)
+func TestJudgeIQHTMLUsesBank(t *testing.T) {
+	j, err := judge.Load(judgerassets.FS)
+	require.NoError(t, err)
+	prompts := j.BankPrompts()
+	require.Len(t, prompts, 200)
+	require.Contains(t, prompts[0], "鹈鹕")
+	require.True(t, j.InBank(prompts[0]))
+	require.False(t, j.InBank(iqCreativePrompt))
 
-	q, _ = assessIQHTML("<svg>" + shapes(20) + "<style>@keyframes spin{}</style>" + pad + "</svg>")
-	require.Equal(t, iqPelicanQualityNormal, q)
+	quality, reason, err := judgeIQHTML(prompts[0], "<svg><circle r=\"1\"/></svg>")
+	require.NoError(t, err)
+	require.Contains(t, []string{"normal", "degraded", "borderline"}, quality)
+	require.Contains(t, reason, quality)
+	require.True(t, strings.Contains(reason, "v6_pool") || strings.Contains(reason, "v6_bank"))
 
-	q, reason := assessIQHTML("<svg>" + shapes(20) + pad + "</svg>")
-	require.Equal(t, "suspicious", q)
-	require.Contains(t, reason, "缺少动画")
-
-	q, _ = assessIQHTML("<svg>" + shapes(10) + "<animate/>" + pad + "</svg>")
-	require.Equal(t, "suspicious", q)
+	off, offReason, err := judgeIQHTML(iqCreativePrompt, "<svg><circle r=\"1\"/></svg>")
+	require.NoError(t, err)
+	require.Contains(t, []string{"normal", "degraded"}, off)
+	require.Contains(t, offReason, "raw_v5b")
 }
