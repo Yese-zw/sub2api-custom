@@ -281,13 +281,11 @@
         @ipGeoBatchFailed="handleIpGeoBatchFailed"
       />
     </div>
-    </RxStage>
   </AppLayout>
 
 </template>
 
 <script setup lang="ts">
-import RxStage from '@/components/common/RxStage.vue'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
