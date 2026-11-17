@@ -34,8 +34,13 @@ func TestGroupRequestsDecodeForceOpenAIUltrafast(t *testing.T) {
 	require.False(t, createReq.ForceOpenAIFast)
 
 	var updateReq UpdateGroupRequest
-	require.NoError(t, json.Unmarshal([]byte(`{"force_openai_ultrafast":false}`), &updateReq))
+	require.NoError(t, json.Unmarshal([]byte(`{"force_openai_fast":false,"force_openai_ultrafast":true}`), &updateReq))
 	require.NotNil(t, updateReq.ForceOpenAIUltrafast)
-	require.False(t, *updateReq.ForceOpenAIUltrafast)
-	require.Nil(t, updateReq.ForceOpenAIFast)
+	require.True(t, *updateReq.ForceOpenAIUltrafast)
+	require.NotNil(t, updateReq.ForceOpenAIFast)
+	require.False(t, *updateReq.ForceOpenAIFast)
+
+	var omitted UpdateGroupRequest
+	require.NoError(t, json.Unmarshal([]byte(`{}`), &omitted))
+	require.Nil(t, omitted.ForceOpenAIUltrafast)
 }

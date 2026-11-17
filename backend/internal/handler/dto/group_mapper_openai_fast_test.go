@@ -27,11 +27,13 @@ func TestGroupMapperExposesForceOpenAIFastOnlyToAdmins(t *testing.T) {
 
 func TestGroupMapperExposesForceOpenAIUltrafastOnlyToAdmins(t *testing.T) {
 	group := &service.Group{
-		ID: 8, Name: "ultrafast", Platform: service.PlatformOpenAI, Status: service.StatusActive, ForceOpenAIUltrafast: true,
+		ID: 7, Name: "ultrafast", Platform: service.PlatformOpenAI, Status: service.StatusActive, ForceOpenAIUltrafast: true,
 	}
+
 	userJSON, err := json.Marshal(GroupFromService(group))
 	require.NoError(t, err)
 	require.NotContains(t, string(userJSON), "force_openai_ultrafast")
+
 	adminJSON, err := json.Marshal(GroupFromServiceAdmin(group))
 	require.NoError(t, err)
 	require.Contains(t, string(adminJSON), `"force_openai_ultrafast":true`)

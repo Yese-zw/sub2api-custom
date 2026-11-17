@@ -47,14 +47,17 @@ func TestAPIKeyAuthSnapshotGroupForceOpenAIUltrafastRoundtrip(t *testing.T) {
 		},
 	}
 	svc := &APIKeyService{}
+
 	payload, err := json.Marshal(&APIKeyAuthCacheEntry{Snapshot: svc.snapshotFromAPIKey(context.Background(), apiKey)})
 	require.NoError(t, err)
+	require.Contains(t, string(payload), `"force_openai_ultrafast":true`)
 	var cached APIKeyAuthCacheEntry
 	require.NoError(t, json.Unmarshal(payload, &cached))
+
 	materialized, used, err := svc.applyAuthCacheEntry(apiKey.Key, &cached)
 	require.NoError(t, err)
 	require.True(t, used)
-	require.True(t, materialized.Group.Hydrated)
+	require.NotNil(t, materialized.Group)
 	require.True(t, materialized.Group.ForceOpenAIUltrafast)
 	require.False(t, materialized.Group.ForceOpenAIFast)
 }

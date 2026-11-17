@@ -1,18 +1,69 @@
 <template>
   <AppLayout>
-    <RxStage wide>
-    <div class="usage-page space-y-6">
-      <div class="usage-range rx-glass">
-        <span class="usage-range__label">{{ t('admin.dashboard.timeRange') }}</span>
-        <DateRangePicker
-          v-model:start-date="startDate"
-          v-model:end-date="endDate"
-          @change="onDateRangeChange"
-        />
-        <span class="usage-range__divider" aria-hidden="true"></span>
-        <span class="usage-range__label">{{ t('admin.dashboard.granularity') }}</span>
-        <div class="w-28">
-          <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
+    <div class="space-y-6">
+      <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
+
+      <div class="space-y-4">
+        <div class="card p-4">
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.timeRange') }}:</span>
+              <DateRangePicker
+                v-model:start-date="startDate"
+                v-model:end-date="endDate"
+                @change="onDateRangeChange"
+              />
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.granularity') }}:</span>
+              <div class="w-28">
+                <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ModelDistributionChart
+            v-model:metric="modelDistributionMetric"
+            :model-stats="requestedModelStats"
+            :loading="modelStatsLoading"
+            :show-source-toggle="false"
+            :show-metric-toggle="true"
+            :enable-breakdown="false"
+            :show-account-cost="false"
+            :start-date="startDate"
+            :end-date="endDate"
+          />
+          <GroupDistributionChart
+            v-model:metric="groupDistributionMetric"
+            :group-stats="groupStats"
+            :loading="chartsLoading"
+            :show-metric-toggle="true"
+            :enable-breakdown="false"
+            :show-account-cost="false"
+            :start-date="startDate"
+            :end-date="endDate"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <EndpointDistributionChart
+            v-model:source="endpointDistributionSource"
+            v-model:metric="endpointDistributionMetric"
+            :endpoint-stats="inboundEndpointStats"
+            :upstream-endpoint-stats="upstreamEndpointStats"
+            :endpoint-path-stats="endpointPathStats"
+            :loading="endpointStatsLoading"
+            :show-source-toggle="false"
+            :show-metric-toggle="true"
+            :enable-breakdown="false"
+            :show-account-cost="false"
+            :title="t('usage.endpointDistribution')"
+            :start-date="startDate"
+            :end-date="endDate"
+          />
+          <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
         </div>
       </div>
       <UsageKpiBento :stats="usageStats" :trend="trendData" :loading="loading || chartsLoading" />
