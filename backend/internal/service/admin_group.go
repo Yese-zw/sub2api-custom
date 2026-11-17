@@ -644,9 +644,6 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 	sanitizeGroupOpenAIFast(group)
-	if group.ForceOpenAIFast && group.ForceOpenAIUltrafast {
-		return nil, infraerrors.BadRequest("INVALID_OPENAI_SERVICE_TIER_POLICY", "Fast and Ultrafast cannot both be forced")
-	}
 	if group.Platform != PlatformOpenAI && group.Platform != PlatformComposite {
 		group.AllowLive = false
 	}
@@ -1023,15 +1020,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.ForceOpenAIFast != nil {
 		group.ForceOpenAIFast = *input.ForceOpenAIFast
-		if *input.ForceOpenAIFast && input.ForceOpenAIUltrafast == nil {
-			group.ForceOpenAIUltrafast = false
-		}
-	}
-	if input.ForceOpenAIUltrafast != nil {
-		group.ForceOpenAIUltrafast = *input.ForceOpenAIUltrafast
-		if *input.ForceOpenAIUltrafast && input.ForceOpenAIFast == nil {
-			group.ForceOpenAIFast = false
-		}
 	}
 	if input.ForceOpenAIUltrafast != nil {
 		group.ForceOpenAIUltrafast = *input.ForceOpenAIUltrafast
@@ -1087,9 +1075,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 	sanitizeGroupOpenAIFast(group)
-	if group.ForceOpenAIFast && group.ForceOpenAIUltrafast {
-		return nil, infraerrors.BadRequest("INVALID_OPENAI_SERVICE_TIER_POLICY", "Fast and Ultrafast cannot both be forced")
-	}
 	if group.Platform != PlatformOpenAI && group.Platform != PlatformComposite {
 		group.AllowLive = false
 	}

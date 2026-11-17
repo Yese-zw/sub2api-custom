@@ -1280,10 +1280,6 @@ export default {
       },
       openaiFast: {
         title: 'OpenAI 服务档位',
-        policy: '请求策略',
-        client: '跟随客户端',
-        forceFastOption: '强制 Fast',
-        forceUltrafast: '强制 Ultrafast',
         force: '强制使用 Fast（priority）',
         hint: '开启后，此分组的 OpenAI 请求会强制写入 service_tier=priority；全局 Fast/Flex 策略仍可过滤或拦截。保存后新请求立即生效，已建立的 WebSocket 会话需重连。',
         forceUltrafast: '强制使用 Ultra Fast（ultrafast）',

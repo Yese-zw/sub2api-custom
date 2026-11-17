@@ -124,20 +124,10 @@
           default-sort-order="asc"
           @sort="handleSort"
         >
-          <template #cell-name="{ value, row }">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-              <span
-                v-if="supportsGroupOpenAIFast(row.platform) && groupOpenAIServiceTier(row) !== 'client'"
-                :title="t(row.force_openai_ultrafast ? 'admin.groups.openaiFast.forceUltrafast' : 'admin.groups.openaiFast.force')"
-                :class="[
-                  'inline-flex rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap',
-                  row.force_openai_ultrafast
-                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
-                ]"
-              >{{ row.force_openai_ultrafast ? 'Ultrafast' : 'Fast' }}</span>
-            </div>
+          <template #cell-name="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{
+              value
+            }}</span>
           </template>
 
           <template #cell-id="{ value }">
@@ -1589,15 +1579,19 @@
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             {{ t("admin.groups.openaiFast.title") }}
           </h4>
-          <div class="space-y-2">
-            <div class="text-sm text-gray-600 dark:text-gray-400">{{ t("admin.groups.openaiFast.policy") }}</div>
-            <GroupServiceTierSelector
-              data-testid="create-openai-service-tier"
-              :model-value="groupOpenAIServiceTier(createForm)"
-              :disabled="submitting"
-              @update:model-value="setGroupOpenAIServiceTier(createForm, $event)"
+          <div class="flex items-center justify-between gap-4">
+            <label class="text-sm text-gray-600 dark:text-gray-400">
+              {{ t("admin.groups.openaiFast.force") }}
+            </label>
+            <Toggle
+              data-testid="create-force-openai-fast"
+              :aria-label="t('admin.groups.openaiFast.force')"
+              v-model="createForm.force_openai_fast"
             />
           </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {{ t("admin.groups.openaiFast.hint") }}
+          </p>
           <div class="flex items-center justify-between gap-4 mt-4">
             <label class="text-sm text-gray-600 dark:text-gray-400">
               {{ t("admin.groups.openaiFast.forceUltrafast") }}
@@ -3262,15 +3256,19 @@
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             {{ t("admin.groups.openaiFast.title") }}
           </h4>
-          <div class="space-y-2">
-            <div class="text-sm text-gray-600 dark:text-gray-400">{{ t("admin.groups.openaiFast.policy") }}</div>
-            <GroupServiceTierSelector
-              data-testid="edit-openai-service-tier"
-              :model-value="groupOpenAIServiceTier(editForm)"
-              :disabled="submitting"
-              @update:model-value="setGroupOpenAIServiceTier(editForm, $event)"
+          <div class="flex items-center justify-between gap-4">
+            <label class="text-sm text-gray-600 dark:text-gray-400">
+              {{ t("admin.groups.openaiFast.force") }}
+            </label>
+            <Toggle
+              data-testid="edit-force-openai-fast"
+              :aria-label="t('admin.groups.openaiFast.force')"
+              v-model="editForm.force_openai_fast"
             />
           </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {{ t("admin.groups.openaiFast.hint") }}
+          </p>
           <div class="flex items-center justify-between gap-4 mt-4">
             <label class="text-sm text-gray-600 dark:text-gray-400">
               {{ t("admin.groups.openaiFast.forceUltrafast") }}
@@ -4362,7 +4360,6 @@ import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesMo
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
 import ReasoningEffortPolicyFields from "@/components/admin/group/ReasoningEffortPolicyFields.vue";
 import CodexManifestAccountsField from "@/components/admin/group/CodexManifestAccountsField.vue";
-import GroupServiceTierSelector from "@/components/admin/group/GroupServiceTierSelector.vue";
 import PricingEntryCard from "@/components/admin/channel/PricingEntryCard.vue";
 import type { PricingFormEntry } from "@/components/admin/channel/types";
 import {
@@ -4392,8 +4389,6 @@ import {
 import {
   normalizeGroupOpenAIFast,
   supportsGroupOpenAIFast,
-  groupOpenAIServiceTier,
-  setGroupOpenAIServiceTier,
 } from "./groupsOpenAIFast";
 import {
   addCustomModelAllowlistItem,

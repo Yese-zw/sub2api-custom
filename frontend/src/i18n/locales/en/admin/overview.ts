@@ -1282,10 +1282,6 @@ export default {
       },
       openaiFast: {
         title: 'OpenAI service tier',
-        policy: 'Request policy',
-        client: 'Client',
-        forceFastOption: 'Force Fast',
-        forceUltrafast: 'Force Ultrafast',
         force: 'Force Fast (priority)',
         hint: 'Forces service_tier=priority on OpenAI requests in this group. The global Fast/Flex policy can still filter or block it. New requests update immediately after saving; existing WebSocket sessions must reconnect.',
         forceUltrafast: 'Force Ultra Fast (ultrafast)',
