@@ -19,9 +19,10 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 
 ChartJS.register(CategoryScale, LineController, LineElement, LinearScale, LogarithmicScale, PointElement, ScatterController, Tooltip)
 
-const RADAR_PAGE_URL = 'https://codexradar.com/%E9%9B%B7%E8%BE%BE%E9%9B%B7%E8%BE%BE'
+const RADAR_PAGE_URL = 'https://codexradar.com/'
 const RADAR_ORIGIN = 'https://codexradar.com'
-const RADAR_SECTION_SELECTOR = 'section.intelligence-efficiency'
+const RADAR_SECTION_SELECTOR = '#stationmaster-round'
+const LEGACY_RADAR_SECTION_SELECTOR = 'section.intelligence-efficiency'
 const RADAR_DATA_URL = `${RADAR_ORIGIN}/data/intelligence-efficiency.json`
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
@@ -60,6 +61,18 @@ interface RadarPayload {
   points?: RadarPoint[]
   history?: Array<{ at: string; points: RadarPoint[] }>
 }
+
+const STATION_HOST_CSS = `
+:host {
+  display: block;
+  width: min(1260px, 100%);
+  margin: 0 auto;
+  background: var(--bg, #050806);
+  color: var(--text, #e2e9e4);
+  font-family: var(--font-sans, system-ui, "PingFang SC", "Noto Sans SC", sans-serif);
+  border-radius: 12px;
+}
+`
 
 const SHADOW_OVERRIDES = `
 :host {
@@ -313,54 +326,90 @@ async function loadRadar() {
   errorMessage.value = ''
 
   try {
-    const [pageResponse, dataResponse] = await Promise.all([
-      fetch(RADAR_PAGE_URL, {
-        cache: 'no-store',
-        referrerPolicy: 'strict-origin-when-cross-origin',
-      }),
-      fetch(RADAR_DATA_URL, { cache: 'no-store' }),
-    ])
-    if (!pageResponse.ok || !dataResponse.ok) {
-      throw new Error(`HTTP ${pageResponse.status} / ${dataResponse.status}`)
-    }
-
-    const [html, payload] = await Promise.all([
-      pageResponse.text(),
-      dataResponse.json() as Promise<RadarPayload>,
-    ])
-    const points = validRadarPoints(payload.points)
-    if (points.length === 0) {
-      throw new Error('intelligence-efficiency points missing')
-    }
-
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(html, 'text/html')
-    const section = doc.querySelector<HTMLElement>(RADAR_SECTION_SELECTOR)
-
-    if (!section) {
-      throw new Error('intelligence-efficiency section missing')
-    }
-
-    section.querySelector('.intelligence-efficiency-callout')?.remove()
-    absolutizeSectionUrls(section)
-    pruneRadarSection(section)
-    const sanitizedSection = DOMPurify.sanitize(section.outerHTML, {
-      USE_PROFILES: { html: true, svg: true, svgFilters: true },
-      ADD_ATTR: ['style', 'target', 'rel'],
-      FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
+    const pageResponse = await fetch(RADAR_PAGE_URL, {
+      cache: 'no-store',
+      referrerPolicy: 'strict-origin-when-cross-origin',
     })
-    const styleText = Array.from(doc.querySelectorAll('style'))
-      .map((style) => style.textContent || '')
-      .join('\n')
+    if (!pageResponse.ok) {
+      throw new Error(`HTTP ${pageResponse.status}`)
+    }
 
-    await nextTick()
-    renderRadar(styleText, sanitizedSection, payload, points)
+    const html = await pageResponse.text()
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    const station = doc.querySelector<HTMLElement>(RADAR_SECTION_SELECTOR)
+    if (station) {
+      const styleText = await loadRadarStyles(doc)
+      station.querySelectorAll('script, link, iframe, object, embed').forEach((node) => node.remove())
+      absolutizeSectionUrls(station)
+      const sanitizedSection = sanitizeRadarSection(station)
+      await nextTick()
+      renderRadar(styleText, sanitizedSection, 'station')
+      return
+    }
+
+    await renderLegacyRadar(doc)
   } catch (error) {
     console.error('Failed to load GPT radar:', error)
     errorMessage.value = '降智雷达加载失败，请稍后重试。'
   } finally {
     loading.value = false
   }
+}
+
+async function renderLegacyRadar(doc: Document) {
+  const dataResponse = await fetch(RADAR_DATA_URL, { cache: 'no-store' })
+  if (!dataResponse.ok) {
+    throw new Error(`HTTP ${dataResponse.status}`)
+  }
+  const payload = await dataResponse.json() as RadarPayload
+  const points = validRadarPoints(payload.points)
+  if (points.length === 0) {
+    throw new Error('intelligence-efficiency points missing')
+  }
+
+  const section = doc.querySelector<HTMLElement>(LEGACY_RADAR_SECTION_SELECTOR)
+  if (!section) {
+    throw new Error('intelligence-efficiency section missing')
+  }
+
+  section.querySelector('.intelligence-efficiency-callout')?.remove()
+  absolutizeSectionUrls(section)
+  pruneRadarSection(section)
+  const styleText = Array.from(doc.querySelectorAll('style'))
+    .map((style) => style.textContent || '')
+    .join('\n')
+  await nextTick()
+  renderRadar(`${styleText}\n${SHADOW_OVERRIDES}`, sanitizeRadarSection(section), 'legacy', payload, points)
+}
+
+function sanitizeRadarSection(section: HTMLElement): string {
+  return DOMPurify.sanitize(section.outerHTML, {
+    USE_PROFILES: { html: true, svg: true, svgFilters: true },
+    ADD_ATTR: ['style', 'target', 'rel'],
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
+  })
+}
+
+async function loadRadarStyles(doc: Document): Promise<string> {
+  const hrefs = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))
+    .map((link) => link.getAttribute('href') || '')
+    .filter((href) => /(?:^|\/)(?:radar-ui|codex-intelligence-ui|intelligence-heat)\.css(?:\?|$)/.test(href))
+  const sheets = await Promise.all([...new Set(hrefs)].map(async (href) => {
+    try {
+      const response = await fetch(new URL(href, RADAR_ORIGIN).toString(), { cache: 'no-store' })
+      if (!response.ok) return ''
+      return scopeRadarCSS(await response.text())
+    } catch {
+      return ''
+    }
+  }))
+  return `${sheets.filter(Boolean).join('\n')}\n${STATION_HOST_CSS}`
+}
+
+function scopeRadarCSS(css: string): string {
+  return css
+    .replace(/:root\[([^\]]+)\]/g, ':host([$1])')
+    .replace(/:root\b/g, ':host')
 }
 
 function validRadarPoints(points: RadarPayload['points']): RadarPoint[] {
@@ -377,17 +426,15 @@ function validRadarPoints(points: RadarPayload['points']): RadarPoint[] {
 }
 
 function absolutizeSectionUrls(section: HTMLElement) {
-  for (const element of section.querySelectorAll<HTMLElement>('[src]')) {
-    const src = element.getAttribute('src')
-    if (src) {
-      element.setAttribute('src', new URL(src, RADAR_ORIGIN).toString())
-    }
-  }
-
-  for (const element of section.querySelectorAll<HTMLElement>('[href]')) {
-    const href = element.getAttribute('href')
-    if (href && !href.startsWith('#')) {
-      element.setAttribute('href', new URL(href, RADAR_ORIGIN).toString())
+  for (const attr of ['src', 'href', 'poster'] as const) {
+    for (const element of section.querySelectorAll<HTMLElement>(`[${attr}]`)) {
+      const value = element.getAttribute(attr)
+      if (!value || value.startsWith('#') || value.startsWith('data:') || value.startsWith('blob:') || value.startsWith('mailto:')) continue
+      try {
+        element.setAttribute(attr, new URL(value, RADAR_ORIGIN).toString())
+      } catch {
+        // 保留无法解析的地址，避免整页加载失败。
+      }
     }
   }
 }
@@ -406,22 +453,52 @@ function pruneRadarSection(section: HTMLElement) {
   }
 }
 
-function renderRadar(styleText: string, html: string, payload: RadarPayload, points: RadarPoint[]) {
+function renderRadar(
+  styleText: string,
+  html: string,
+  mode: 'station' | 'legacy',
+  payload?: RadarPayload,
+  points?: RadarPoint[],
+) {
   const host = radarHost.value
   if (!host) return
 
   cleanupRadar()
+  host.dataset.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
   shadowRoot = host.shadowRoot || host.attachShadow({ mode: 'open' })
   shadowRoot.innerHTML = ''
 
   const styleElement = document.createElement('style')
-  styleElement.textContent = `${styleText}\n${SHADOW_OVERRIDES}`
+  styleElement.textContent = styleText
   shadowRoot.appendChild(styleElement)
 
   const container = document.createElement('div')
   container.innerHTML = html
   shadowRoot.appendChild(container)
-  populateRadarData(shadowRoot, payload, points)
+  if (mode === 'legacy' && payload && points) {
+    populateRadarData(shadowRoot, payload, points)
+    return
+  }
+  wireRadarTabs(container)
+}
+
+function wireRadarTabs(container: HTMLElement) {
+  const onClick = (event: MouseEvent) => {
+    const tab = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-cir-tab]') : null
+    if (!tab) return
+    const name = tab.dataset.cirTab
+    container.querySelectorAll<HTMLButtonElement>('[data-cir-tab]').forEach((item) => {
+      const selected = item === tab
+      item.setAttribute('aria-selected', selected ? 'true' : 'false')
+      item.tabIndex = selected ? 0 : -1
+    })
+    container.querySelectorAll<HTMLElement>('[data-cir-panel]').forEach((panel) => {
+      if (panel.dataset.cirPanel === name) panel.removeAttribute('hidden')
+      else panel.setAttribute('hidden', '')
+    })
+  }
+  container.addEventListener('click', onClick)
+  cleanupCallbacks.push(() => container.removeEventListener('click', onClick))
 }
 
 function populateRadarData(root: ShadowRoot, payload: RadarPayload, points: RadarPoint[]) {

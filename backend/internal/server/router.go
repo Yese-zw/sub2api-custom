@@ -115,6 +115,8 @@ func registerRoutes(
 ) {
 	// 通用路由（健康检查、状态等）
 	routes.RegisterCommonRoutes(r)
+	// 鹈鹕预览壳必须绕过前端兜底，否则会被主站 index 和带 nonce 的 CSP 覆盖。
+	r.GET("/channel-monitor-iq-preview", handler.ServeChannelMonitorIQPreview)
 
 	// API v1
 	v1 := r.Group("/api/v1")

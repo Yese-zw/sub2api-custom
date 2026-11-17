@@ -634,6 +634,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			"/antigravity/test",
 			"/setup/init",
 			"/health",
+			"/channel-monitor-iq-preview",
 			"/.well-known/oauth-protected-resource",
 			"/.well-known/oauth-protected-resource/api/v1/mcp",
 			"/.well-known/oauth-authorization-server",
@@ -804,6 +805,7 @@ func TestEmbeddedFrontendBypassesBareVideoAPIRoutes(t *testing.T) {
 func TestEmbeddedFrontendBypassesBareAPIAliases(t *testing.T) {
 	for _, path := range []string{
 		"/chat/completions",
+		"/channel-monitor-iq-preview",
 		"/embeddings",
 		"/messages/count_tokens",
 		"/models/gpt-5.5",
@@ -936,6 +938,7 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 			"/antigravity/test",
 			"/setup/init",
 			"/health",
+			"/channel-monitor-iq-preview",
 			"/.well-known/oauth-protected-resource",
 			"/.well-known/oauth-protected-resource/api/v1/mcp",
 			"/.well-known/oauth-authorization-server",

@@ -118,7 +118,6 @@
                   </template>
 
                   <template v-else>
-                    <p v-if="selectedByKind[kind]!.reason" class="iq-reason">{{ selectedByKind[kind]!.reason }}</p>
                     <details v-if="selectedByKind[kind]!.label" class="iq-details">
                       <summary>{{ t('monitorIQ.promptSnapshot') }}</summary>
                       <pre>{{ selectedByKind[kind]!.label }}</pre>
@@ -136,11 +135,13 @@
                       <p v-if="detailLoading" class="iq-state iq-state--inline">{{ t('monitorIQ.loading') }}</p>
                       <iframe
                         v-else-if="previewing && detail?.html"
+                        :key="detail?.id"
                         :title="t('monitorIQ.preview')"
                         sandbox="allow-scripts"
                         referrerpolicy="no-referrer"
-                        :srcdoc="previewDoc"
+                        :src="iqPreviewURL"
                         class="iq-frame"
+                        @load="sendPreview"
                       ></iframe>
                       <pre v-if="showSource && detail?.html" class="iq-source">{{ detail.html }}</pre>
                     </template>
@@ -183,8 +184,8 @@ const CANDY_PROMPT =
   '不许联网，自己计算。只回答最少取出的糖果总数，使用一个整数，不要解释。'
 
 const MAX_VISIBLE = 10
-const CSP =
-  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'"
+// 独立文档，避免主站带 nonce 的 CSP 禁掉预览里的内联脚本，导致动画无法播放和暂停。
+const iqPreviewURL = '/channel-monitor-iq-preview'
 
 const loading = ref(false)
 const error = ref('')
@@ -260,10 +261,14 @@ function statsOf(kind: IQKind) {
   return { total: list.length, passed, last: list[0]?.started_at ?? '' }
 }
 
-const previewDoc = computed(() => {
+function sendPreview(event: Event) {
+  const frame = event.target
+  if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow) return
   const html = detail.value?.html ?? ''
-  return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="no-referrer">${html}`
-})
+  if (!html) return
+  // 沙箱页面是不透明来源，只能用 * 投递；页面本身只接受父窗口的消息。
+  frame.contentWindow.postMessage({ type: 'iq-preview', html }, '*')
+}
 
 function itemLabel(item: MonitorIQResult): string {
   if (item.benchmark === 'candy') {
@@ -517,7 +522,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .is-fail { color: #ef4444; }
 .is-border { color: #d97706; }
 .is-neutral { color: var(--rx-muted, #64748b); }
-.iq-reason { margin: 0.7rem 0 0; font-size: 0.78rem; color: var(--rx-ink-2, #334155); }
 
 /* 选中那次的详情 */
 .iq-run {

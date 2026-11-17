@@ -21,6 +21,7 @@ const candyItem = {
 }
 const pelicanItem = {
   id: 2, monitor_id: 9, model: 'gpt-x', benchmark: 'pelican', quality: 'normal', label: 'ok',
+  reason: 'normal · v6_bank · z=0.081 · margin -1.077',
   has_html: false, duration_ms: 2000,
   started_at: '2026-11-02T10:01:00Z', finished_at: '2026-11-02T10:01:02Z',
 }
@@ -45,6 +46,7 @@ describe('MonitorIQDialog sections', () => {
     const w = await mountDialog({ candy_enabled: true, pelican_enabled: true, items: [candyItem, pelicanItem] })
     expect(headings(w)).toEqual(['monitorIQ.tabs.candy', 'monitorIQ.tabs.pelican'])
     expect(w.text()).toContain('monitorIQ.quality.normal')
+    expect(w.text()).not.toContain('v6_bank')
   })
 
   it('still shows the pelican section with its failure reason when only candy has results', async () => {

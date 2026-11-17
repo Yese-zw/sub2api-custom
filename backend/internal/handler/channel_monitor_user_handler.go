@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
@@ -287,4 +288,52 @@ func (h *ChannelMonitorUserHandler) GetIQResult(c *gin.Context) {
 		return
 	}
 	response.Success(c, result)
+}
+
+// 预览页单独下发允许内联脚本的 CSP。主站 CSP 带 nonce，srcdoc 会继承它，
+// 模型生成的播放/暂停脚本和按钮事件因此无法执行。
+const channelMonitorIQPreviewHTML = `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<title>预览</title>
+</head>
+<body>
+<script>
+(function () {
+  if (window.parent === window) return
+  window.addEventListener('message', function (event) {
+    if (event.source !== window.parent) return
+    if (!event.origin || event.origin === 'null') return
+    var data = event.data
+    if (!data || data.type !== 'iq-preview' || typeof data.html !== 'string') return
+    var parsed = new DOMParser().parseFromString(data.html, 'text/html')
+    document.replaceChild(document.importNode(parsed.documentElement, true), document.documentElement)
+    var scripts = Array.prototype.slice.call(document.querySelectorAll('script'))
+    scripts.forEach(function (old) {
+      var created = document.createElement('script')
+      for (var i = 0; i < old.attributes.length; i++) {
+        created.setAttribute(old.attributes[i].name, old.attributes[i].value)
+      }
+      created.text = old.textContent || ''
+      old.replaceWith(created)
+    })
+  })
+})()
+</script>
+</body>
+</html>`
+
+const channelMonitorIQPreviewCSP = "default-src 'none'; script-src 'unsafe-inline'; script-src-attr 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; navigate-to 'none'"
+
+// ServeChannelMonitorIQPreview GET /channel-monitor-iq-preview
+// 空白同源预览壳。动画 HTML 由父页面 postMessage 送入，不携带登录凭证。
+func ServeChannelMonitorIQPreview(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Header("Referrer-Policy", "no-referrer")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("X-Frame-Options", "SAMEORIGIN")
+	c.Header("Content-Security-Policy", channelMonitorIQPreviewCSP)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(channelMonitorIQPreviewHTML))
 }
