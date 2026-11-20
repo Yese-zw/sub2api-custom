@@ -97,6 +97,7 @@ var overrides = map[string]string{
 	"POST /accounts/sync/crs":                     "accounts.create",
 	"POST /accounts/usage/batch":                  "accounts.view",
 	"POST /accounts/today-stats/batch":            "accounts.view",
+	"POST /accounts/cache-rate/batch":             "accounts.view",
 	"POST /accounts/check-mixed-channel":          "accounts.view",
 	"POST /accounts/sync/crs/preview":             "accounts.view",
 	"POST /accounts/models/sync-upstream-preview": "accounts.view",

@@ -30,16 +30,21 @@
         <button
           v-if="user && communityGroupImage"
           type="button"
-          class="community-group-trigger group flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/50"
+          class="community-group-trigger"
           :aria-label="t('common.communityGroupReward')"
           :title="t('common.communityGroupReward')"
           @click="communityGroupDialogOpen = true"
         >
-          <Icon name="users" size="sm" />
+          <span class="community-group-icon" aria-hidden="true">
+            <Icon name="chat" size="sm" />
+            <span class="community-group-dot"></span>
+          </span>
           <span class="community-group-name">{{ t('common.communityGroup') }}</span>
-          <span class="community-group-reward rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white transition-colors group-hover:bg-emerald-800 dark:bg-emerald-500 dark:text-emerald-950 dark:group-hover:bg-emerald-400">
+          <span class="community-group-reward">
+            <Icon name="gift" size="xs" />
             {{ t('common.communityGroupReward') }}
           </span>
+          <span class="community-group-shine" aria-hidden="true"></span>
         </button>
 
         <!-- 工具坞：公告 / 文档 / 模型广场 / 语言，收进同一枚玻璃胶囊 -->
@@ -47,17 +52,18 @@
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
-        <!-- Docs Link -->
-        <a
-          v-if="docUrl"
-          :href="docUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="topbar-dock__item hidden sm:flex"
+        <!-- Docs (站内文档，位于模型广场左侧) -->
+        <router-link
+          v-if="user"
+          to="/docs"
+          :title="t('docsCenter.title')"
+          :aria-label="t('docsCenter.title')"
+          class="topbar-dock__item flex"
+          :class="{ 'is-active': route.path === '/docs' }"
         >
           <Icon name="book" size="sm" />
           <span class="hidden sm:inline">{{ t('nav.docs') }}</span>
-        </a>
+        </router-link>
 
         <!-- Model Plaza Entry (icon only below sm) -->
         <router-link
@@ -325,7 +331,6 @@ const communityGroupImage = computed(() => sanitizeUrl(
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
-const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
@@ -441,25 +446,150 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* ---------- 交流群入口：渐变胶囊 + 呼吸点 + 扫光 ---------- */
 .community-group-trigger {
-  min-width: 36px;
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  overflow: hidden;
+  padding: 0 0.4rem 0 0.3rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #0d9488 55%, #0891b2 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 14px -4px rgba(13, 148, 136, 0.55);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.community-group-trigger:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 8px 20px -6px rgba(13, 148, 136, 0.7);
+}
+
+.community-group-trigger:active {
+  transform: translateY(0);
+}
+
+.community-group-trigger:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+.community-group-icon {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.community-group-trigger:hover .community-group-icon {
+  transform: rotate(-12deg) scale(1.06);
+}
+
+/* 右上角呼吸红点，提示有福利 */
+.community-group-dot {
+  position: absolute;
+  top: 0.05rem;
+  right: 0.05rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #fb7185;
+  box-shadow: 0 0 0 2px #0f9f8a;
+}
+
+.community-group-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #fb7185;
+  animation: community-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes community-ping {
+  75%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 
 .community-group-name,
 .community-group-reward {
+  position: relative;
   white-space: nowrap;
 }
 
 .community-group-name {
   display: none;
+  letter-spacing: 0.01em;
+}
+
+.community-group-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.6rem;
+  padding: 0 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #0f766e;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.community-group-shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: community-shine 4.5s ease-in-out 1.5s infinite;
+}
+
+@keyframes community-shine {
+  0% { transform: translateX(-120%); }
+  22%, 100% { transform: translateX(120%); }
+}
+
+html.dark .community-group-trigger {
+  background: linear-gradient(135deg, #059669 0%, #0f766e 55%, #0e7490 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 4px 16px -6px rgba(20, 184, 166, 0.5);
+}
+
+html.dark .community-group-reward {
+  color: #042f2e;
+  background: #ccfbf1;
+}
+
+html.dark .community-group-dot {
+  box-shadow: 0 0 0 2px #0f766e;
 }
 
 @media (max-width: 639px) {
   .community-group-trigger {
-    width: 36px;
+    width: 2.5rem;
     justify-content: center;
-    padding-right: 0;
-    padding-left: 0;
+    padding: 0;
   }
 
   .community-group-reward {
@@ -468,8 +598,24 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 1280px) {
+  .community-group-trigger {
+    padding-left: 0.3rem;
+  }
+
   .community-group-name {
     display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-group-dot::after,
+  .community-group-shine {
+    animation: none;
+  }
+
+  .community-group-trigger,
+  .community-group-icon {
+    transition: none;
   }
 }
 </style>
@@ -568,6 +714,18 @@ onBeforeUnmount(() => {
 .topbar-dock__item:hover {
   color: var(--rx-ink);
   background: var(--rx-surface-hover);
+}
+
+.topbar-dock__item.is-active {
+  color: var(--rx-ink);
+  background: var(--rx-surface-hover);
+  box-shadow: inset 0 0 0 1px var(--rx-line);
+}
+
+@media (max-width: 639px) {
+  .topbar-dock__item {
+    padding: 0 0.6rem;
+  }
 }
 
 /* 子组件（铃铛 / 语言）的按钮在坞内统一成圆角胶囊 */

@@ -972,16 +972,16 @@ func buildAccountsListETag[T any](
 	lite, dedupeByUpstreamBalanceURL bool,
 ) string {
 	payload := struct {
-		Total       int64  `json:"total"`
-		Page        int    `json:"page"`
-		PageSize    int    `json:"page_size"`
-		Platform    string `json:"platform"`
-		AccountType string `json:"type"`
-		Status      string `json:"status"`
-		Search      string `json:"search"`
-		Lite        bool   `json:"lite"`
-		DedupeByUpstreamBalanceURL bool `json:"dedupe_by_upstream_balance_url"`
-		Items       []T    `json:"items"`
+		Total                      int64  `json:"total"`
+		Page                       int    `json:"page"`
+		PageSize                   int    `json:"page_size"`
+		Platform                   string `json:"platform"`
+		AccountType                string `json:"type"`
+		Status                     string `json:"status"`
+		Search                     string `json:"search"`
+		Lite                       bool   `json:"lite"`
+		DedupeByUpstreamBalanceURL bool   `json:"dedupe_by_upstream_balance_url"`
+		Items                      []T    `json:"items"`
 	}{
 		Total:                      total,
 		Page:                       page,
@@ -3046,6 +3046,72 @@ func (h *AccountHandler) GetBatchTodayStats(c *gin.Context) {
 
 	payload := gin.H{"stats": stats}
 	cached := accountTodayStatsBatchCache.Set(cacheKey, payload)
+	if cached.ETag != "" {
+		c.Header("ETag", cached.ETag)
+		c.Header("Vary", "If-None-Match")
+	}
+	c.Header("X-Snapshot-Cache", "miss")
+	response.Success(c, payload)
+}
+
+var accountCacheRateBatchCache = newSnapshotCache(30 * time.Second)
+
+func buildAccountCacheRateBatchCacheKey(accountIDs []int64) string {
+	var b strings.Builder
+	b.Grow(len(accountIDs)*6 + 24)
+	_, _ = b.WriteString("accounts_cache_rate_24h:")
+	for i, id := range accountIDs {
+		if i > 0 {
+			_ = b.WriteByte(',')
+		}
+		_, _ = b.WriteString(strconv.FormatInt(id, 10))
+	}
+	return b.String()
+}
+
+// BatchCacheRateRequest 批量缓存率请求体。
+type BatchCacheRateRequest struct {
+	AccountIDs []int64 `json:"account_ids" binding:"required"`
+}
+
+// GetBatchCacheRates 批量获取多个账号近 24 小时的缓存率。
+// POST /api/v1/admin/accounts/cache-rate/batch
+func (h *AccountHandler) GetBatchCacheRates(c *gin.Context) {
+	var req BatchCacheRateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	accountIDs := normalizeInt64IDList(req.AccountIDs)
+	if len(accountIDs) == 0 {
+		response.Success(c, gin.H{"cache_rates": map[string]any{}})
+		return
+	}
+
+	cacheKey := buildAccountCacheRateBatchCacheKey(accountIDs)
+	if cached, ok := accountCacheRateBatchCache.Get(cacheKey); ok {
+		if cached.ETag != "" {
+			c.Header("ETag", cached.ETag)
+			c.Header("Vary", "If-None-Match")
+			if ifNoneMatchMatched(c.GetHeader("If-None-Match"), cached.ETag) {
+				c.Status(http.StatusNotModified)
+				return
+			}
+		}
+		c.Header("X-Snapshot-Cache", "hit")
+		response.Success(c, cached.Payload)
+		return
+	}
+
+	rates, err := h.accountUsageService.GetCacheRate24hBatch(c.Request.Context(), accountIDs)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	payload := gin.H{"cache_rates": rates}
+	cached := accountCacheRateBatchCache.Set(cacheKey, payload)
 	if cached.ETag != "" {
 		c.Header("ETag", cached.ETag)
 		c.Header("Vary", "If-None-Match")

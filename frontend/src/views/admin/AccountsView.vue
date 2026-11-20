@@ -303,6 +303,13 @@
               :error="todayStatsError"
             />
           </template>
+          <template #cell-cache_rate_24h="{ row }">
+            <AccountCacheRateCell
+              :data="cacheRateByAccountId[String(row.id)] ?? null"
+              :loading="cacheRateLoading"
+              :error="cacheRateError"
+            />
+          </template>
           <template #cell-groups="{ row }">
             <AccountGroupsCell :groups="accountGroupsForRow(row)" :max-display="4" />
           </template>
@@ -522,6 +529,8 @@ import type { SelectOption } from '@/components/common/Select.vue'
 import AccountStatusIndicator from '@/components/account/AccountStatusIndicator.vue'
 import AccountUsageCell from '@/components/account/AccountUsageCell.vue'
 import AccountTodayStatsCell from '@/components/account/AccountTodayStatsCell.vue'
+import AccountCacheRateCell from '@/components/account/AccountCacheRateCell.vue'
+import type { AccountCacheRate24h } from '@/api/admin/accounts'
 import AccountGroupsCell from '@/components/account/AccountGroupsCell.vue'
 import AccountCapacityCell from '@/components/account/AccountCapacityCell.vue'
 import UpstreamBillingRateCell from '@/components/account/UpstreamBillingRateCell.vue'
@@ -733,6 +742,10 @@ const todayStatsByAccountId = ref<Record<string, WindowStats>>({})
 const todayStatsLoading = ref(false)
 const todayStatsError = ref<string | null>(null)
 const todayStatsReqSeq = ref(0)
+const cacheRateByAccountId = ref<Record<string, AccountCacheRate24h>>({})
+const cacheRateLoading = ref(false)
+const cacheRateError = ref<string | null>(null)
+const cacheRateReqSeq = ref(0)
 const pendingTodayStatsRefresh = ref(false)
 const usageManualRefreshToken = ref(0)
 
@@ -895,7 +908,47 @@ const queueBatchedUsage = (account: Account, options?: { force?: boolean }) => {
   }, 0)
 }
 
+// Today stats and the 24h cache rate refresh together but use independent requests,
+// so a failure in one never blanks the other.
 const refreshTodayStatsBatch = async () => {
+  await Promise.all([refreshTodayStatsOnly(), refreshCacheRateBatch()])
+}
+
+const refreshCacheRateBatch = async () => {
+  if (hiddenColumns.has('cache_rate_24h')) {
+    cacheRateLoading.value = false
+    cacheRateError.value = null
+    return
+  }
+
+  const accountIDs = accounts.value.map(account => account.id)
+  const reqSeq = ++cacheRateReqSeq.value
+  if (accountIDs.length === 0) {
+    cacheRateByAccountId.value = {}
+    cacheRateError.value = null
+    cacheRateLoading.value = false
+    return
+  }
+
+  cacheRateLoading.value = true
+  cacheRateError.value = null
+
+  try {
+    const result = await adminAPI.accounts.getBatchCacheRates(accountIDs)
+    if (reqSeq !== cacheRateReqSeq.value) return
+    cacheRateByAccountId.value = { ...(result.cache_rates ?? {}) }
+  } catch (error) {
+    if (reqSeq !== cacheRateReqSeq.value) return
+    cacheRateError.value = 'Failed'
+    console.error('Failed to load account cache rates:', error)
+  } finally {
+    if (reqSeq === cacheRateReqSeq.value) {
+      cacheRateLoading.value = false
+    }
+  }
+}
+
+const refreshTodayStatsOnly = async () => {
   // Why this checks both columns:
   // - today_stats column shows dedicated today's metrics.
   // - usage column also embeds today's stats for Key/Bedrock rows.
@@ -1076,8 +1129,13 @@ const toggleColumn = (key: string) => {
     hiddenColumns.add(key)
   }
   saveColumnsToStorage()
+  if (key === 'cache_rate_24h' && wasHidden) {
+    refreshCacheRateBatch().catch((error) => {
+      console.error('Failed to load account cache rates after showing column:', error)
+    })
+  }
   if ((key === 'today_stats' || key === 'usage') && wasHidden) {
-    refreshTodayStatsBatch().catch((error) => {
+    refreshTodayStatsOnly().catch((error) => {
       console.error('Failed to load account today stats after showing column:', error)
     })
   }
@@ -1831,7 +1889,8 @@ const allColumns = computed(() => {
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },
-    { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false }
+    { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false },
+    { key: 'cache_rate_24h', label: t('admin.accounts.columns.cacheRate24h'), sortable: false }
   ]
   if (!authStore.isSimpleMode) {
     c.push({ key: 'groups', label: t('admin.accounts.columns.groups'), sortable: false })

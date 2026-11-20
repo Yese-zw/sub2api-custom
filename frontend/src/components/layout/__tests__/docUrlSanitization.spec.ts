@@ -13,8 +13,9 @@ describe('doc_url sanitization', () => {
     expect(headerSource).toContain("import { sanitizeUrl } from '@/utils/url'")
   })
 
-  it('AppHeader applies sanitizeUrl to docUrl', () => {
-    expect(headerSource).toContain('sanitizeUrl(appStore.docUrl)')
+  it('AppHeader links to the in-app docs page instead of the external doc_url', () => {
+    expect(headerSource).toContain('to="/docs"')
+    expect(headerSource).not.toContain('appStore.docUrl')
   })
 
   it('KeyUsageView imports sanitizeUrl', () => {

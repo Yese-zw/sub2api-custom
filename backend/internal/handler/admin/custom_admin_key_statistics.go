@@ -57,7 +57,7 @@ func (h *AccountHandler) scopedAdminStatistics(c *gin.Context) bool {
 		action = "accounts.stats.read"
 	case c.Request.Method == "GET" && path == "/:id/usage":
 		action = "accounts.usage.read"
-	case c.Request.Method == "POST" && path == "/today-stats/batch":
+	case c.Request.Method == "POST" && (path == "/today-stats/batch" || path == "/cache-rate/batch"):
 		action = "accounts.stats.read"
 	case c.Request.Method == "POST" && path == "/usage/batch":
 		action = "accounts.usage.read"
@@ -92,6 +92,15 @@ func (h *AccountHandler) scopedAdminStatistics(c *gin.Context) bool {
 			return true
 		}
 		// 不读取全权批量缓存，避免不同权限共享 ETag 或未裁剪结果。
+		if path == "/cache-rate/batch" {
+			rates, err := h.accountUsageService.GetCacheRate24hBatch(c.Request.Context(), ids)
+			if err != nil {
+				response.Error(c, 502, "账户缓存率查询失败")
+				return true
+			}
+			response.Success(c, gin.H{"cache_rates": rates})
+			return true
+		}
 		if action == "accounts.stats.read" {
 			stats, err := h.accountUsageService.GetTodayStatsBatch(c.Request.Context(), ids)
 			if err != nil {

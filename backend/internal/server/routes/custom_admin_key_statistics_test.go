@@ -112,6 +112,7 @@ func TestScopedAdminRegisteredStatisticsAndOpenAIRoutes(t *testing.T) {
 		{"accounts.stats.read", "GET", "/accounts/1/today-stats", "", 200},
 		{"accounts.stats.read", "GET", "/accounts/1/stats", "", 200},
 		{"accounts.stats.read", "POST", "/accounts/today-stats/batch", `{"account_ids":[1,1]}`, 200},
+		{"accounts.stats.read", "POST", "/accounts/cache-rate/batch", `{"account_ids":[1,1]}`, 200},
 		{"accounts.usage.read", "GET", "/accounts/1/usage", "", 200},
 		{"accounts.usage.read", "POST", "/accounts/usage/batch", `{"account_ids":[1,1]}`, 200},
 		{"openai.quota.read", "GET", "/openai/accounts/1/quota", "", 200},

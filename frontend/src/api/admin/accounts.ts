@@ -637,6 +637,32 @@ export async function getBatchTodayStats(accountIds: number[]): Promise<BatchTod
   return data
 }
 
+export interface AccountCacheRate24h {
+  /** 缓存率百分比（0-100），近 24 小时无请求时为 null */
+  rate: number | null
+  requests: number
+  input_tokens: number
+  cache_creation_tokens: number
+  cache_read_tokens: number
+}
+
+export interface BatchCacheRateResponse {
+  cache_rates: Record<string, AccountCacheRate24h>
+}
+
+/**
+ * 批量获取账号近 24 小时缓存率
+ * 缓存率 = 缓存读取 ÷ (输入 + 缓存写入 + 缓存读取)
+ * @param accountIds - 账号 ID 列表
+ * @returns 以账号 ID（字符串）为键的缓存率映射
+ */
+export async function getBatchCacheRates(accountIds: number[]): Promise<BatchCacheRateResponse> {
+  const { data } = await apiClient.post<BatchCacheRateResponse>('/admin/accounts/cache-rate/batch', {
+    account_ids: accountIds
+  })
+  return data
+}
+
 /**
  * Set account schedulable status
  * @param id - Account ID
@@ -1235,6 +1261,7 @@ export const accountsAPI = {
   getBatchUsage,
   getTodayStats,
   getBatchTodayStats,
+  getBatchCacheRates,
   clearRateLimit,
   recoverState,
   resetAccountQuota,
