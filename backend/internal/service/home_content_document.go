@@ -87,6 +87,12 @@ func (s *SettingService) HomeAsset(ctx context.Context, id string) (body []byte,
 	if _, _, _, err = s.PrepareHomeDocument(ctx); err != nil {
 		return nil, "", false, err
 	}
+	if _, found := lookupHomeAsset(id); !found {
+		// Site logo / community image URLs are produced by GetPublicSettings.
+		if _, err = s.GetPublicSettings(ctx); err != nil {
+			return nil, "", false, err
+		}
+	}
 	asset, found := lookupHomeAsset(id)
 	if !found {
 		return nil, "", false, nil
@@ -264,6 +270,70 @@ func fitHomeImage(src image.Image, maxEdge int) image.Image {
 		}
 	}
 	return dst
+}
+
+// publicImageInlineMax keeps tiny data-URI images (icons) inline. Anything
+// larger is served from the asset endpoint so the public settings payload,
+// which is injected into every HTML response, stays small.
+const publicImageInlineMax = 4 * 1024
+
+type publicImageCacheEntry struct {
+	raw string
+	url string
+}
+
+// publicImageCache remembers the last conversion per setting key, so repeated
+// GetPublicSettings calls do not decode and hash the same image again.
+var publicImageCache sync.Map
+
+// publicImageValue replaces a large base64 data-URI image with a cached,
+// immutable same-origin asset URL. Other values are returned unchanged.
+func publicImageValue(key, raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) <= publicImageInlineMax || !strings.HasPrefix(strings.ToLower(trimmed), "data:image/") {
+		return raw
+	}
+	if cached, ok := publicImageCache.Load(key); ok {
+		if entry, ok := cached.(publicImageCacheEntry); ok && entry.raw == trimmed {
+			if _, found := lookupHomeAsset(strings.TrimPrefix(entry.url, homeAssetPathPrefix)); found {
+				return entry.url
+			}
+		}
+	}
+	url, ok := storePublicImage(trimmed)
+	if !ok {
+		return raw
+	}
+	publicImageCache.Store(key, publicImageCacheEntry{raw: trimmed, url: url})
+	return url
+}
+
+func storePublicImage(dataURI string) (string, bool) {
+	rest := dataURI[len("data:image/"):]
+	semi := strings.IndexByte(rest, ';')
+	if semi < 0 || semi > 48 || !strings.HasPrefix(rest[semi:], ";base64,") {
+		return "", false
+	}
+	// SVG can carry script; keep it inline rather than serving it same-origin.
+	contentType := imageContentType(rest[:semi])
+	if contentType == "application/octet-stream" {
+		return "", false
+	}
+	payload := rest[semi+len(";base64,"):]
+	if len(payload) > homeImageDecodeMax {
+		return "", false
+	}
+	decoded, err := base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		decoded, err = base64.RawStdEncoding.DecodeString(strings.TrimRight(payload, "="))
+		if err != nil || len(decoded) == 0 {
+			return "", false
+		}
+	}
+	sum := sha256.Sum256(decoded)
+	id := hex.EncodeToString(sum[:])
+	homeAssets.Store(id, homeAsset{ContentType: contentType, Body: decoded})
+	return homeAssetPathPrefix + id, true
 }
 
 // Keep image format decoders linked for image.Decode.

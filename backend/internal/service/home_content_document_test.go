@@ -75,3 +75,34 @@ func TestExternalizeOversizedDataImage(t *testing.T) {
 		t.Fatalf("resized dimensions %dx%d", cfg.Width, cfg.Height)
 	}
 }
+
+func TestPublicImageValueExternalizesLargeDataURI(t *testing.T) {
+	raw := bytes.Repeat([]byte{0x89, 'P', 'N', 'G'}, 4096)
+	dataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(raw)
+
+	got := publicImageValue("test_logo", dataURI)
+	if !strings.HasPrefix(got, homeAssetPathPrefix) {
+		t.Fatalf("large image not externalized: %.60q", got)
+	}
+	asset, ok := lookupHomeAsset(strings.TrimPrefix(got, homeAssetPathPrefix))
+	if !ok || asset.ContentType != "image/png" || !bytes.Equal(asset.Body, raw) {
+		t.Fatalf("asset mismatch: ok=%v type=%q len=%d", ok, asset.ContentType, len(asset.Body))
+	}
+	if again := publicImageValue("test_logo", dataURI); again != got {
+		t.Fatalf("cached url changed: %q != %q", again, got)
+	}
+}
+
+func TestPublicImageValueKeepsSmallURLAndSVGValues(t *testing.T) {
+	small := "data:image/png;base64," + base64.StdEncoding.EncodeToString([]byte("tiny-image-bytes"))
+	if got := publicImageValue("k1", small); got != small {
+		t.Fatalf("small data uri changed: %q", got)
+	}
+	if got := publicImageValue("k2", "https://cdn.example.com/logo.png"); got != "https://cdn.example.com/logo.png" {
+		t.Fatalf("url changed: %q", got)
+	}
+	svg := "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte("<svg/>"), 2000))
+	if got := publicImageValue("k3", svg); got != svg {
+		t.Fatal("svg data uri should stay inline")
+	}
+}
