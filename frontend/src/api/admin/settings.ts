@@ -1382,6 +1382,38 @@ export async function updateAppUpdateSettings(
   return data;
 }
 
+// ==================== Daily Check-in Settings ====================
+
+export interface CheckinStreakRewardSetting {
+  day: number;
+  bonus: number;
+}
+
+export interface CheckinSettings {
+  enabled: boolean;
+  reward_min: number;
+  reward_max: number;
+  min_total_recharged: number;
+  min_account_age_days: number;
+  streak_cycle_days: number;
+  streak_rewards: CheckinStreakRewardSetting[];
+}
+
+export async function getCheckinSettings(): Promise<CheckinSettings> {
+  const { data } = await apiClient.get<CheckinSettings>("/admin/settings/checkin");
+  return data;
+}
+
+export async function updateCheckinSettings(
+  settings: CheckinSettings,
+): Promise<CheckinSettings> {
+  const { data } = await apiClient.put<CheckinSettings>(
+    "/admin/settings/checkin",
+    settings,
+  );
+  return data;
+}
+
 // ==================== 429 Rate Limit Cooldown Settings ====================
 
 export interface RateLimit429CooldownSettings {
@@ -1694,6 +1726,8 @@ export const settingsAPI = {
   updateOverloadCooldownSettings,
   getAppUpdateSettings,
   updateAppUpdateSettings,
+  getCheckinSettings,
+  updateCheckinSettings,
   getRateLimit429CooldownSettings,
   updateRateLimit429CooldownSettings,
   getRegistrationEmailBlacklist,

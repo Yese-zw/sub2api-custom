@@ -443,6 +443,9 @@ type PublicSettings struct {
 	// Affiliate (邀请返利) feature toggle
 	AffiliateEnabled bool `json:"affiliate_enabled"`
 
+	// Daily check-in feature switch
+	CheckinEnabled bool `json:"checkin_enabled"`
+
 	// 风控中心功能开关
 	RiskControlEnabled bool `json:"risk_control_enabled"`
 

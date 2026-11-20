@@ -8,9 +8,11 @@ import channelMonitorV2 from './channelMonitorV2'
 import batchImage from './batchImage'
 import admin from './admin'
 import misc from './misc'
+import checkin from './checkin'
 
 export default {
   adminAccessKeys,
+  checkin,
   mcp,
   docsCenter,
   ...landing,

@@ -9075,8 +9075,13 @@
           <BackupSettings />
         </div>
 
+        <!-- Tab: Daily check-in (self-contained card with its own save) -->
+        <div v-if="activeTab === 'checkin'">
+          <CheckinSettingsCard />
+        </div>
+
         <!-- Save dock — sticky so long tabs never require scrolling to the end -->
-        <div v-show="activeTab !== 'backup'" class="settings-save-dock">
+        <div v-show="activeTab !== 'backup' && activeTab !== 'checkin'" class="settings-save-dock">
           <button
             type="submit"
             :disabled="saving || loadFailed"
@@ -9217,6 +9222,7 @@ import {
 import RegistrationEmailBlacklistEditor from "@/components/admin/settings/RegistrationEmailBlacklistEditor.vue";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
 import AppUpdateSettingsCard from "@/views/admin/settings/AppUpdateSettingsCard.vue";
+import CheckinSettingsCard from "@/views/admin/settings/CheckinSettingsCard.vue";
 import { useClipboard } from "@/composables/useClipboard";
 import {
   useStepUp,
@@ -9277,6 +9283,7 @@ type SettingsTab =
   | "users"
   | "gateway"
   | "payment"
+  | "checkin"
   | "email"
   | "backup";
 const activeTab = ref<SettingsTab>("general");
@@ -9289,6 +9296,7 @@ const settingsTabs = [
   { key: "users" as SettingsTab, icon: "user" as const },
   { key: "gateway" as SettingsTab, icon: "server" as const },
   { key: "payment" as SettingsTab, icon: "creditCard" as const },
+  { key: "checkin" as SettingsTab, icon: "calendar" as const },
   { key: "email" as SettingsTab, icon: "mail" as const },
   { key: "backup" as SettingsTab, icon: "database" as const },
 ];

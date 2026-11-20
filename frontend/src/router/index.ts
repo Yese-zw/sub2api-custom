@@ -268,6 +268,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/checkin',
+    name: 'Checkin',
+    component: () => import('@/views/user/CheckinView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Daily Check-in',
+      titleKey: 'checkin.title',
+    }
+  },
+  {
     path: '/affiliate',
     name: 'Affiliate',
     component: () => import('@/views/user/AffiliateView.vue'),

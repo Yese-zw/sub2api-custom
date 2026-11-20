@@ -128,6 +128,8 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 
 		AffiliateEnabled: settings.AffiliateEnabled,
 
+		CheckinEnabled: settings.CheckinEnabled,
+
 		RiskControlEnabled: settings.RiskControlEnabled,
 
 		AllowUserViewErrorRequests: settings.AllowUserViewErrorRequests,

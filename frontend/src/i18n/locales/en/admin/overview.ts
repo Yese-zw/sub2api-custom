@@ -737,6 +737,7 @@ export default {
       allTypes: 'All Types',
       typeBalance: 'Balance (Redeem)',
       typeAffiliateBalance: 'Balance (Affiliate Transfer)',
+      typeCheckin: 'Check-in Reward',
       typeAdminBalance: 'Balance (Admin)',
       typeConcurrency: 'Concurrency (Redeem)',
       typeAdminConcurrency: 'Concurrency (Admin)',

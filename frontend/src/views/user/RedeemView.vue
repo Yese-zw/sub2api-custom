@@ -167,7 +167,7 @@
               <p class="rx-timeline__value" :class="{ 'is-negative': item.value < 0 && !isSubscriptionType(item.type) }">
                 {{ formatHistoryValue(item) }}
               </p>
-              <p v-if="!isAdminAdjustment(item.type)" class="rx-timeline__code">{{ item.code.slice(0, 8) }}...</p>
+              <p v-if="!isAdminAdjustment(item.type) && item.type !== 'checkin'" class="rx-timeline__code">{{ item.code.slice(0, 8) }}...</p>
               <p v-else class="rx-timeline__code">{{ t('redeem.adminAdjustment') }}</p>
               <p v-if="item.notes" class="rx-timeline__note" :title="item.notes">{{ item.notes }}</p>
             </div>
@@ -271,7 +271,7 @@ const contactInfo = ref('')
 
 // Helper functions for history display
 const isBalanceType = (type: string) => {
-  return type === 'balance' || type === 'admin_balance'
+  return type === 'balance' || type === 'admin_balance' || type === 'checkin'
 }
 
 const isSubscriptionType = (type: string) => {
@@ -291,6 +291,8 @@ const isAdminAdjustment = (type: string) => {
 const getHistoryItemTitle = (item: RedeemHistoryItem) => {
   if (item.type === 'balance') {
     return t('redeem.balanceAddedRedeem')
+  } else if (item.type === 'checkin') {
+    return t('redeem.balanceAddedCheckin')
   } else if (item.type === 'admin_balance') {
     return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
   } else if (item.type === 'concurrency') {
