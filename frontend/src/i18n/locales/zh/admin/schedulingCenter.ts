@@ -45,7 +45,7 @@ export default {
     sourceRule: '规则',
     settingsButton: '调度设置',
     window24h: '近 24 小时',
-    firstTokenHint: '最近 {n} 次智商检测的平均首 Token；带 * 表示暂无检测数据，取近 24 小时真实请求均值',
+    firstTokenHint: '最近 {n} 次智商检测的平均首 Token（流式首个有效事件，口径与真实请求一致）；带 * 表示暂无检测数据，取近 24 小时真实请求均值',
     firstTokenTest: '检测均值（近 {n} 次）',
     firstTokenTraffic: '真实请求均值（24 小时）',
     iqHint: '取最近一次智商检测结果；分组开启调度后会定时检测',
@@ -288,7 +288,16 @@ export default {
       iqTrend: '智商状态（旧 → 新）',
       time: '时间',
       latency: '总耗时',
-      message: '说明'
+      message: '说明',
+      trend: '首 Token 与总耗时（旧 → 新，点的颜色表示智商结果）',
+      countSub: '其中检测失败 {n} 次',
+      samples: '{n} 次有效样本',
+      avgLatency: '平均总耗时',
+      filterAll: '全部',
+      filterEmpty: '没有符合条件的记录',
+      probeTag: '探测',
+      noFirstToken: '没有首 Token：上游未按流式返回，或检测失败',
+      noStreamHint: '有 {n} 次检测上游没有按流式返回，无法得到首 Token；这类上游的首 Token 以真实请求为准'
     }
   }
 }

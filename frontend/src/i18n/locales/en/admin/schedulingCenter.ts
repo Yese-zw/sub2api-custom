@@ -45,7 +45,7 @@ export default {
     sourceRule: 'Rule',
     settingsButton: 'Settings',
     window24h: 'Last 24 hours',
-    firstTokenHint: 'Average first-token time of the last {n} IQ checks; * means no check data yet, using the 24h real-traffic average',
+    firstTokenHint: 'Average first-token time of the last {n} IQ checks (first meaningful streaming event, same as real requests); * means no check data yet, using the 24h real-traffic average',
     firstTokenTest: 'Check average (last {n})',
     firstTokenTraffic: 'Traffic average (24h)',
     iqHint: 'Latest IQ check result; checks run on schedule once the group is enabled',
@@ -288,7 +288,16 @@ export default {
       iqTrend: 'IQ status (old → new)',
       time: 'Time',
       latency: 'Total time',
-      message: 'Message'
+      message: 'Message',
+      trend: 'First token and total time (old → new; dot color = IQ result)',
+      countSub: '{n} check failures',
+      samples: '{n} valid samples',
+      avgLatency: 'Avg total time',
+      filterAll: 'All',
+      filterEmpty: 'No matching records',
+      probeTag: 'Probe',
+      noFirstToken: 'No first token: upstream did not stream, or the check failed',
+      noStreamHint: '{n} checks were not streamed by the upstream, so no first token; real requests are used for such upstreams'
     }
   }
 }

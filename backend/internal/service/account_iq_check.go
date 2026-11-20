@@ -53,9 +53,12 @@ type IQCheckTask struct {
 	InputTokens  int64  `json:"input_tokens,omitempty"`
 	OutputTokens int64  `json:"output_tokens,omitempty"`
 	Error        string `json:"error,omitempty"`
-	// FirstTokenMs 是从发出请求到收到首个回答内容的耗时；流式请求取首个内容增量，
-	// 非流式请求只能在整段回复到达时拿到内容，等于读完响应的耗时。0 表示未拿到内容。
+	// FirstTokenMs 是从发出请求到收到首个有效流式事件的耗时，口径与网关统计真实请求首 Token 一致
+	// （跳过 response.created 等元数据事件与仅含 usage 的分片）。0 表示没有拿到流式事件
+	// （非流式请求，或上游忽略了 stream 参数直接返回整段结果）。
 	FirstTokenMs int64 `json:"first_token_ms,omitempty"`
+	// Streamed 表示上游确实以 SSE 流式返回。
+	Streamed bool `json:"streamed,omitempty"`
 
 	startedAt time.Time
 }
@@ -64,6 +67,9 @@ var iqCheckTasks = struct {
 	sync.Mutex
 	m map[string]*IQCheckTask
 }{m: map[string]*IQCheckTask{}}
+
+// IQCheckNotStreamedNote 追加在检测说明后：请求了流式但上游直接返回了整段结果，首 Token 不可用。
+const IQCheckNotStreamedNote = "（上游未按流式返回，首 Token 不可用）"
 
 // IQCheckVerdictLabel returns a short Chinese summary for storing in scheduled results.
 func IQCheckVerdictLabel(t *IQCheckTask) string {
@@ -113,6 +119,7 @@ func (s *AccountTestService) StartIQCheck(ctx context.Context, accountID int64, 
 		task.Status, task.Verdict, task.Answer = result.Status, result.Verdict, result.Answer
 		task.DurationMs, task.InputTokens, task.OutputTokens = result.DurationMs, result.InputTokens, result.OutputTokens
 		task.FirstTokenMs = result.FirstTokenMs
+		task.Streamed = result.Streamed
 		task.Error = result.Error
 	}()
 
@@ -273,7 +280,11 @@ func (s *AccountTestService) executeIQCheck(ctx context.Context, account *Accoun
 		task.Error = fmt.Sprintf("上游返回 HTTP %d: %s", resp.StatusCode, truncateForIQ(string(body), 300))
 		return finish()
 	}
-	body, firstContentAt := readIQBody(resp.Body)
+	body, firstEventAt, streamed := readIQBody(resp.Body)
+	task.Streamed = streamed
+	if !firstEventAt.IsZero() {
+		task.FirstTokenMs = firstEventAt.Sub(started).Milliseconds()
+	}
 
 	answer, in, out, upstreamErr := extractIQAnswer(body)
 	task.Answer, task.InputTokens, task.OutputTokens = answer, in, out
@@ -284,11 +295,6 @@ func (s *AccountTestService) executeIQCheck(ctx context.Context, account *Accoun
 		}
 		return finish()
 	}
-	if firstContentAt.IsZero() {
-		// 非流式回复：内容随整段响应一起到达。
-		firstContentAt = time.Now()
-	}
-	task.FirstTokenMs = firstContentAt.Sub(started).Milliseconds()
 	task.Status = "succeeded"
 	if iqAnswerPasses(answer) {
 		task.Verdict = IQVerdictPassed
@@ -298,51 +304,48 @@ func (s *AccountTestService) executeIQCheck(ctx context.Context, account *Accoun
 	return finish()
 }
 
-// readIQBody 逐行读取响应（上限 iqCheckMaxBodyBytes），并记录首个 SSE 内容增量
-// （正文或思考内容）到达的时间；非 SSE 响应返回零时间。
-func readIQBody(r io.Reader) ([]byte, time.Time) {
-	var (
-		buf            bytes.Buffer
-		firstContentAt time.Time
-	)
+// readIQBody 逐行读取响应（上限 iqCheckMaxBodyBytes），记录首个计入首 Token 的 SSE 事件到达时间，
+// 并返回响应是否为 SSE 流式。非流式响应返回零时间。
+func readIQBody(r io.Reader) (body []byte, firstEventAt time.Time, streamed bool) {
+	var buf bytes.Buffer
 	reader := bufio.NewReader(io.LimitReader(r, iqCheckMaxBodyBytes))
 	for {
 		line, err := reader.ReadBytes('\n')
 		if len(line) > 0 {
 			buf.Write(line)
-			if firstContentAt.IsZero() && iqSSELineHasContent(line) {
-				firstContentAt = time.Now()
+			if data, ok := iqSSEDataPayload(line); ok {
+				streamed = true
+				if firstEventAt.IsZero() && iqSSEDataStartsTTFT(data) {
+					firstEventAt = time.Now()
+				}
 			}
 		}
 		if err != nil {
 			break
 		}
 	}
-	return buf.Bytes(), firstContentAt
+	return buf.Bytes(), firstEventAt, streamed
 }
 
-// iqSSELineHasContent 判断一行 SSE 是否携带了模型输出的内容增量。
-func iqSSELineHasContent(line []byte) bool {
+func iqSSEDataPayload(line []byte) (string, bool) {
 	trimmed := bytes.TrimSpace(line)
 	if !bytes.HasPrefix(trimmed, []byte("data:")) {
+		return "", false
+	}
+	return strings.TrimSpace(string(bytes.TrimPrefix(trimmed, []byte("data:")))), true
+}
+
+// iqSSEDataStartsTTFT 判断一个 SSE data 是否计入首 Token，与网关统计真实请求首 Token 的口径一致：
+// 跳过空数据、[DONE]、Responses 的元数据事件（response.created / in_progress 等）、
+// 以及 Chat Completions 末尾只带 usage 的分片。
+func iqSSEDataStartsTTFT(data string) bool {
+	if data == "" || data == "[DONE]" {
 		return false
 	}
-	data := bytes.TrimSpace(bytes.TrimPrefix(trimmed, []byte("data:")))
-	if len(data) == 0 || !gjson.ValidBytes(data) {
+	if isOpenAIChatUsageOnlyStreamChunk(data) {
 		return false
 	}
-	switch gjson.GetBytes(data, "type").String() {
-	case "content_block_delta":
-		return gjson.GetBytes(data, "delta.text").String() != "" || gjson.GetBytes(data, "delta.thinking").String() != ""
-	case "response.output_text.delta", "response.reasoning_summary_text.delta", "response.reasoning_text.delta":
-		return gjson.GetBytes(data, "delta").String() != ""
-	}
-	for _, path := range []string{"choices.0.delta.content", "choices.0.delta.reasoning_content", "choices.0.delta.reasoning"} {
-		if gjson.GetBytes(data, path).String() != "" {
-			return true
-		}
-	}
-	return false
+	return openAIStreamDataStartsSemanticTTFT(data, "")
 }
 
 func truncateForIQ(s string, n int) string {

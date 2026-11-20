@@ -209,6 +209,9 @@ func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *S
 	}
 	result.IQStatus = task.Verdict
 	result.IQMessage = IQCheckVerdictLabel(task)
+	if plan.IQStream && task.Status == "succeeded" && !task.Streamed {
+		result.IQMessage += IQCheckNotStreamedNote
+	}
 	return result
 }
 

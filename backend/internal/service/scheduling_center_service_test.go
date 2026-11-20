@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -534,13 +535,32 @@ func TestSchedulingCenterUpdateSettingsValidation(t *testing.T) {
 	require.Equal(t, 24, saved.ExitTrafficWindowHours)
 }
 
-func TestIQSSELineHasContent(t *testing.T) {
-	require.True(t, iqSSELineHasContent([]byte(`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"2"}}`)))
-	require.True(t, iqSSELineHasContent([]byte(`data: {"choices":[{"delta":{"content":"21"}}]}`)))
-	require.True(t, iqSSELineHasContent([]byte(`data: {"type":"response.output_text.delta","delta":"21"}`)))
-	require.False(t, iqSSELineHasContent([]byte(`data: {"type":"message_start","message":{}}`)))
-	require.False(t, iqSSELineHasContent([]byte(`event: ping`)))
-	require.False(t, iqSSELineHasContent([]byte(`data: [DONE]`)))
+func TestIQSSEDataStartsTTFT(t *testing.T) {
+	// 与网关口径一致：首个有效事件即计时，不必等到正文
+	require.True(t, iqSSEDataStartsTTFT(`{"type":"message_start","message":{}}`))
+	require.True(t, iqSSEDataStartsTTFT(`{"choices":[{"delta":{"role":"assistant"}}]}`))
+	require.True(t, iqSSEDataStartsTTFT(`{"type":"response.output_item.added","item":{"type":"reasoning"}}`))
+	// 元数据、usage 分片、结束标记不计
+	require.False(t, iqSSEDataStartsTTFT(`{"type":"response.created","response":{}}`))
+	require.False(t, iqSSEDataStartsTTFT(`{"type":"response.in_progress","response":{}}`))
+	require.False(t, iqSSEDataStartsTTFT(`{"choices":[],"usage":{"prompt_tokens":3}}`))
+	require.False(t, iqSSEDataStartsTTFT("[DONE]"))
+	require.False(t, iqSSEDataStartsTTFT(""))
+}
+
+func TestReadIQBodyStreamedVsJSON(t *testing.T) {
+	sse := "event: response.created\n" +
+		`data: {"type":"response.created","response":{}}` + "\n\n" +
+		`data: {"type":"response.output_text.delta","delta":"21"}` + "\n\n"
+	body, first, streamed := readIQBody(strings.NewReader(sse))
+	require.True(t, streamed)
+	require.False(t, first.IsZero())
+	require.Equal(t, sse, string(body))
+
+	// 上游忽略 stream 参数直接返回 JSON：不算流式，首 Token 不可用
+	_, first, streamed = readIQBody(strings.NewReader(`{"choices":[{"message":{"content":"21"}}]}`))
+	require.False(t, streamed)
+	require.True(t, first.IsZero())
 }
 
 func TestExtractIQAnswerAnthropicStream(t *testing.T) {

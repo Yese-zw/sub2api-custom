@@ -901,6 +901,8 @@ func schedulingCenterIQTaskResult(task *IQCheckTask, startedAt time.Time) *Sched
 	if task.Status != "succeeded" {
 		result.Status = "failed"
 		result.ErrorMessage = task.Error
+	} else if !task.Streamed {
+		result.IQMessage += IQCheckNotStreamedNote
 	}
 	if task.FirstTokenMs > 0 {
 		ft := task.FirstTokenMs
