@@ -3,6 +3,7 @@ import { RouterView, useRouter, useRoute } from 'vue-router'
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
+import { applyDocumentSEO } from '@/router/seo'
 import { resolveRouteDocumentTitle } from '@/router/title'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
 import { useAppStore, useAuthStore, useSubscriptionStore, useAnnouncementStore, useAdminSettingsStore } from '@/stores'
@@ -27,6 +28,7 @@ function updateDocumentTitle() {
   document.title = resolveRouteDocumentTitle(route, appStore.siteName, customMenuItems, {
     billingMode: resolveSiteBillingMode(appStore.cachedPublicSettings),
   })
+  applyDocumentSEO(route, document.title)
 }
 
 // Watch for site settings changes and update favicon/title

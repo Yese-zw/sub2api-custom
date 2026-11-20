@@ -29,10 +29,10 @@ function isSafeImageUrl(value: string): boolean {
 function injectBranding(html: string, config: { site_name?: string; site_logo?: string }): string {
   let brandedHtml = html
   const siteName = config.site_name?.trim()
-  if (siteName) {
+  if (siteName && siteName.toLowerCase() !== 'sub2api') {
     brandedHtml = brandedHtml.replace(
       /<title>[^<]*<\/title>/i,
-      `<title>${escapeHtml(siteName)} - AI API Gateway</title>`,
+      `<title>${escapeHtml(siteName)} - AI API 中转</title>`,
     )
   }
 
@@ -120,8 +120,13 @@ export default defineConfig(({ mode }) => {
               return 'vendor-vue'
             }
 
-            // UI 工具库（较大，单独分离）
-            if (id.includes('/@vueuse/') || id.includes('/xlsx/')) {
+            // 表格导出库很大，只在导出时加载，不能跟首屏工具库打在一起。
+            if (id.includes('/xlsx/')) {
+              return 'vendor-xlsx'
+            }
+
+            // UI 工具库
+            if (id.includes('/@vueuse/')) {
               return 'vendor-ui'
             }
 
@@ -135,9 +140,22 @@ export default defineConfig(({ mode }) => {
               return 'vendor-i18n'
             }
 
-            // Stripe 仅在支付流程中按需加载，避免进入首页公共依赖。
+            // 支付、二维码、导出和拖拽只在对应页面使用。
+            // 不能并进首屏公共包，否则首页会把这些库一起下载。
             if (id.includes('/@stripe/stripe-js/')) {
               return 'vendor-stripe'
+            }
+            if (id.includes('/@airwallex/')) {
+              return 'vendor-airwallex'
+            }
+            if (id.includes('/qrcode/')) {
+              return 'vendor-qrcode'
+            }
+            if (id.includes('/file-saver/')) {
+              return 'vendor-file-saver'
+            }
+            if (id.includes('/vue-draggable-plus/') || id.includes('/sortablejs/')) {
+              return 'vendor-draggable'
             }
 
             // 其他小型第三方库合并

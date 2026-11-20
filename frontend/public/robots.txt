@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /home
+Allow: /legal/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /setup
+
+Sitemap: https://lingsiai.vip/sitemap.xml

@@ -68,6 +68,10 @@ export function resolveRouteDocumentTitle(
   customMenuItems: CustomMenuItem[] = [],
   options: RouteTitleOptions = {},
 ): string {
+  if (route.name === 'Home') {
+    return '灵思智域 - AI API 中转'
+  }
+
   const id = typeof route.params.id === 'string' ? route.params.id : ''
   const menuItem = route.name === 'CustomPage' && id
     ? customMenuItems.find((item) => item.id === id)

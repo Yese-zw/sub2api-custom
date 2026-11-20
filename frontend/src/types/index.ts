@@ -246,6 +246,8 @@ export interface PublicSettings {
   contact_info: string
   doc_url: string
   home_content: string
+  /** 首页 HTML 较大时由独立地址加载，避免进入每个页面的公共配置。 */
+  home_content_url?: string
   compact_home_enabled: boolean
   hide_ccs_import_button: boolean
   payment_enabled: boolean

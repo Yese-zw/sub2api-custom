@@ -341,6 +341,11 @@ func createTestPayload(modelID string, prompt ...string) (map[string]any, error)
 		return nil, err
 	}
 
+	userText := defaultTextTestPrompt
+	if len(prompt) > 0 {
+		userText = resolveAccountTestPrompt(prompt[0])
+	}
+
 	payload := map[string]any{
 		"model": modelID,
 		"messages": []map[string]any{

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"compress/gzip"
 	"html"
 	"net/http"
 	"strings"
@@ -79,6 +81,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		ContactInfo:                         settings.ContactInfo,
 		DocURL:                              settings.DocURL,
 		HomeContent:                         settings.HomeContent,
+		HomeContentURL:                      settings.HomeContentURL,
 		CompactHomeEnabled:                  settings.CompactHomeEnabled,
 		HideCcsImportButton:                 settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:         settings.PurchaseSubscriptionEnabled,
@@ -162,6 +165,75 @@ func publicLoginAgreementDocumentsToDTO(items []service.LoginAgreementDocument) 
 		})
 	}
 	return result
+}
+
+// GetHomeContent serves a large custom homepage without putting it in the
+// public settings payload used by every page.
+// GET /api/v1/settings/home
+func (h *SettingHandler) GetHomeContent(c *gin.Context) {
+	body, etag, ok, err := h.settingService.PrepareHomeDocument(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if !ok {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	writePublicBody(c, body, "text/html; charset=utf-8", "public, max-age=60", etag, true)
+}
+
+// GetHomeAsset serves an image extracted from the custom homepage.
+// GET /api/v1/settings/home-asset/:id
+func (h *SettingHandler) GetHomeAsset(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	body, contentType, ok, err := h.settingService.HomeAsset(c.Request.Context(), id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if !ok {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	writePublicBody(c, body, contentType, "public, max-age=31536000, immutable", `"`+id+`"`, false)
+}
+
+func writePublicBody(c *gin.Context, body []byte, contentType, cacheControl, etag string, allowGzip bool) {
+	c.Header("Cache-Control", cacheControl)
+	if etag != "" {
+		c.Header("ETag", etag)
+	}
+	c.Header("X-Content-Type-Options", "nosniff")
+	if etag != "" && c.GetHeader("If-None-Match") == etag {
+		c.Status(http.StatusNotModified)
+		return
+	}
+	if allowGzip && len(body) >= 256 && acceptsGzipHeader(c.GetHeader("Accept-Encoding")) {
+		var buf bytes.Buffer
+		zw, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+		if err == nil {
+			_, writeErr := zw.Write(body)
+			closeErr := zw.Close()
+			if writeErr == nil && closeErr == nil && buf.Len() < len(body) {
+				c.Header("Content-Encoding", "gzip")
+				c.Header("Vary", "Accept-Encoding")
+				c.Data(http.StatusOK, contentType, buf.Bytes())
+				return
+			}
+		}
+	}
+	c.Data(http.StatusOK, contentType, body)
+}
+
+func acceptsGzipHeader(value string) bool {
+	for _, part := range strings.Split(value, ",") {
+		token := strings.TrimSpace(strings.SplitN(part, ";", 2)[0])
+		if token == "gzip" {
+			return true
+		}
+	}
+	return false
 }
 
 // GetAppUpdateManifest 返回桌面 App 的 Tauri 更新清单（无需认证）

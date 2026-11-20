@@ -384,9 +384,9 @@ type PublicSettings struct {
 	ContactInfo                         string
 	DocURL                              string
 	HomeContent                         string
+	HomeContentURL                      string
 	CompactHomeEnabled                  bool
 	HideCcsImportButton                 bool
-
 
 	PurchaseSubscriptionEnabled bool
 	PurchaseSubscriptionURL     string

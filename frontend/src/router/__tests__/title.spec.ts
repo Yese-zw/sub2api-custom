@@ -35,6 +35,14 @@ describe('resolveDocumentTitle', () => {
 })
 
 describe('resolveRouteDocumentTitle', () => {
+  it('首页使用灵思智域的公开标题', () => {
+    expect(resolveRouteDocumentTitle({
+      name: 'Home',
+      params: {},
+      meta: { title: '灵思智域' }
+    }, 'Sub2API')).toBe('灵思智域 - AI API 中转')
+  })
+
   it('自定义页面菜单加载后，使用菜单名称作为标题', () => {
     const route = {
       name: 'CustomPage',

@@ -4,7 +4,9 @@ package web
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -30,26 +32,36 @@ func TestInjectSiteTitle(t *testing.T) {
 
 		result := injectSiteTitle(html, settingsJSON)
 
-		assert.Contains(t, string(result), "<title>MyCustomSite - AI API Gateway</title>")
+		assert.Contains(t, string(result), "<title>MyCustomSite - AI API 中转</title>")
 		assert.NotContains(t, string(result), "Sub2API")
 	})
 
-	t.Run("returns_unchanged_when_site_name_empty", func(t *testing.T) {
+	t.Run("uses_brand_title_when_site_name_empty", func(t *testing.T) {
 		html := []byte(`<html><head><title>Sub2API - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":""}`)
 
 		result := injectSiteTitle(html, settingsJSON)
 
-		assert.Equal(t, string(html), string(result))
+		assert.Contains(t, string(result), "<title>灵思智域 - AI API 中转</title>")
 	})
 
-	t.Run("returns_unchanged_when_site_name_missing", func(t *testing.T) {
+	t.Run("uses_brand_title_when_site_name_is_default", func(t *testing.T) {
+		html := []byte(`<html><head><title>Sub2API - AI API Gateway</title></head><body></body></html>`)
+		settingsJSON := []byte(`{"site_name":"Sub2API"}`)
+
+		result := injectSiteTitle(html, settingsJSON)
+
+		assert.Contains(t, string(result), "<title>灵思智域 - AI API 中转</title>")
+		assert.NotContains(t, string(result), "Sub2API")
+	})
+
+	t.Run("uses_brand_title_when_site_name_missing", func(t *testing.T) {
 		html := []byte(`<html><head><title>Sub2API - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"other_field":"value"}`)
 
 		result := injectSiteTitle(html, settingsJSON)
 
-		assert.Equal(t, string(html), string(result))
+		assert.Contains(t, string(result), "<title>灵思智域 - AI API 中转</title>")
 	})
 
 	t.Run("returns_unchanged_when_invalid_json", func(t *testing.T) {
@@ -98,7 +110,7 @@ func TestInjectSiteTitle(t *testing.T) {
 
 		result := injectSiteTitle(html, settingsJSON)
 
-		assert.Contains(t, string(result), "<title>A&amp;B - AI API Gateway</title>")
+		assert.Contains(t, string(result), "<title>A&amp;B - AI API 中转</title>")
 	})
 
 	t.Run("preserves_rest_of_html", func(t *testing.T) {
@@ -110,7 +122,7 @@ func TestInjectSiteTitle(t *testing.T) {
 		assert.Contains(t, string(result), `<meta charset="UTF-8">`)
 		assert.Contains(t, string(result), `<script src="app.js"></script>`)
 		assert.Contains(t, string(result), `<div id="app"></div>`)
-		assert.Contains(t, string(result), "<title>TestSite - AI API Gateway</title>")
+		assert.Contains(t, string(result), "<title>TestSite - AI API 中转</title>")
 	})
 }
 
@@ -775,10 +787,20 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		fingerprintedPath := ""
 		for _, entry := range entries {
 			candidate := "assets/" + entry.Name()
-			if !entry.IsDir() && isFingerprintedEmbeddedAssetPath(candidate) {
-				fingerprintedPath = candidate
-				break
+			if entry.IsDir() || !isFingerprintedEmbeddedAssetPath(candidate) || !compressibleAssetPath(candidate) {
+				continue
 			}
+			file, openErr := server.distFS.Open(candidate)
+			if openErr != nil {
+				continue
+			}
+			body, readErr := io.ReadAll(file)
+			_ = file.Close()
+			if readErr != nil || len(body) < gzipMinSize {
+				continue
+			}
+			fingerprintedPath = candidate
+			break
 		}
 		require.NotEmpty(t, fingerprintedPath)
 
@@ -788,6 +810,22 @@ func TestFrontendServer_Middleware(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, assetWriter.Code)
 		assert.Equal(t, staticAssetsCacheControl, assetWriter.Header().Get("Cache-Control"))
+		assert.Empty(t, assetWriter.Header().Get("Content-Encoding"))
+
+		gzipWriter := httptest.NewRecorder()
+		gzipRequest := httptest.NewRequest(http.MethodGet, "/"+fingerprintedPath, nil)
+		gzipRequest.Header.Set("Accept-Encoding", "gzip")
+		router.ServeHTTP(gzipWriter, gzipRequest)
+
+		assert.Equal(t, http.StatusOK, gzipWriter.Code)
+		assert.Equal(t, "gzip", gzipWriter.Header().Get("Content-Encoding"))
+		assert.Equal(t, staticAssetsCacheControl, gzipWriter.Header().Get("Cache-Control"))
+		assert.Less(t, gzipWriter.Body.Len(), assetWriter.Body.Len())
+		gzipReader, err := gzip.NewReader(gzipWriter.Body)
+		require.NoError(t, err)
+		decoded, err := io.ReadAll(gzipReader)
+		require.NoError(t, err)
+		assert.Equal(t, assetWriter.Body.Bytes(), decoded)
 	})
 }
 

@@ -36,7 +36,9 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HomeView.vue'),
     meta: {
       requiresAuth: false,
-      title: 'Home'
+      title: '灵思智域',
+      indexable: true,
+      seoDescription: '灵思智域提供 OpenAI 兼容的 AI API 中转。一个接口接入 GPT、Claude、Gemini，适合 Codex、编程和自动化，控制台查看用量与费用。'
     }
   },
   {
@@ -172,7 +174,9 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/public/LegalDocumentView.vue'),
     meta: {
       requiresAuth: false,
-      title: 'Legal Document'
+      title: 'Legal Document',
+      indexable: true,
+      seoDescription: '灵思智域的服务协议与相关说明。'
     }
   },
   {
@@ -182,7 +186,9 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: false,
       title: 'Model Plaza',
-      titleKey: 'modelPlaza.title'
+      titleKey: 'modelPlaza.title',
+      indexable: true,
+      seoDescription: '查看灵思智域的模型价格与倍率，按量调用 GPT、Claude、Gemini 等模型。'
     }
   },
 
@@ -774,10 +780,13 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior(_to, _from, savedPosition) {
+  scrollBehavior(to, _from, savedPosition) {
     // Scroll to saved position when using browser back/forward
     if (savedPosition) {
       return savedPosition
+    }
+    if (to.hash) {
+      return { el: to.hash, top: 24 }
     }
     // Scroll to top for new routes
     return { top: 0 }

@@ -70,5 +70,15 @@ declare module 'vue-router' {
      * i18n key for the page description
      */
     descriptionKey?: string
+
+    /**
+     * 允许搜索引擎收录该公开页面。
+     */
+    indexable?: boolean
+
+    /**
+     * 公开页面的描述，写入 description 与 Open Graph。
+     */
+    seoDescription?: string
   }
 }

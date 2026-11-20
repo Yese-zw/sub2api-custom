@@ -110,10 +110,10 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		// Serve static files normally (hashed assets get long-lived cache headers)
-		applyStaticAssetCacheHeaders(c.Writer.Header(), cleanPath)
-		s.fileServer.ServeHTTP(c.Writer, c.Request)
-		c.Abort()
+		// Hashed assets get long-lived cache headers. Text assets are gzipped
+		// when the browser asks for it, so the first page does not download
+		// the raw JS/CSS payload.
+		serveDistFile(c, s.distFS, s.fileServer, cleanPath)
 	}
 }
 
@@ -163,10 +163,11 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 		// Replace nonce placeholder with actual nonce before serving
 		content := replaceNoncePlaceholder(cached.Content, nonce)
+		content = applyRequestSEO(content, c.Request.URL.Path)
 
 		c.Header("ETag", cached.ETag)
 		applyHTMLNoCacheHeaders(c.Writer.Header())
-		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+		writeEncodedBody(c, "text/html; charset=utf-8", content)
 		c.Abort()
 		return
 	}
@@ -179,7 +180,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	if err != nil {
 		// Fallback: serve without injection
 		applyHTMLNoCacheHeaders(c.Writer.Header())
-		c.Data(http.StatusOK, "text/html; charset=utf-8", s.baseHTML)
+		writeEncodedBody(c, "text/html; charset=utf-8", s.baseHTML)
 		c.Abort()
 		return
 	}
@@ -188,7 +189,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	if err != nil {
 		// Fallback: serve without injection
 		applyHTMLNoCacheHeaders(c.Writer.Header())
-		c.Data(http.StatusOK, "text/html; charset=utf-8", s.baseHTML)
+		writeEncodedBody(c, "text/html; charset=utf-8", s.baseHTML)
 		c.Abort()
 		return
 	}
@@ -198,13 +199,14 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 	// Replace nonce placeholder with actual nonce before serving
 	content := replaceNoncePlaceholder(rendered, nonce)
+	content = applyRequestSEO(content, c.Request.URL.Path)
 
 	cached = s.cache.Get()
 	if cached != nil {
 		c.Header("ETag", cached.ETag)
 	}
 	applyHTMLNoCacheHeaders(c.Writer.Header())
-	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	writeEncodedBody(c, "text/html; charset=utf-8", content)
 	c.Abort()
 }
 
@@ -275,15 +277,19 @@ func safeImageURL(value string) string {
 	return trimmed
 }
 
-// injectSiteTitle replaces the static <title> in HTML with the configured site name.
+// injectSiteTitle replaces the static <title> in HTML with the public site title.
 // This ensures the browser tab shows the correct title before JS executes.
 func injectSiteTitle(html, settingsJSON []byte) []byte {
 	var cfg struct {
 		SiteName string `json:"site_name"`
 	}
-	if err := json.Unmarshal(settingsJSON, &cfg); err != nil || cfg.SiteName == "" {
+	if err := json.Unmarshal(settingsJSON, &cfg); err != nil {
 		return html
 	}
+
+	title := publicDocumentTitle(cfg.SiteName)
+	html = replaceMetaContent(html, `property="og:title"`, title)
+	html = replaceMetaContent(html, `name="twitter:title"`, title)
 
 	// Find and replace the existing <title>...</title>
 	titleStart := bytes.Index(html, []byte("<title>"))
@@ -292,11 +298,38 @@ func injectSiteTitle(html, settingsJSON []byte) []byte {
 		return html
 	}
 
-	newTitle := []byte("<title>" + htmlpkg.EscapeString(cfg.SiteName) + " - AI API Gateway</title>")
+	newTitle := []byte("<title>" + htmlpkg.EscapeString(title) + "</title>")
 	var buf bytes.Buffer
 	buf.Write(html[:titleStart])
 	buf.Write(newTitle)
 	buf.Write(html[titleEnd+len("</title>"):])
+	return buf.Bytes()
+}
+
+func replaceMetaContent(html []byte, attr, value string) []byte {
+	idx := bytes.Index(html, []byte(attr))
+	if idx == -1 {
+		return html
+	}
+	tagEnd := bytes.IndexByte(html[idx:], '>')
+	if tagEnd == -1 {
+		return html
+	}
+	contentKey := []byte(`content="`)
+	rel := bytes.Index(html[idx:idx+tagEnd], contentKey)
+	if rel == -1 {
+		return html
+	}
+	start := idx + rel + len(contentKey)
+	end := bytes.IndexByte(html[start:], '"')
+	if end == -1 {
+		return html
+	}
+
+	var buf bytes.Buffer
+	buf.Write(html[:start])
+	buf.WriteString(htmlpkg.EscapeString(value))
+	buf.Write(html[start+end:])
 	return buf.Bytes()
 }
 
@@ -334,9 +367,7 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			if tryServeOverrideFile(c, overrideDir, cleanPath) {
 				return
 			}
-			applyStaticAssetCacheHeaders(c.Writer.Header(), cleanPath)
-			fileServer.ServeHTTP(c.Writer, c.Request)
-			c.Abort()
+			serveDistFile(c, distFS, fileServer, cleanPath)
 			return
 		}
 
@@ -412,7 +443,8 @@ func serveIndexHTML(c *gin.Context, fsys fs.FS) {
 		return
 	}
 
-	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	applyHTMLNoCacheHeaders(c.Writer.Header())
+	writeEncodedBody(c, "text/html; charset=utf-8", content)
 	c.Abort()
 }
 
