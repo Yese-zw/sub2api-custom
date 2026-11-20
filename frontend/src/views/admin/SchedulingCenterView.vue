@@ -975,7 +975,7 @@ function firstTokenTitle(id: number): string {
   const m = metricsOf(id)
   if (!m) return ''
   const parts: string[] = []
-  if (m.test_first_token_ms != null) parts.push(`${t('admin.schedulingCenter.firstTokenTest', { n: ttftSamples })}: ${formatMs(m.test_first_token_ms)}`)
+  if (m.test_first_token_ms != null) parts.push(`${t('admin.schedulingCenter.firstTokenTest', { n: ttftSamples.value })}: ${formatMs(m.test_first_token_ms)}`)
   if (m.traffic_first_token_ms != null) parts.push(`${t('admin.schedulingCenter.firstTokenTraffic')}: ${formatMs(m.traffic_first_token_ms)}`)
   return parts.join('\n')
 }
