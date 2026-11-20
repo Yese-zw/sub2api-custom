@@ -113,6 +113,9 @@ func RegisterAdminRoutes(
 		// 定时测试计划
 		registerScheduledTestRoutes(admin, h)
 
+		// 调度中心（独立视图，不影响网关调度）
+		registerSchedulingCenterRoutes(admin, h)
+
 		// 渠道管理
 		registerChannelRoutes(admin, h)
 
@@ -760,6 +763,22 @@ func registerScheduledTestRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	}
 	// Nested under accounts
 	admin.GET("/accounts/:id/scheduled-test-plans", h.Admin.ScheduledTest.ListByAccount)
+}
+
+func registerSchedulingCenterRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	sc := admin.Group("/scheduling-center")
+	{
+		sc.GET("/groups/:id/pool", h.Admin.SchedulingCenter.GetPool)
+		sc.PUT("/groups/:id/pool", h.Admin.SchedulingCenter.MovePool)
+		sc.POST("/metrics", h.Admin.SchedulingCenter.GetMetrics)
+		sc.GET("/settings", h.Admin.SchedulingCenter.ListSettings)
+		sc.GET("/groups/:id/settings", h.Admin.SchedulingCenter.GetSettings)
+		sc.PUT("/groups/:id/settings", h.Admin.SchedulingCenter.UpdateSettings)
+		sc.GET("/accounts/:id/records", h.Admin.SchedulingCenter.ListAccountRecords)
+		sc.GET("/groups/:id/events", h.Admin.SchedulingCenter.ListEvents)
+		sc.GET("/groups/:id/comparison", h.Admin.SchedulingCenter.GetComparison)
+		sc.GET("/groups/:id/export", h.Admin.SchedulingCenter.Export)
+	}
 }
 
 func registerErrorPassthroughRoutes(admin *gin.RouterGroup, h *handler.Handlers) {

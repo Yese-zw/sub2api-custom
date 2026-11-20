@@ -49,13 +49,14 @@ describe('MonitorIQDialog sections', () => {
     expect(w.text()).not.toContain('v6_bank')
   })
 
-  it('still shows the pelican section with its failure reason when only candy has results', async () => {
+  it('still shows the pelican section with a failure badge (no raw reason) when only candy has results', async () => {
     const w = await mountDialog({
       candy_enabled: true, pelican_enabled: true, items: [candyItem],
       failures: [{ model: 'gpt-x', benchmark: 'pelican', message: 'manxue.ai HTTP 400', at: '2026-11-02T10:02:00Z' }],
     })
     expect(headings(w)).toEqual(['monitorIQ.tabs.candy', 'monitorIQ.tabs.pelican'])
-    expect(w.text()).toContain('manxue.ai HTTP 400')
+    expect(w.text()).toContain('monitorIQ.failuresTitle')
+    expect(w.text()).not.toContain('manxue.ai HTTP 400')
   })
 
   it('hides a disabled test even when old results remain', async () => {

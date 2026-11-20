@@ -262,8 +262,19 @@ func (h *ChannelMonitorUserHandler) ListIQResults(c *gin.Context) {
 		"interval_minutes": settings.IntervalMinutes,
 		"max_per_model":    10,
 		"items":            results,
-		"failures":         iq.ListFailures(id),
+		"failures":         publicIQFailures(iq.ListFailures(id)),
 	})
+}
+
+// publicIQFailures 去掉失败原因原文：上游错误可能包含服务器 IP 等敏感信息，用户侧只展示"失败"本身。
+func publicIQFailures(in []*service.ChannelMonitorIQFailure) []*service.ChannelMonitorIQFailure {
+	out := make([]*service.ChannelMonitorIQFailure, 0, len(in))
+	for _, f := range in {
+		cp := *f
+		cp.Message = ""
+		out = append(out, &cp)
+	}
+	return out
 }
 
 // GetIQResult GET /api/v1/channel-monitors/:id/iq-results/:result_id（含 html，供预览）

@@ -24,18 +24,22 @@ func TestExtractIQHTML(t *testing.T) {
 	})
 }
 
-func TestIQBankPromptAt(t *testing.T) {
+func TestIQNextBankPrompt(t *testing.T) {
 	prompts := []string{"a", "b", "c"}
-	got, err := iqBankPromptAt(prompts, 0)
+	got, err := iqNextBankPrompt(prompts, "")
 	require.NoError(t, err)
 	require.Equal(t, "a", got)
-	got, err = iqBankPromptAt(prompts, 3)
-	require.NoError(t, err)
-	require.Equal(t, "a", got)
-	got, err = iqBankPromptAt(prompts, 4)
+	got, err = iqNextBankPrompt(prompts, "a")
 	require.NoError(t, err)
 	require.Equal(t, "b", got)
-	_, err = iqBankPromptAt(nil, 0)
+	got, err = iqNextBankPrompt(prompts, "c")
+	require.NoError(t, err)
+	require.Equal(t, "a", got)
+	// 上一题已不在题库时回到第一题，写入后再从下一题继续，不会停在同一题。
+	got, err = iqNextBankPrompt(prompts, "missing")
+	require.NoError(t, err)
+	require.Equal(t, "a", got)
+	_, err = iqNextBankPrompt(nil, "")
 	require.Error(t, err)
 }
 

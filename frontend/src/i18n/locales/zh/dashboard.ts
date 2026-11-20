@@ -523,7 +523,7 @@ export default {
   monitorIQ: {
     button: '智商状态',
     viewDetail: '查看详情',
-    failuresTitle: '最近一次检测失败原因',
+    failuresTitle: '最近一次检测失败',
     emptyKind: '当前模型暂无成功结果',
     modelLabel: '模型',
     lastRun: '最近检测',

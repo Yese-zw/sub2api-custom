@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -52,6 +53,9 @@ type IQCheckTask struct {
 	InputTokens  int64  `json:"input_tokens,omitempty"`
 	OutputTokens int64  `json:"output_tokens,omitempty"`
 	Error        string `json:"error,omitempty"`
+	// FirstTokenMs 是从发出请求到收到首个回答内容的耗时；流式请求取首个内容增量，
+	// 非流式请求只能在整段回复到达时拿到内容，等于读完响应的耗时。0 表示未拿到内容。
+	FirstTokenMs int64 `json:"first_token_ms,omitempty"`
 
 	startedAt time.Time
 }
@@ -82,7 +86,7 @@ func (s *AccountTestService) StartIQCheck(ctx context.Context, accountID int64, 
 	if err != nil {
 		return nil, errors.New("account not found")
 	}
-	req, err := s.buildIQCheckRequest(context.Background(), account, modelID)
+	req, err := s.buildIQCheckRequest(context.Background(), account, modelID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +112,7 @@ func (s *AccountTestService) StartIQCheck(ctx context.Context, accountID int64, 
 		defer iqCheckTasks.Unlock()
 		task.Status, task.Verdict, task.Answer = result.Status, result.Verdict, result.Answer
 		task.DurationMs, task.InputTokens, task.OutputTokens = result.DurationMs, result.InputTokens, result.OutputTokens
+		task.FirstTokenMs = result.FirstTokenMs
 		task.Error = result.Error
 	}()
 
@@ -125,13 +130,15 @@ func (s *AccountTestService) GetIQCheck(taskID string) (*IQCheckTask, error) {
 	return snapshotIQTask(task), nil
 }
 
-// RunIQCheck runs the check synchronously (used by scheduled tests).
-func (s *AccountTestService) RunIQCheck(ctx context.Context, accountID int64, modelID string) (*IQCheckTask, error) {
+// RunIQCheck runs the check synchronously (used by scheduled tests and the scheduling center).
+// stream=true 时走流式请求以记录真实的首 token 耗时；其余定时测试保持原来的非流式请求。
+// 智商检测只读结果，不会修改账号状态。
+func (s *AccountTestService) RunIQCheck(ctx context.Context, accountID int64, modelID string, stream bool) (*IQCheckTask, error) {
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
 		return nil, errors.New("account not found")
 	}
-	req, err := s.buildIQCheckRequest(ctx, account, modelID)
+	req, err := s.buildIQCheckRequest(ctx, account, modelID, stream)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +154,8 @@ func snapshotIQTask(t *IQCheckTask) *IQCheckTask {
 
 // buildIQCheckRequest builds the upstream request for the account's protocol.
 // The context passed here is replaced at execution time via req.WithContext.
-func (s *AccountTestService) buildIQCheckRequest(ctx context.Context, account *Account, modelID string) (*http.Request, error) {
+// stream=true 时 Anthropic / Chat Completions 也改为流式请求（Responses 本来就是流式）。
+func (s *AccountTestService) buildIQCheckRequest(ctx context.Context, account *Account, modelID string, stream bool) (*http.Request, error) {
 	if account.Type != AccountTypeAPIKey && account.Type != AccountTypeUpstream {
 		return nil, errors.New("智商检测仅支持 API Key / 上游类型账号")
 	}
@@ -181,6 +189,9 @@ func (s *AccountTestService) buildIQCheckRequest(ctx context.Context, account *A
 			"max_tokens": 8192,
 			"messages":   []map[string]any{{"role": "user", "content": iqCheckQuestion}},
 		}
+		if stream {
+			payload["stream"] = true
+		}
 	case account.IsOpenAI() || account.IsMultiProtocolAPIKey():
 		token = strings.TrimSpace(account.GetOpenAIProtocolAPIKey())
 		if token == "" {
@@ -209,7 +220,7 @@ func (s *AccountTestService) buildIQCheckRequest(ctx context.Context, account *A
 			apiURL = buildOpenAIChatCompletionsURL(base)
 			payload = map[string]any{
 				"model":    model,
-				"stream":   false,
+				"stream":   stream,
 				"messages": []map[string]any{{"role": "user", "content": iqCheckQuestion}},
 			}
 		}
@@ -257,11 +268,12 @@ func (s *AccountTestService) executeIQCheck(ctx context.Context, account *Accoun
 		return finish()
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, iqCheckMaxBodyBytes))
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, iqCheckMaxBodyBytes))
 		task.Error = fmt.Sprintf("上游返回 HTTP %d: %s", resp.StatusCode, truncateForIQ(string(body), 300))
 		return finish()
 	}
+	body, firstContentAt := readIQBody(resp.Body)
 
 	answer, in, out, upstreamErr := extractIQAnswer(body)
 	task.Answer, task.InputTokens, task.OutputTokens = answer, in, out
@@ -272,6 +284,11 @@ func (s *AccountTestService) executeIQCheck(ctx context.Context, account *Accoun
 		}
 		return finish()
 	}
+	if firstContentAt.IsZero() {
+		// 非流式回复：内容随整段响应一起到达。
+		firstContentAt = time.Now()
+	}
+	task.FirstTokenMs = firstContentAt.Sub(started).Milliseconds()
 	task.Status = "succeeded"
 	if iqAnswerPasses(answer) {
 		task.Verdict = IQVerdictPassed
@@ -279,6 +296,53 @@ func (s *AccountTestService) executeIQCheck(ctx context.Context, account *Accoun
 		task.Verdict = IQVerdictIncorrect
 	}
 	return finish()
+}
+
+// readIQBody 逐行读取响应（上限 iqCheckMaxBodyBytes），并记录首个 SSE 内容增量
+// （正文或思考内容）到达的时间；非 SSE 响应返回零时间。
+func readIQBody(r io.Reader) ([]byte, time.Time) {
+	var (
+		buf            bytes.Buffer
+		firstContentAt time.Time
+	)
+	reader := bufio.NewReader(io.LimitReader(r, iqCheckMaxBodyBytes))
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			buf.Write(line)
+			if firstContentAt.IsZero() && iqSSELineHasContent(line) {
+				firstContentAt = time.Now()
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+	return buf.Bytes(), firstContentAt
+}
+
+// iqSSELineHasContent 判断一行 SSE 是否携带了模型输出的内容增量。
+func iqSSELineHasContent(line []byte) bool {
+	trimmed := bytes.TrimSpace(line)
+	if !bytes.HasPrefix(trimmed, []byte("data:")) {
+		return false
+	}
+	data := bytes.TrimSpace(bytes.TrimPrefix(trimmed, []byte("data:")))
+	if len(data) == 0 || !gjson.ValidBytes(data) {
+		return false
+	}
+	switch gjson.GetBytes(data, "type").String() {
+	case "content_block_delta":
+		return gjson.GetBytes(data, "delta.text").String() != "" || gjson.GetBytes(data, "delta.thinking").String() != ""
+	case "response.output_text.delta", "response.reasoning_summary_text.delta", "response.reasoning_text.delta":
+		return gjson.GetBytes(data, "delta").String() != ""
+	}
+	for _, path := range []string{"choices.0.delta.content", "choices.0.delta.reasoning_content", "choices.0.delta.reasoning"} {
+		if gjson.GetBytes(data, path).String() != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func truncateForIQ(s string, n int) string {
@@ -324,6 +388,16 @@ func extractIQAnswer(body []byte) (text string, inTokens, outTokens int64, errMs
 				continue
 			}
 			switch gjson.Get(data, "type").String() {
+			case "message_start":
+				inTokens = gjson.Get(data, "message.usage.input_tokens").Int()
+			case "content_block_delta":
+				if gjson.Get(data, "delta.type").String() == "text_delta" {
+					deltas.WriteString(gjson.Get(data, "delta.text").String())
+				}
+			case "message_delta":
+				if v := gjson.Get(data, "usage.output_tokens").Int(); v > 0 {
+					outTokens = v
+				}
 			case "response.output_text.delta":
 				deltas.WriteString(gjson.Get(data, "delta").String())
 			case "response.output_text.done":

@@ -7,30 +7,34 @@ import (
 
 // ScheduledTestPlan represents a scheduled test plan domain model.
 type ScheduledTestPlan struct {
-	ID             int64      `json:"id"`
-	AccountID      int64      `json:"account_id"`
-	ModelID        string     `json:"model_id"`
-	CronExpression string     `json:"cron_expression"`
-	Enabled        bool       `json:"enabled"`
-	MaxResults     int        `json:"max_results"`
-	AutoRecover    bool       `json:"auto_recover"`
-	IQCheck        bool       `json:"iq_check"`
-	IQStopOnFail   bool       `json:"iq_stop_on_fail"`
-	IQStopMinutes  int        `json:"iq_stop_minutes"`
-	LastRunAt      *time.Time `json:"last_run_at"`
-	NextRunAt      *time.Time `json:"next_run_at"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID             int64  `json:"id"`
+	AccountID      int64  `json:"account_id"`
+	ModelID        string `json:"model_id"`
+	CronExpression string `json:"cron_expression"`
+	Enabled        bool   `json:"enabled"`
+	MaxResults     int    `json:"max_results"`
+	AutoRecover    bool   `json:"auto_recover"`
+	IQCheck        bool   `json:"iq_check"`
+	IQStopOnFail   bool   `json:"iq_stop_on_fail"`
+	IQStopMinutes  int    `json:"iq_stop_minutes"`
+	// IQStream 为 true 时智商检测走流式请求以记录首 Token（仅调度中心创建的计划使用）。
+	IQStream  bool       `json:"iq_stream"`
+	LastRunAt *time.Time `json:"last_run_at"`
+	NextRunAt *time.Time `json:"next_run_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 // ScheduledTestResult represents a single test execution result.
 type ScheduledTestResult struct {
-	ID           int64     `json:"id"`
-	PlanID       int64     `json:"plan_id"`
-	Status       string    `json:"status"`
-	ResponseText string    `json:"response_text"`
-	ErrorMessage string    `json:"error_message"`
-	LatencyMs    int64     `json:"latency_ms"`
+	ID           int64  `json:"id"`
+	PlanID       int64  `json:"plan_id"`
+	Status       string `json:"status"`
+	ResponseText string `json:"response_text"`
+	ErrorMessage string `json:"error_message"`
+	LatencyMs    int64  `json:"latency_ms"`
+	// FirstTokenMs 只有智商检测结果才有值（首个回答内容到达的耗时）。
+	FirstTokenMs *int64    `json:"first_token_ms"`
 	IQStatus     string    `json:"iq_status"`
 	IQMessage    string    `json:"iq_message"`
 	StartedAt    time.Time `json:"started_at"`

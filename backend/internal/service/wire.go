@@ -659,6 +659,18 @@ func ProvideScheduledTestService(
 	return NewScheduledTestService(planRepo, resultRepo)
 }
 
+// ProvideSchedulingCenterService creates and starts the scheduling center background worker.
+func ProvideSchedulingCenterService(
+	repo SchedulingCenterRepository,
+	scheduledSvc *ScheduledTestService,
+	accountTestSvc *AccountTestService,
+	db *sql.DB,
+) *SchedulingCenterService {
+	svc := NewSchedulingCenterService(repo, scheduledSvc, accountTestSvc, db)
+	svc.Start()
+	return svc
+}
+
 // ProvideScheduledTestRunnerService creates and starts ScheduledTestRunnerService.
 func ProvideScheduledTestRunnerService(
 	planRepo ScheduledTestPlanRepository,
@@ -875,6 +887,7 @@ var ProviderSet = wire.NewSet(
 	NewProxyService,
 	NewRedeemService,
 	NewCheckinService,
+	ProvideSchedulingCenterService,
 	NewPromoService,
 	NewUsageService,
 	NewDashboardService,

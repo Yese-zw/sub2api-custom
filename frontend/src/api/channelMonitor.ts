@@ -113,7 +113,8 @@ export interface MonitorIQResult {
 export interface MonitorIQFailure {
   model: string
   benchmark: MonitorIQBenchmark
-  message: string
+  /** 用户侧接口不再返回失败原因原文 */
+  message?: string
   at: string
 }
 

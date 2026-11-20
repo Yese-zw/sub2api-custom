@@ -47,14 +47,13 @@
                 <h3 class="iq-card__title">{{ t(`monitorIQ.tabs.${kind}`) }}</h3>
               </header>
 
-              <!-- 最近一次失败原因 -->
+              <!-- 最近一次失败（不展示原因原文，避免泄露服务器信息） -->
               <div v-if="failuresOf(kind).length" class="iq-fails">
                 <div v-for="f in failuresOf(kind)" :key="`${f.model}|${f.benchmark}`" class="iq-fail">
                   <div class="iq-fail__meta">
                     <span class="iq-fail__badge">{{ t('monitorIQ.failuresTitle') }}</span>
                     <span>{{ f.model }}<template v-if="f.benchmark === 'creative'"> · {{ t('monitorIQ.tabs.creative') }}</template> · {{ formatTime(f.at) }}</span>
                   </div>
-                  <p class="iq-fail__msg">{{ f.message }}</p>
                 </div>
               </div>
 
@@ -570,8 +569,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .iq-fail { padding: 0.6rem 0.8rem; border-radius: var(--rx-radius-sm, 0.75rem); border: 1px solid rgba(239, 68, 68, 0.28); background: rgba(239, 68, 68, 0.07); }
 .iq-fail__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; font-size: 0.7rem; color: var(--rx-ink-2, #334155); }
 .iq-fail__badge { padding: 0 0.5rem; border-radius: 999px; font-size: 0.62rem; font-weight: 800; color: #fff; background: #ef4444; }
-.iq-fail__msg { margin: 0.3rem 0 0; font-size: 0.74rem; word-break: break-word; color: #dc2626; }
-:global(html.dark) .iq-fail__msg { color: #fca5a5; }
 
 @media (max-width: 599px) {
   .iq-kv { grid-template-columns: minmax(0, 1fr); }

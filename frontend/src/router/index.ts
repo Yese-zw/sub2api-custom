@@ -522,6 +522,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/scheduling-center',
+    name: 'AdminSchedulingCenter',
+    component: () => import('@/views/admin/SchedulingCenterView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Scheduling Center',
+      titleKey: 'admin.schedulingCenter.title',
+      descriptionKey: 'admin.schedulingCenter.description'
+    }
+  },
+  {
     path: '/admin/channels',
     redirect: '/admin/channels/pricing'
   },

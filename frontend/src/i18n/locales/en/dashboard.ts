@@ -518,7 +518,7 @@ export default {
   monitorIQ: {
     button: 'IQ status',
     viewDetail: 'View details',
-    failuresTitle: 'Reason for the latest failed check',
+    failuresTitle: 'Latest check failed',
     emptyKind: 'No successful results for this model yet',
     modelLabel: 'MODEL',
     lastRun: 'Last run',

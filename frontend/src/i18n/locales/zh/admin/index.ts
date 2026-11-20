@@ -8,6 +8,7 @@ import audit from './audit'
 import promptAudit from './promptAudit'
 import financial from './financial'
 import plugins from './plugins'
+import schedulingCenter from './schedulingCenter'
 
 export default {
   ...overview,
@@ -20,4 +21,5 @@ export default {
   ...promptAudit,
   ...financial,
   ...plugins,
+  ...schedulingCenter,
 }

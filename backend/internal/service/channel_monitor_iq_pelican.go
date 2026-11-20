@@ -59,15 +59,23 @@ func loadIQHTMLJudger() (*judge.Judger, error) {
 	return iqHTMLJudger, iqHTMLJudgerErr
 }
 
-// iqBankPromptAt 按已有成功次数在题库中轮换，prior 是该模型已保存的鹈鹕结果数。
-func iqBankPromptAt(prompts []string, prior int) (string, error) {
+// iqNextBankPrompt 按上一题在题库中的位置取下一题。last 为空时从第一题开始。
+// 结果表每个（监控, 模型, 检测类型）只保留最近 iqMaxPerModel 条，不能用现存行数当序号：
+// 窗口填满后行数不再增加，题号会停住，之后每次都是同一题。
+func iqNextBankPrompt(prompts []string, last string) (string, error) {
 	if len(prompts) == 0 {
 		return "", errors.New("html judge prompt bank is empty")
 	}
-	if prior < 0 {
-		prior = 0
+	if last == "" {
+		return prompts[0], nil
 	}
-	return prompts[prior%len(prompts)], nil
+	for i, p := range prompts {
+		if p == last {
+			return prompts[(i+1)%len(prompts)], nil
+		}
+	}
+	// 上一题已不在题库（题库改过）。回到第一题；这次结果写入后，下次会从它往后轮换。
+	return prompts[0], nil
 }
 
 func (s *ChannelMonitorIQService) nextPelicanPrompt(ctx context.Context, monitorID int64, model string) (string, error) {
@@ -75,14 +83,19 @@ func (s *ChannelMonitorIQService) nextPelicanPrompt(ctx context.Context, monitor
 	if err != nil {
 		return "", fmt.Errorf("html judge unavailable: %w", err)
 	}
-	var prior int
+	var last string
+	// 取该模型最近一次鹈鹕结果里保存的原题。没有记录时 last 为空。
 	if err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM channel_monitor_iq_results
-		WHERE monitor_id = $1 AND model = $2 AND benchmark = $3`,
-		monitorID, model, IQBenchmarkPelican).Scan(&prior); err != nil {
+		SELECT COALESCE((
+			SELECT label FROM channel_monitor_iq_results
+			WHERE monitor_id = $1 AND model = $2 AND benchmark = $3
+			ORDER BY created_at DESC, id DESC
+			LIMIT 1
+		), '')`,
+		monitorID, model, IQBenchmarkPelican).Scan(&last); err != nil {
 		return "", err
 	}
-	return iqBankPromptAt(j.BankPrompts(), prior)
+	return iqNextBankPrompt(j.BankPrompts(), last)
 }
 
 func formatIQJudgeReason(r judge.Result) string {

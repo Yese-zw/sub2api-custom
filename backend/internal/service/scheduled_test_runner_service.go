@@ -186,7 +186,7 @@ func (s *ScheduledTestRunnerService) tryRecoverAccount(ctx context.Context, acco
 func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *ScheduledTestPlan) *ScheduledTestResult {
 	startedAt := time.Now()
 	result := &ScheduledTestResult{StartedAt: startedAt}
-	task, err := s.accountTestSvc.RunIQCheck(ctx, plan.AccountID, plan.ModelID)
+	task, err := s.accountTestSvc.RunIQCheck(ctx, plan.AccountID, plan.ModelID, plan.IQStream)
 	result.FinishedAt = time.Now()
 	result.LatencyMs = result.FinishedAt.Sub(startedAt).Milliseconds()
 	if err != nil {
@@ -203,6 +203,10 @@ func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *S
 		result.ErrorMessage = task.Error
 	}
 	result.ResponseText = task.Answer
+	if task.FirstTokenMs > 0 {
+		ft := task.FirstTokenMs
+		result.FirstTokenMs = &ft
+	}
 	result.IQStatus = task.Verdict
 	result.IQMessage = IQCheckVerdictLabel(task)
 	return result
