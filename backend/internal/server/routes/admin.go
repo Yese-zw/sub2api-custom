@@ -778,6 +778,17 @@ func registerSchedulingCenterRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 		sc.GET("/groups/:id/events", h.Admin.SchedulingCenter.ListEvents)
 		sc.GET("/groups/:id/comparison", h.Admin.SchedulingCenter.GetComparison)
 		sc.GET("/groups/:id/export", h.Admin.SchedulingCenter.Export)
+		sc.POST("/groups/:id/reset", h.Admin.SchedulingCenter.ResetGroup)
+	}
+
+	oc := admin.Group("/operations-center")
+	{
+		oc.GET("/sites", h.Admin.Account.ListOperationsSites)
+		oc.GET("/account-ranking", h.Admin.Dashboard.GetAccountRequestRanking)
+		oc.GET("/consumption", h.Admin.Dashboard.GetAccountConsumption)
+		oc.GET("/site-trend", h.Admin.Dashboard.GetSiteTrend)
+		oc.GET("/heatmap", h.Admin.Dashboard.GetRequestHeatmap)
+		oc.GET("/account-health", h.Admin.Account.GetAccountHealth)
 	}
 }
 

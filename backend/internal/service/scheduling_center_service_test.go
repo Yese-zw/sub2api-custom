@@ -23,6 +23,11 @@ type fakeSchedulingCenterRepo struct {
 	groupAccounts map[int64][]int64
 	managed       []SchedulingCenterManagedPlan
 	inserted      []SchedulingCenterManagedPlan
+	nextPlanRunAt *time.Time
+	records       int64
+	planOwners    []SchedulingCenterPlanOwner
+	upserted      *SchedulingCenterGroupSettings
+	fixed         map[int64]bool // OAuth / Setup Token 账号，固定在调度池
 	now           func() time.Time
 }
 
@@ -47,8 +52,13 @@ func (f *fakeSchedulingCenterRepo) inGroup(groupID, accountID int64) bool {
 func (f *fakeSchedulingCenterRepo) ListPoolMembers(_ context.Context, groupID int64) ([]SchedulingCenterPoolMember, error) {
 	out := []SchedulingCenterPoolMember{}
 	for _, m := range f.members {
-		if f.inGroup(groupID, m.AccountID) {
+		if f.inGroup(groupID, m.AccountID) && !f.fixed[m.AccountID] {
 			out = append(out, m)
+		}
+	}
+	for _, id := range f.groupAccounts[groupID] {
+		if f.fixed[id] {
+			out = append(out, SchedulingCenterPoolMember{AccountID: id, Source: SchedulingCenterSourceFixed})
 		}
 	}
 	return out, nil
@@ -56,7 +66,7 @@ func (f *fakeSchedulingCenterRepo) ListPoolMembers(_ context.Context, groupID in
 func (f *fakeSchedulingCenterRepo) AddToSchedulingPool(_ context.Context, groupID int64, ids []int64, source string) ([]int64, error) {
 	out := []int64{}
 	for _, id := range ids {
-		if !f.inGroup(groupID, id) {
+		if !f.inGroup(groupID, id) || f.fixed[id] {
 			continue
 		}
 		if m, ok := f.members[id]; ok {
@@ -99,6 +109,7 @@ func (f *fakeSchedulingCenterRepo) GetAccountState(_ context.Context, _ int64, a
 }
 func (f *fakeSchedulingCenterRepo) UpsertAccountState(_ context.Context, st *SchedulingCenterAccountState) error {
 	cp := *st
+	cp.UpdatedAt = f.now()
 	f.states[st.AccountID] = &cp
 	return nil
 }
@@ -123,6 +134,19 @@ func (f *fakeSchedulingCenterRepo) InsertEvents(_ context.Context, events []Sche
 }
 func (f *fakeSchedulingCenterRepo) ListEvents(context.Context, int64, string, int, int) ([]SchedulingCenterEvent, int64, error) {
 	return f.events, int64(len(f.events)), nil
+}
+func (f *fakeSchedulingCenterRepo) PruneEvents(_ context.Context, groupID int64, before time.Time) (int64, error) {
+	kept := f.events[:0]
+	var n int64
+	for _, e := range f.events {
+		if e.GroupID == groupID && e.CreatedAt.Before(before) {
+			n++
+			continue
+		}
+		kept = append(kept, e)
+	}
+	f.events = kept
+	return n, nil
 }
 func (f *fakeSchedulingCenterRepo) CountBadEvents(_ context.Context, _ int64, ids []int64, since time.Time) (map[int64]int, error) {
 	out := map[int64]int{}
@@ -163,6 +187,32 @@ func (f *fakeSchedulingCenterRepo) GetRecentIQStatuses(_ context.Context, since 
 func (f *fakeSchedulingCenterRepo) GetManagedPlanID(context.Context, int64) (int64, bool, error) {
 	return 0, false, nil
 }
+func (f *fakeSchedulingCenterRepo) GetNextPlanRunAt(context.Context, int64) (*time.Time, error) {
+	return f.nextPlanRunAt, nil
+}
+func (f *fakeSchedulingCenterRepo) ListForeignPlanOwners(context.Context, int64) ([]SchedulingCenterPlanOwner, error) {
+	return f.planOwners, nil
+}
+func (f *fakeSchedulingCenterRepo) ResetGroupData(_ context.Context, _ int64, opts SchedulingCenterResetOptions) (*SchedulingCenterResetResult, error) {
+	r := &SchedulingCenterResetResult{}
+	if opts.ClearPool {
+		r.PoolMembers = int64(len(f.members))
+		f.members = map[int64]SchedulingCenterPoolMember{}
+	}
+	if opts.ClearStates {
+		r.States = int64(len(f.states))
+		f.states = map[int64]*SchedulingCenterAccountState{}
+	}
+	if opts.ClearEvents {
+		r.Events = int64(len(f.events))
+		f.events = nil
+	}
+	if opts.ClearRecords {
+		r.Records = f.records
+		f.records = 0
+	}
+	return r, nil
+}
 func (f *fakeSchedulingCenterRepo) GetAccountStats(context.Context, []int64, time.Time) (map[int64]SchedulingCenterAccountStats, error) {
 	return f.stats, nil
 }
@@ -175,17 +225,37 @@ func (f *fakeSchedulingCenterRepo) GetRecentTestFirstTokenAvg(context.Context, [
 func (f *fakeSchedulingCenterRepo) ListAccountTestRecords(context.Context, int64, int) ([]SchedulingCenterTestRecord, error) {
 	return nil, nil
 }
+func (f *fakeSchedulingCenterRepo) ListEnforcedPools(context.Context) (map[int64][]int64, error) {
+	return map[int64][]int64{}, nil
+}
 func (f *fakeSchedulingCenterRepo) ListGroupSettings(context.Context) ([]SchedulingCenterGroupSettings, error) {
 	return f.settings, nil
 }
-func (f *fakeSchedulingCenterRepo) GetGroupSettings(context.Context, int64) (*SchedulingCenterGroupSettings, error) {
+func (f *fakeSchedulingCenterRepo) GetGroupSettings(_ context.Context, groupID int64) (*SchedulingCenterGroupSettings, error) {
+	for i := range f.settings {
+		if f.settings[i].GroupID == groupID {
+			cp := f.settings[i]
+			return &cp, nil
+		}
+	}
 	return nil, nil
 }
 func (f *fakeSchedulingCenterRepo) UpsertGroupSettings(_ context.Context, in *SchedulingCenterGroupSettings) (*SchedulingCenterGroupSettings, error) {
+	cp := *in
+	f.upserted = &cp
 	return in, nil
 }
 func (f *fakeSchedulingCenterRepo) ListGroupAccountIDs(_ context.Context, groupID int64) ([]int64, error) {
 	return f.groupAccounts[groupID], nil
+}
+func (f *fakeSchedulingCenterRepo) ListGroupKeyAccountIDs(_ context.Context, groupID int64) ([]int64, error) {
+	out := []int64{}
+	for _, id := range f.groupAccounts[groupID] {
+		if !f.fixed[id] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }
 func (f *fakeSchedulingCenterRepo) ListManagedPlans(context.Context) ([]SchedulingCenterManagedPlan, error) {
 	return f.managed, nil
@@ -209,7 +279,7 @@ func (c *testClock) now() time.Time          { return c.t }
 func (c *testClock) advance(d time.Duration) { c.t = c.t.Add(d) }
 func newTestClock() *testClock               { return &testClock{t: time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)} }
 func okReq(at time.Time, ttft int64) SchedulingCenterRequestSample {
-	return SchedulingCenterRequestSample{At: at, OK: true, FirstTokenMs: &ttft}
+	return SchedulingCenterRequestSample{At: at, OK: true, Stream: true, FirstTokenMs: &ttft}
 }
 func errReq(at time.Time) SchedulingCenterRequestSample { return SchedulingCenterRequestSample{At: at} }
 
@@ -218,8 +288,13 @@ func newLifecycleService(repo *fakeSchedulingCenterRepo, clock *testClock, probe
 	svc.now = clock.now
 	repo.now = clock.now
 	svc.probeSync = true
-	svc.probe = func(context.Context, int64, SchedulingCenterGroupSettings) (bool, map[string]any) {
-		return *probePass, map[string]any{"kind": "iq"}
+	svc.measure = func(context.Context, int64, string, int) *schedulingCenterProbeOutcome {
+		ft := int64(300)
+		verdict := IQVerdictIncorrect
+		if *probePass {
+			verdict = IQVerdictPassed
+		}
+		return &schedulingCenterProbeOutcome{IQVerdict: verdict, LatencySuccess: true, FirstTokenMs: &ft, TotalMs: 800}
 	}
 	return svc
 }
@@ -280,6 +355,56 @@ func TestSchedulingCenterCheckExit(t *testing.T) {
 	errs := []SchedulingCenterRequestSample{errReq(now), errReq(now), errReq(now), okReq(now, 100)}
 	require.Equal(t, SchedulingCenterReasonExitError, SchedulingCenterCheckExit(gs, nil, errs, nil).Reason)
 	require.Nil(t, SchedulingCenterCheckExit(gs, nil, []SchedulingCenterRequestSample{errReq(now), okReq(now, 100), errReq(now), errReq(now)}, nil))
+}
+
+func TestSchedulingCenterCheckExitWindows(t *testing.T) {
+	now := time.Now()
+	limit := int64(10000)
+	errCount := 2
+	gs := &SchedulingCenterGroupSettings{
+		ExitLatencyMs: &limit, ExitLatencyWindow: 5, ExitLatencyCount: 3,
+		ExitErrorCount: &errCount, ExitErrorWindow: 4,
+	}
+
+	// 首 Token：最近 5 次流式请求中 3 次 > 10s 即出池（不要求连续），非流式与错误请求不计入
+	nonStreamTTFT := int64(20000)
+	nonStream := SchedulingCenterRequestSample{At: now, OK: true, FirstTokenMs: &nonStreamTTFT}
+	slow := []SchedulingCenterRequestSample{okReq(now, 12000), nonStream, okReq(now, 900), okReq(now, 15000), okReq(now, 800), okReq(now, 11000)}
+	dec := SchedulingCenterCheckExit(gs, nil, slow, nil)
+	require.NotNil(t, dec)
+	require.Equal(t, SchedulingCenterReasonExitLatency, dec.Reason)
+	require.Equal(t, 3, dec.Detail["slow"])
+	require.Equal(t, 5, dec.Detail["window"])
+	twoSlow := []SchedulingCenterRequestSample{okReq(now, 12000), okReq(now, 900), okReq(now, 15000), okReq(now, 800), okReq(now, 700)}
+	require.Nil(t, SchedulingCenterCheckExit(gs, nil, twoSlow, nil))
+	require.Nil(t, SchedulingCenterCheckExit(gs, nil, slow[:4], nil), "fewer than 5 streaming samples")
+
+	// 错误：最近 4 次真实请求中 2 次上游错误即出池；超出窗口的错误不计
+	errs := []SchedulingCenterRequestSample{errReq(now), okReq(now, 100), okReq(now, 100), errReq(now)}
+	dec = SchedulingCenterCheckExit(gs, nil, errs, nil)
+	require.NotNil(t, dec)
+	require.Equal(t, SchedulingCenterReasonExitError, dec.Reason)
+	require.Equal(t, 2, dec.Detail["errors"])
+	outside := []SchedulingCenterRequestSample{errReq(now), okReq(now, 100), okReq(now, 100), okReq(now, 100), errReq(now)}
+	require.Nil(t, SchedulingCenterCheckExit(gs, nil, outside, nil))
+}
+
+func TestSchedulingCenterExitWindowValidation(t *testing.T) {
+	gs := defaultSchedulingCenterGroupSettings(1)
+	gs.ExitLatencyWindow, gs.ExitLatencyCount = 3, 5
+	require.ErrorIs(t, validateSchedulingCenterExitSettings(gs), ErrSchedulingCenterInvalidRule)
+
+	gs = defaultSchedulingCenterGroupSettings(1)
+	four := 4
+	gs.ExitErrorWindow, gs.ExitErrorCount = 3, &four
+	require.ErrorIs(t, validateSchedulingCenterExitSettings(gs), ErrSchedulingCenterInvalidRule)
+
+	// 旧客户端不传窗口：窗口取触发次数，保持「连续 N 次」
+	gs = defaultSchedulingCenterGroupSettings(1)
+	gs.ExitLatencyWindow, gs.ExitErrorWindow, gs.ExitLatencyCount = 0, 0, 4
+	require.NoError(t, validateSchedulingCenterExitSettings(gs))
+	require.Equal(t, 4, gs.ExitLatencyWindow)
+	require.Equal(t, 3, gs.ExitErrorWindow)
 }
 
 func TestSchedulingCenterRecoverVerdict(t *testing.T) {
@@ -524,6 +649,8 @@ func TestSchedulingCenterUpdateSettingsValidation(t *testing.T) {
 	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
 	_, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, RecoverLatencyMs: ptrI(-1)})
 	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
+	_, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, ManualOutHours: 1000})
+	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
 
 	saved, err := svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, Enabled: true})
 	require.NoError(t, err)
@@ -662,10 +789,10 @@ type fakeReportRepo struct {
 	iqRecs  []SchedulingCenterExportIQRecord
 }
 
-func (f *fakeReportRepo) GetUsageBuckets(context.Context, []int64, time.Time, time.Time, time.Duration, int64) ([]SchedulingCenterUsageBucket, error) {
+func (f *fakeReportRepo) GetUsageBuckets(context.Context, int64, []int64, time.Time, time.Time, time.Duration, int64) ([]SchedulingCenterUsageBucket, error) {
 	return f.usage, nil
 }
-func (f *fakeReportRepo) GetErrorBuckets(context.Context, []int64, time.Time, time.Time, time.Duration) ([]SchedulingCenterErrorBucket, error) {
+func (f *fakeReportRepo) GetErrorBuckets(context.Context, int64, []int64, time.Time, time.Time, time.Duration) ([]SchedulingCenterErrorBucket, error) {
 	return f.errs, nil
 }
 func (f *fakeReportRepo) GetIQBuckets(context.Context, []int64, time.Time, time.Time, time.Duration) ([]SchedulingCenterIQBucket, error) {
@@ -792,4 +919,400 @@ func TestSchedulingCenterComparisonAttributesByTime(t *testing.T) {
 	require.Equal(t, 12*60.0, a1.MinutesInPool)
 	require.Equal(t, 1, exp.Accounts[1].BadEvents)
 	require.Equal(t, 1, exp.Accounts[1].ExitReasons[SchedulingCenterReasonExitError])
+}
+
+func TestSchedulingCenterPoolViewNextCheckAt(t *testing.T) {
+	clock := newTestClock() // 10:00
+	repo := newFakeSchedulingCenterRepo()
+	svc := NewSchedulingCenterService(repo, nil, nil, nil)
+	svc.now = clock.now
+	ctx := context.Background()
+
+	// 未开启调度：没有下次检测时间
+	view, err := svc.GetPoolView(ctx, 1)
+	require.NoError(t, err)
+	require.Nil(t, view.NextCheckAt)
+
+	// 开启但计划还没同步：按 cron 推算
+	repo.settings = []SchedulingCenterGroupSettings{{GroupID: 1, Enabled: true, CronExpression: "*/30 * * * *"}}
+	view, err = svc.GetPoolView(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, clock.t.Add(30*time.Minute), *view.NextCheckAt)
+
+	// 已有计划：取计划里最早的执行时间
+	planNext := clock.t.Add(7 * time.Minute)
+	repo.nextPlanRunAt = &planNext
+	view, err = svc.GetPoolView(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, planNext, *view.NextCheckAt)
+}
+
+// ---------------------------------------------------------------------------
+// 兜底
+// ---------------------------------------------------------------------------
+
+func TestRankSchedulingCenterFallback(t *testing.T) {
+	c := []SchedulingCenterFallbackCandidate{
+		{AccountID: 1, RateMultiplier: 1, FirstTokenMs: ptrF(300), CacheRate: ptrF(50)},
+		{AccountID: 2, RateMultiplier: 0.5, FirstTokenMs: ptrF(900), CacheRate: ptrF(10)},
+		{AccountID: 3, RateMultiplier: 0.5, FirstTokenMs: ptrF(400), CacheRate: ptrF(20)},
+		{AccountID: 4, RateMultiplier: 0.5, FirstTokenMs: ptrF(400), CacheRate: ptrF(80)},
+		{AccountID: 5, RateMultiplier: 0.1, Tier: 2}, // 冷却中，倍率最低也排在后面
+		{AccountID: 6, RateMultiplier: 0.5, FirstTokenMs: nil, CacheRate: ptrF(99)},
+	}
+	ids := func(r []SchedulingCenterFallbackCandidate) []int64 {
+		out := []int64{}
+		for _, x := range r {
+			out = append(out, x.AccountID)
+		}
+		return out
+	}
+	// 倍率低 → 首 Token 低 → 缓存高；缺数据排后；分层优先
+	require.Equal(t, []int64{4, 3, 2, 6, 1, 5}, ids(RankSchedulingCenterFallback(c, DefaultSchedulingCenterFallbackOrder())))
+	// 自定义顺序：缓存高 → 倍率低
+	require.Equal(t, []int64{6, 4, 1, 3, 2, 5}, ids(RankSchedulingCenterFallback(c, []string{"cache_rate", "rate_multiplier"})))
+}
+
+func TestSchedulingCenterFallbackFillAndRelease(t *testing.T) {
+	clock := newTestClock()
+	base := newFakeSchedulingCenterRepo()
+	base.now = clock.now
+	repo := &fakeReportRepo{fakeSchedulingCenterRepo: base}
+	probePass := true
+	svc := newLifecycleService(base, clock, &probePass)
+	svc.repo = repo
+	ctx := context.Background()
+
+	gs := defaultSchedulingCenterGroupSettings(1)
+	gs.Enabled = true
+	base.settings = []SchedulingCenterGroupSettings{*gs}
+	base.groupAccounts[1] = []int64{1, 2, 3, 4, 5}
+	repo.briefs = []SchedulingCenterAccountBrief{
+		{ID: 1, Status: StatusActive, Schedulable: true, RateMultiplier: ptrF(1)},
+		{ID: 2, Status: StatusActive, Schedulable: true, RateMultiplier: ptrF(0.2)}, // 降智，排除
+		{ID: 3, Status: StatusActive, Schedulable: true, RateMultiplier: ptrF(0.5)},
+		{ID: 4, Status: StatusError, Schedulable: true, RateMultiplier: ptrF(0.1)},   // 异常，排除
+		{ID: 5, Status: StatusActive, Schedulable: false, RateMultiplier: ptrF(0.1)}, // 不可调度，排除
+	}
+	base.iq = map[int64]SchedulingCenterIQResult{
+		1: {Status: IQVerdictPassed}, 2: {Status: IQVerdictIncorrect}, 3: {Status: IQVerdictPassed},
+		4: {Status: IQVerdictPassed}, 5: {Status: IQVerdictPassed},
+	}
+
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.Len(t, base.members, 1)
+	require.Equal(t, SchedulingCenterSourceFallback, base.members[3].Source, "lowest multiplier among eligible")
+	ev := lastEvent(base)
+	require.Equal(t, SchedulingCenterReasonFallbackFill, ev.Reason)
+	require.False(t, ev.IsBad)
+
+	// 已有兜底账号且未够数：不重复补
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.Len(t, base.members, 1)
+
+	// 手动移入一个账号后，非兜底成员够数 → 兜底账号退回账号池
+	require.NoError(t, svc.MoveAccounts(ctx, 1, []int64{1}, SchedulingCenterPoolScheduling))
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.NotContains(t, base.members, int64(3))
+	require.Equal(t, SchedulingCenterReasonFallbackRelease, lastEvent(base).Reason)
+	require.NotContains(t, base.states, int64(3), "released fallback returns to idle")
+
+	// 智商正常开关关闭后，降智账号也可作为兜底（倍率最低）
+	require.NoError(t, svc.MoveAccounts(ctx, 1, []int64{1}, SchedulingCenterPoolAccount))
+	delete(base.states, 1)
+	base.settings[0].FallbackRequireIQPass = false
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.Equal(t, SchedulingCenterSourceFallback, base.members[2].Source)
+
+	// 关闭兜底 → 释放
+	base.settings[0].FallbackEnabled = false
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.Empty(t, base.members)
+}
+
+func TestSchedulingCenterFallbackSettingsValidation(t *testing.T) {
+	in := &SchedulingCenterGroupSettings{FallbackOrder: []string{"cache_rate", "cache_rate", "first_token"}}
+	require.NoError(t, validateSchedulingCenterFallbackSettings(in))
+	require.Equal(t, []string{"cache_rate", "first_token"}, in.FallbackOrder)
+	require.Equal(t, 1, in.FallbackMinAccounts)
+
+	require.ErrorIs(t, validateSchedulingCenterFallbackSettings(&SchedulingCenterGroupSettings{FallbackOrder: []string{"bogus"}}), ErrSchedulingCenterInvalidRule)
+	require.ErrorIs(t, validateSchedulingCenterFallbackSettings(&SchedulingCenterGroupSettings{FallbackMinAccounts: 99}), ErrSchedulingCenterInvalidRule)
+
+	empty := &SchedulingCenterGroupSettings{}
+	require.NoError(t, validateSchedulingCenterFallbackSettings(empty))
+	require.Equal(t, DefaultSchedulingCenterFallbackOrder(), empty.FallbackOrder)
+}
+
+func TestSchedulingCenterManualOutExpires(t *testing.T) {
+	clock := newTestClock()
+	repo := newFakeSchedulingCenterRepo()
+	probePass := true
+	svc := newLifecycleService(repo, clock, &probePass)
+	ctx := context.Background()
+
+	gs := defaultSchedulingCenterGroupSettings(1)
+	gs.Enabled, gs.RuleEnabled, gs.RequireIQPass = true, true, true
+	gs.FallbackEnabled = false
+	gs.ManualOutHours = 24
+	repo.settings = []SchedulingCenterGroupSettings{*gs}
+	repo.groupAccounts[1] = []int64{7}
+	repo.iqHistory = map[int64][]string{7: {IQVerdictPassed}}
+
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.Contains(t, repo.members, int64(7))
+	require.NoError(t, svc.MoveAccounts(ctx, 1, []int64{7}, SchedulingCenterPoolAccount))
+
+	until := SchedulingCenterManualOutUntil(&repo.settings[0], repo.states[7])
+	require.Equal(t, clock.t.Add(24*time.Hour), *until)
+
+	// 有效期内：规则不会加回
+	clock.advance(23 * time.Hour)
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.NotContains(t, repo.members, int64(7))
+	require.Equal(t, SchedulingCenterStateManualOut, repo.states[7].State)
+
+	// 到期：状态清除，同一轮内入池规则重新选中
+	clock.advance(2 * time.Hour)
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.Contains(t, repo.members, int64(7))
+	require.NotContains(t, repo.states, int64(7))
+	var expired bool
+	for _, e := range repo.events {
+		if e.Action == SchedulingCenterActionManualOutEnd && e.AccountID == 7 {
+			expired = true
+			require.False(t, e.IsBad)
+		}
+	}
+	require.True(t, expired)
+
+	// 0 表示永久
+	require.NoError(t, svc.MoveAccounts(ctx, 1, []int64{7}, SchedulingCenterPoolAccount))
+	repo.settings[0].ManualOutHours = 0
+	require.Nil(t, SchedulingCenterManualOutUntil(&repo.settings[0], repo.states[7]))
+	clock.advance(30 * 24 * time.Hour)
+	require.NoError(t, svc.EvaluateRules(ctx))
+	require.NotContains(t, repo.members, int64(7))
+}
+
+func TestSchedulingCenterRecordRetention(t *testing.T) {
+	svc := NewSchedulingCenterService(newFakeSchedulingCenterRepo(), nil, nil, nil)
+	ctx := context.Background()
+
+	saved, err := svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1})
+	require.NoError(t, err)
+	require.Equal(t, 100, saved.RecordRetention, "default")
+
+	_, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, RecordRetention: 5})
+	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
+	_, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, RecordRetention: 5000})
+	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
+	// 依赖历史记录的条数不能超过保留条数
+	_, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, RecordRetention: 20, ExitIQWindow: 30})
+	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
+	_, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, RecordRetention: 20, FirstTokenTestSamples: 25})
+	require.ErrorIs(t, err, ErrSchedulingCenterInvalidRule)
+
+	saved, err = svc.UpdateGroupSettings(ctx, SchedulingCenterGroupSettings{GroupID: 1, RecordRetention: 500, ExitIQWindow: 200})
+	require.NoError(t, err)
+	require.Equal(t, 500, saved.RecordRetention)
+
+	// 同步：保留条数变化时更新托管计划的 max_results，新计划按保留条数创建
+	planRepo := &fakeScheduledPlanRepo{plans: map[int64]*ScheduledTestPlan{
+		1: {ID: 1, AccountID: 10, CronExpression: "*/30 * * * *", MaxResults: 100, IQCheck: true, IQStream: true},
+	}, nextID: 1}
+	repo := newFakeSchedulingCenterRepo()
+	repo.settings = []SchedulingCenterGroupSettings{{GroupID: 1, Enabled: true, CronExpression: "*/30 * * * *", RecordRetention: 300}}
+	repo.groupAccounts[1] = []int64{10, 11}
+	repo.managed = []SchedulingCenterManagedPlan{{AccountID: 10, PlanID: 1, GroupID: 1, CronExpression: "*/30 * * * *", IQStream: true, MaxResults: 100}}
+	require.NoError(t, NewSchedulingCenterService(repo, NewScheduledTestService(planRepo, nil), nil, nil).SyncPlans(ctx))
+	require.Equal(t, 300, planRepo.plans[1].MaxResults)
+	require.Equal(t, 300, planRepo.plans[repo.inserted[0].PlanID].MaxResults)
+}
+
+func TestSchedulingCenterResetGroup(t *testing.T) {
+	repo := newFakeSchedulingCenterRepo()
+	repo.groupAccounts[1] = []int64{1, 2}
+	repo.members[1] = SchedulingCenterPoolMember{AccountID: 1, Source: SchedulingCenterSourceManual}
+	repo.states[2] = &SchedulingCenterAccountState{GroupID: 1, AccountID: 2, State: SchedulingCenterStateCooling}
+	repo.events = []SchedulingCenterEvent{{AccountID: 1}, {AccountID: 2}}
+	repo.records = 7
+	repo.settings = []SchedulingCenterGroupSettings{{GroupID: 1, Enabled: true, CronExpression: "*/5 * * * *", ModelID: "m", RecordRetention: 300, ManualOutHours: 0}}
+	svc := NewSchedulingCenterService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	_, err := svc.ResetGroup(ctx, 1, SchedulingCenterResetOptions{})
+	require.ErrorIs(t, err, ErrSchedulingCenterResetNothing)
+
+	res, err := svc.ResetGroup(ctx, 1, SchedulingCenterResetOptions{ClearPool: true, ClearStates: true, ClearEvents: true, ClearRecords: true, ResetSettings: true})
+	require.NoError(t, err)
+	require.Equal(t, &SchedulingCenterResetResult{PoolMembers: 1, States: 1, Events: 2, Records: 7, SettingsReset: true}, res)
+	require.Empty(t, repo.members)
+	require.Empty(t, repo.states)
+	require.Empty(t, repo.events)
+
+	// 规则恢复默认，但保留调度开关、检测频率与检测模型
+	up := repo.upserted
+	require.True(t, up.Enabled)
+	require.Equal(t, "*/5 * * * *", up.CronExpression)
+	require.Equal(t, "m", up.ModelID)
+	require.Equal(t, 100, up.RecordRetention)
+	require.Equal(t, 24, up.ManualOutHours)
+
+	// 只清日志
+	repo.members[1] = SchedulingCenterPoolMember{AccountID: 1}
+	repo.events = []SchedulingCenterEvent{{AccountID: 1}}
+	res, err = svc.ResetGroup(ctx, 1, SchedulingCenterResetOptions{ClearEvents: true})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), res.Events)
+	require.Len(t, repo.members, 1)
+	require.False(t, res.SettingsReset)
+}
+
+func TestJudgeSchedulingCenterProbe(t *testing.T) {
+	gs := defaultSchedulingCenterGroupSettings(1) // recover_latency_ms = 10000
+	ok, d := judgeSchedulingCenterProbe(gs, &schedulingCenterProbeOutcome{IQVerdict: IQVerdictPassed, LatencySuccess: true, FirstTokenMs: ptrI(500)})
+	require.True(t, ok)
+	require.Equal(t, "probe", d["kind"])
+
+	ok, d = judgeSchedulingCenterProbe(gs, &schedulingCenterProbeOutcome{IQSkipped: true, LatencySuccess: true, FirstTokenMs: ptrI(500)})
+	require.True(t, ok, "IQ unsupported: latency only")
+	require.Equal(t, true, d["iq_skipped"])
+
+	ok, _ = judgeSchedulingCenterProbe(gs, &schedulingCenterProbeOutcome{IQVerdict: IQVerdictIncorrect, LatencySuccess: true, FirstTokenMs: ptrI(500)})
+	require.False(t, ok)
+	ok, d = judgeSchedulingCenterProbe(gs, &schedulingCenterProbeOutcome{IQVerdict: IQVerdictPassed, LatencySuccess: false, LatencyError: "401"})
+	require.False(t, ok)
+	require.Equal(t, true, d["latency_failed"])
+
+	// 同一测量结果，不同分组按各自阈值判定
+	slow := &schedulingCenterProbeOutcome{IQVerdict: IQVerdictPassed, LatencySuccess: true, FirstTokenMs: ptrI(3000)}
+	strict := defaultSchedulingCenterGroupSettings(2)
+	strict.RecoverLatencyMs = ptrI(2000)
+	ok, d = judgeSchedulingCenterProbe(strict, slow)
+	require.False(t, ok)
+	require.Equal(t, true, d["slow"])
+	ok, _ = judgeSchedulingCenterProbe(gs, slow)
+	require.True(t, ok)
+}
+
+func TestSchedulingCenterProbeSharedAcrossGroups(t *testing.T) {
+	clock := newTestClock()
+	repo := newFakeSchedulingCenterRepo()
+	svc := NewSchedulingCenterService(repo, nil, nil, nil)
+	svc.now = clock.now
+	calls := 0
+	svc.measure = func(context.Context, int64, string, int) *schedulingCenterProbeOutcome {
+		calls++
+		return &schedulingCenterProbeOutcome{IQVerdict: IQVerdictPassed, LatencySuccess: true, FirstTokenMs: ptrI(400)}
+	}
+	ctx := context.Background()
+	a := *defaultSchedulingCenterGroupSettings(1)
+	b := *defaultSchedulingCenterGroupSettings(2)
+
+	_, shared := svc.sharedMeasure(ctx, 7, a)
+	require.False(t, shared)
+	_, shared = svc.sharedMeasure(ctx, 7, b)
+	require.True(t, shared, "second group reuses the measurement")
+	require.Equal(t, 1, calls)
+
+	// 不同检测模型分别测量
+	c := *defaultSchedulingCenterGroupSettings(3)
+	c.ModelID = "other-model"
+	_, shared = svc.sharedMeasure(ctx, 7, c)
+	require.False(t, shared)
+	require.Equal(t, 2, calls)
+
+	// 超过共享时间重新测量
+	clock.advance(schedulingCenterProbeShareTTL + time.Second)
+	_, shared = svc.sharedMeasure(ctx, 7, a)
+	require.False(t, shared)
+	require.Equal(t, 3, calls)
+}
+
+func TestSchedulingCenterPruneEvents(t *testing.T) {
+	repo := newFakeSchedulingCenterRepo()
+	now := time.Date(2026, 11, 21, 12, 0, 0, 0, time.UTC)
+	repo.settings = []SchedulingCenterGroupSettings{
+		{GroupID: 1, EventRetentionDays: 10},
+		{GroupID: 2}, // 未设置 → 默认 30 天
+	}
+	repo.events = []SchedulingCenterEvent{
+		{GroupID: 1, AccountID: 1, CreatedAt: now.Add(-11 * 24 * time.Hour)},
+		{GroupID: 1, AccountID: 2, CreatedAt: now.Add(-9 * 24 * time.Hour)},
+		{GroupID: 2, AccountID: 3, CreatedAt: now.Add(-20 * 24 * time.Hour)},
+		{GroupID: 2, AccountID: 4, CreatedAt: now.Add(-31 * 24 * time.Hour)},
+	}
+	svc := &SchedulingCenterService{repo: repo, now: func() time.Time { return now }}
+	require.NoError(t, svc.PruneEvents(context.Background()))
+	var left []int64
+	for _, e := range repo.events {
+		left = append(left, e.AccountID)
+	}
+	require.ElementsMatch(t, []int64{2, 3}, left)
+}
+
+func TestSchedulingCenterEventRetentionValidation(t *testing.T) {
+	gs := defaultSchedulingCenterGroupSettings(1)
+	gs.EventRetentionDays = 7
+	require.ErrorIs(t, validateSchedulingCenterExitSettings(gs), ErrSchedulingCenterInvalidRule)
+	gs.EventRetentionDays = 0
+	require.NoError(t, validateSchedulingCenterExitSettings(gs))
+	require.Equal(t, SchedulingCenterDefaultEventRetentionDays, gs.EventRetentionDays)
+}
+
+func TestSchedulingCenterFixedAuthAccounts(t *testing.T) {
+	clock := newTestClock()
+	repo := newFakeSchedulingCenterRepo()
+	probePass := true
+	svc := newLifecycleService(repo, clock, &probePass)
+	ctx := context.Background()
+
+	gs := defaultSchedulingCenterGroupSettings(1)
+	gs.Enabled = true
+	gs.FallbackEnabled = false
+	errCount := 1
+	gs.ExitEnabled = true
+	gs.ExitErrorCount, gs.ExitErrorWindow = &errCount, 1
+	repo.settings = []SchedulingCenterGroupSettings{*gs}
+	repo.groupAccounts[1] = []int64{7, 8}
+	repo.fixed = map[int64]bool{8: true}
+	// 两个账号都有上游错误：Key 账号出池，OAuth 账号固定在调度池
+	repo.members[7] = SchedulingCenterPoolMember{AccountID: 7, Source: SchedulingCenterSourceManual, EnteredAt: clock.t.Add(-time.Hour)}
+	repo.requests = map[int64][]SchedulingCenterRequestSample{7: {errReq(clock.t)}, 8: {errReq(clock.t)}}
+
+	require.NoError(t, svc.EvaluateRules(ctx))
+	view, err := svc.GetPoolView(ctx, 1)
+	require.NoError(t, err)
+	require.Len(t, view.Members, 1)
+	require.Equal(t, int64(8), view.Members[0].AccountID)
+	require.Equal(t, SchedulingCenterSourceFixed, view.Members[0].Source)
+	for _, e := range repo.events {
+		require.NotEqual(t, int64(8), e.AccountID, "fixed account never gets events")
+	}
+
+	// 手动移出 / 移入对固定账号无效
+	require.NoError(t, svc.MoveAccounts(ctx, 1, []int64{8}, SchedulingCenterPoolAccount))
+	require.Nil(t, repo.states[8])
+	require.NoError(t, svc.MoveAccounts(ctx, 1, []int64{8}, SchedulingCenterPoolScheduling))
+	_, physical := repo.members[8]
+	require.False(t, physical)
+
+	// 检测计划只建给 Key 账号
+	planRepo := &fakeScheduledPlanRepo{plans: map[int64]*ScheduledTestPlan{}}
+	svc.scheduledSvc = NewScheduledTestService(planRepo, nil)
+	require.NoError(t, svc.SyncPlans(ctx))
+	require.Len(t, repo.inserted, 1)
+	require.Equal(t, int64(7), repo.inserted[0].AccountID)
+}
+
+func TestSchedulingCenterTimelineFixedAlwaysInPool(t *testing.T) {
+	from := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	to := from.Add(24 * time.Hour)
+	members := []SchedulingCenterPoolMember{{AccountID: 8, Source: SchedulingCenterSourceFixed, EnteredAt: from.Add(-48 * time.Hour)}}
+	prior := map[int64]string{8: SchedulingCenterActionExit}
+	events := []SchedulingCenterMembershipEvent{{AccountID: 8, Action: SchedulingCenterActionExit, At: from.Add(time.Hour)}}
+	tl := buildSchedulingCenterTimeline(from, to, prior, events, members)
+	require.True(t, tl.inPool(8, from.Add(2*time.Hour)))
+	require.Equal(t, 24*60.0, tl.minutesInPool(8))
 }

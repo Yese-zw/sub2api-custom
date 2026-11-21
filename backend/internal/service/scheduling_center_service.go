@@ -30,19 +30,30 @@ const (
 
 	SchedulingCenterSourceManual = "manual"
 	SchedulingCenterSourceRule   = "rule"
+	// SchedulingCenterSourceFixed 是 OAuth / Setup Token 账号的来源：调度中心只处理 Key 类型账号，
+	// 这些账号固定在调度池中（不落库、不检测、不参与出入池规则，也不能手动移出）。
+	SchedulingCenterSourceFixed = "fixed"
 
 	SchedulingCenterFirstTokenSourceTest    = "test"
 	SchedulingCenterFirstTokenSourceTraffic = "traffic"
 
-	SchedulingCenterDefaultCron       = "*/30 * * * *"
-	SchedulingCenterPlanMaxResults    = 100
-	schedulingCenterMetricsWindow     = 24 * time.Hour
-	schedulingCenterMaxBatchAccounts  = 1000
-	schedulingCenterRuleInterval      = time.Minute
-	schedulingCenterSyncEveryNTicks   = 5
-	schedulingCenterWorkerStartDelay  = 30 * time.Second
-	schedulingCenterWorkerTickTimeout = 2 * time.Minute
-	schedulingCenterMaxModelIDLen     = 100
+	SchedulingCenterDefaultCron = "*/30 * * * *"
+	// SchedulingCenterPlanMaxResults 是检测记录保留条数的默认值；RecordRetention 可在 [Min, Max] 内配置。
+	SchedulingCenterPlanMaxResults     = 100
+	SchedulingCenterMinRecordRetention = 10
+	SchedulingCenterMaxRecordRetention = 1000
+
+	// 调度日志保留天数：下限 8 天，保证 7 天的对比 / 导出窗口和「坏」次数窗口（最长 7 天）都有完整日志。
+	SchedulingCenterDefaultEventRetentionDays = 30
+	SchedulingCenterMinEventRetentionDays     = 8
+	SchedulingCenterMaxEventRetentionDays     = 365
+	schedulingCenterMetricsWindow             = 24 * time.Hour
+	schedulingCenterMaxBatchAccounts          = 1000
+	schedulingCenterRuleInterval              = time.Minute
+	schedulingCenterSyncEveryNTicks           = 5
+	schedulingCenterWorkerStartDelay          = 30 * time.Second
+	schedulingCenterWorkerTickTimeout         = 2 * time.Minute
+	schedulingCenterMaxModelIDLen             = 100
 )
 
 var (
@@ -87,8 +98,10 @@ type SchedulingCenterGroupSettings struct {
 	ExitIQWindow         int      `json:"exit_iq_window"`
 	ExitIQMaxDegraded    *int     `json:"exit_iq_max_degraded"`
 	ExitLatencyMs        *int64   `json:"exit_latency_ms"`
-	ExitLatencyCount     int      `json:"exit_latency_count"`
-	ExitErrorCount       *int     `json:"exit_error_count"`
+	ExitLatencyCount     int      `json:"exit_latency_count"`  // 最近 ExitLatencyWindow 次流式请求中首 Token 过慢达到该次数即出池
+	ExitLatencyWindow    int      `json:"exit_latency_window"` // 首 Token 规则观察的最近流式请求次数
+	ExitErrorCount       *int     `json:"exit_error_count"`    // 最近 ExitErrorWindow 次真实请求中上游错误达到该次数即出池，nil 不检查
+	ExitErrorWindow      int      `json:"exit_error_window"`   // 错误规则观察的最近真实请求次数
 	// RecoverSuccessCount 冷却结束、探测通过后，真实请求需连续正常的次数。
 	RecoverSuccessCount int `json:"recover_success_count"`
 
@@ -100,6 +113,25 @@ type SchedulingCenterGroupSettings struct {
 	BadWindowMinutes       int    `json:"bad_window_minutes"`        // 统计「坏」次数的窗口
 	CooldownMinutes        []int  `json:"cooldown_minutes"`          // 第 1、2、3… 次坏的冷却分钟数，最后一个封顶
 	RecoverLatencyMs       *int64 `json:"recover_latency_ms"`        // 探测与实测的首 Token 上限，nil 不检查
+
+	// 兜底：调度池账号数低于 FallbackMinAccounts 时，从账号池按 FallbackOrder 挑选账号补入。
+	FallbackEnabled       bool     `json:"fallback_enabled"`
+	FallbackMinAccounts   int      `json:"fallback_min_accounts"`
+	FallbackOrder         []string `json:"fallback_order"`           // rate_multiplier / first_token / cache_rate 的优先顺序
+	FallbackRequireIQPass bool     `json:"fallback_require_iq_pass"` // 兜底账号要求最近一次智商检测通过
+
+	// ManualOutHours 手动移出的有效期（小时）：到期后入池规则 / 兜底可再次选中该账号；0 表示永久。
+	ManualOutHours int `json:"manual_out_hours"`
+
+	// RecordRetention 每个账号保留的检测记录条数（同步到托管检测计划的 max_results）。
+	RecordRetention int `json:"record_retention"`
+
+	// EventRetentionDays 调度日志保留天数，后台定期清理更早的日志。
+	EventRetentionDays int `json:"event_retention_days"`
+
+	// EnforceEnabled 调度池生效（灰度开关）：开启后网关只从本分组调度池选账号，池内无可用账号时回退原逻辑。
+	// 仅在 Enabled 为 true 时生效；关闭时调度中心保持影子模式，不影响真实调度。
+	EnforceEnabled bool `json:"enforce_enabled"`
 
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -139,6 +171,8 @@ func defaultSchedulingCenterGroupSettings(groupID int64) *SchedulingCenterGroupS
 		ExitIQMaxDegraded:    &iqMax,
 		ExitLatencyMs:        &latency,
 		ExitLatencyCount:     3,
+		ExitLatencyWindow:    3,
+		ExitErrorWindow:      3,
 		ExitErrorCount:       &errCount,
 		RecoverSuccessCount:  3,
 
@@ -149,6 +183,17 @@ func defaultSchedulingCenterGroupSettings(groupID int64) *SchedulingCenterGroupS
 		BadWindowMinutes:       180,
 		CooldownMinutes:        []int{5, 15, 30, 60},
 		RecoverLatencyMs:       &recoverLatency,
+
+		FallbackEnabled:       true,
+		FallbackMinAccounts:   1,
+		FallbackOrder:         DefaultSchedulingCenterFallbackOrder(),
+		FallbackRequireIQPass: true,
+
+		ManualOutHours: 24,
+
+		RecordRetention: SchedulingCenterPlanMaxResults,
+
+		EventRetentionDays: SchedulingCenterDefaultEventRetentionDays,
 	}
 }
 
@@ -166,6 +211,7 @@ type SchedulingCenterManagedPlan struct {
 	CronExpression string
 	ModelID        string
 	IQStream       bool
+	MaxResults     int
 }
 
 // SchedulingCenterTestRecord 是账号的一次智商检测记录。
@@ -173,6 +219,7 @@ type SchedulingCenterTestRecord struct {
 	ID           int64     `json:"id"`
 	Status       string    `json:"status"`
 	FirstTokenMs *int64    `json:"first_token_ms"`
+	ProbeTotalMs *int64    `json:"probe_total_ms"`
 	LatencyMs    int64     `json:"latency_ms"`
 	IQStatus     string    `json:"iq_status"`
 	IQMessage    string    `json:"iq_message"`
@@ -197,6 +244,8 @@ type SchedulingCenterRepository interface {
 	InsertEvents(ctx context.Context, events []SchedulingCenterEvent) error
 	ListEvents(ctx context.Context, groupID int64, keyword string, limit, offset int) ([]SchedulingCenterEvent, int64, error)
 	CountBadEvents(ctx context.Context, groupID int64, accountIDs []int64, since time.Time) (map[int64]int, error)
+	// PruneEvents 删除分组中早于 before 的调度日志，返回删除行数。
+	PruneEvents(ctx context.Context, groupID int64, before time.Time) (int64, error)
 
 	// GetRecentRequests 返回每个账号在各自 since 之后的最近 limit 次真实请求（新 → 旧），
 	// 成功来自 usage_logs，失败来自 ops_error_logs 中上游原因的错误。
@@ -204,6 +253,12 @@ type SchedulingCenterRepository interface {
 	// GetRecentIQStatuses 返回每个账号在各自 since 之后的最近 limit 次智商检测结论（新 → 旧）。
 	GetRecentIQStatuses(ctx context.Context, since map[int64]time.Time, limit int) (map[int64][]string, error)
 	GetManagedPlanID(ctx context.Context, accountID int64) (int64, bool, error)
+	// GetNextPlanRunAt 返回分组托管检测计划中最早的 next_run_at；没有计划时返回 nil。
+	GetNextPlanRunAt(ctx context.Context, groupID int64) (*time.Time, error)
+	// ListForeignPlanOwners 返回本分组账号中检测计划归属于其他分组的账号及其生效设置。
+	ListForeignPlanOwners(ctx context.Context, groupID int64) ([]SchedulingCenterPlanOwner, error)
+	// ResetGroupData 按选项删除分组的调度池成员、账号状态、调度日志与托管计划的检测记录，返回各项删除行数。
+	ResetGroupData(ctx context.Context, groupID int64, opts SchedulingCenterResetOptions) (*SchedulingCenterResetResult, error)
 
 	GetAccountStats(ctx context.Context, accountIDs []int64, since time.Time) (map[int64]SchedulingCenterAccountStats, error)
 	GetLatestIQResults(ctx context.Context, accountIDs []int64) (map[int64]SchedulingCenterIQResult, error)
@@ -211,9 +266,13 @@ type SchedulingCenterRepository interface {
 	ListAccountTestRecords(ctx context.Context, accountID int64, limit int) ([]SchedulingCenterTestRecord, error)
 
 	ListGroupSettings(ctx context.Context) ([]SchedulingCenterGroupSettings, error)
+	// ListEnforcedPools 返回开启调度池生效的分组及其网关可用账号（池成员 + 探测通过的恢复中账号）。
+	ListEnforcedPools(ctx context.Context) (map[int64][]int64, error)
 	GetGroupSettings(ctx context.Context, groupID int64) (*SchedulingCenterGroupSettings, error)
 	UpsertGroupSettings(ctx context.Context, settings *SchedulingCenterGroupSettings) (*SchedulingCenterGroupSettings, error)
 	ListGroupAccountIDs(ctx context.Context, groupID int64) ([]int64, error)
+	// ListGroupKeyAccountIDs 只返回分组中调度中心管理的 Key 类型账号（不含 OAuth / Setup Token）。
+	ListGroupKeyAccountIDs(ctx context.Context, groupID int64) ([]int64, error)
 
 	ListManagedPlans(ctx context.Context) ([]SchedulingCenterManagedPlan, error)
 	InsertManagedPlan(ctx context.Context, accountID, planID, groupID int64) error
@@ -238,13 +297,21 @@ type SchedulingCenterService struct {
 	repo           SchedulingCenterRepository
 	scheduledSvc   *ScheduledTestService
 	accountTestSvc *AccountTestService
-	db             *sql.DB
+	// latencyProbe 使用只读账号仓储，测速不会改写账号状态。
+	latencyProbe *AccountTestService
+	db           *sql.DB
+	// gate 为网关提供调度池生效分组的内存快照；调度池或设置变化后通知它刷新。
+	gate *SchedulingCenterGate
+	// opsSvc 用于判断运维监控是否开启：未开启时没有上游错误日志，「连续上游错误」规则不会触发。
+	opsSvc *OpsService
 
-	// probe 执行一次恢复探测；默认使用 AccountTestService，单测可替换。
-	probe     schedulingCenterProbeFunc
-	probeSem  chan struct{}
-	probeSync bool // 单测：同步执行探测
-	now       func() time.Time
+	// measure 执行一次恢复探测测量（默认使用 AccountTestService，单测可替换）；probeShares 让多个分组共用同一次测量。
+	measure      schedulingCenterMeasureFunc
+	probeShareMu sync.Mutex
+	probeShares  map[string]*schedulingCenterProbeShare
+	probeSem     chan struct{}
+	probeSync    bool // 单测：同步执行探测
+	now          func() time.Time
 
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -257,13 +324,16 @@ func NewSchedulingCenterService(repo SchedulingCenterRepository, scheduledSvc *S
 		repo:           repo,
 		scheduledSvc:   scheduledSvc,
 		accountTestSvc: accountTestSvc,
+		latencyProbe:   accountTestSvc.ReadOnlyClone(),
 		db:             db,
 		probeSem:       make(chan struct{}, schedulingCenterProbeConcurrency),
 		now:            time.Now,
 		stopCh:         make(chan struct{}),
 		doneCh:         make(chan struct{}),
 	}
-	s.probe = s.defaultProbe
+	s.measure = s.defaultMeasure
+	s.probeShares = map[string]*schedulingCenterProbeShare{}
+	s.gate = NewSchedulingCenterGate(repo)
 	return s
 }
 
@@ -375,8 +445,11 @@ func (s *SchedulingCenterService) GetAccountMetrics(ctx context.Context, account
 
 // ListAccountTestRecords 返回账号最近的智商检测记录（最多 100 条）。
 func (s *SchedulingCenterService) ListAccountTestRecords(ctx context.Context, accountID int64, limit int) ([]SchedulingCenterTestRecord, error) {
-	if limit <= 0 || limit > SchedulingCenterPlanMaxResults {
+	if limit <= 0 {
 		limit = SchedulingCenterPlanMaxResults
+	}
+	if limit > SchedulingCenterMaxRecordRetention {
+		limit = SchedulingCenterMaxRecordRetention
 	}
 	records, err := s.repo.ListAccountTestRecords(ctx, accountID, limit)
 	if err != nil {
@@ -416,6 +489,7 @@ func (s *SchedulingCenterService) GetGroupSettings(ctx context.Context, groupID 
 
 // UpdateGroupSettings 保存分组设置，随后立即同步定时测试计划并重新评估入池规则。
 func (s *SchedulingCenterService) UpdateGroupSettings(ctx context.Context, in SchedulingCenterGroupSettings) (*SchedulingCenterGroupSettings, error) {
+	defer s.gate.Notify()
 	in.CronExpression = strings.TrimSpace(in.CronExpression)
 	if in.CronExpression == "" {
 		in.CronExpression = SchedulingCenterDefaultCron
@@ -434,6 +508,9 @@ func (s *SchedulingCenterService) UpdateGroupSettings(ctx context.Context, in Sc
 		return nil, fmt.Errorf("%w: max_first_token_ms must be positive", ErrSchedulingCenterInvalidRule)
 	}
 	if err := validateSchedulingCenterExitSettings(&in); err != nil {
+		return nil, err
+	}
+	if err := validateSchedulingCenterFallbackSettings(&in); err != nil {
 		return nil, err
 	}
 
@@ -473,19 +550,21 @@ func (s *SchedulingCenterService) SyncPlans(ctx context.Context) error {
 			groupID int64
 			cron    string
 			model   string
+			keep    int
 		}
 		desired := make(map[int64]desiredPlan)
 		for _, gs := range settings {
 			if !gs.Enabled {
 				continue
 			}
-			accountIDs, err := s.repo.ListGroupAccountIDs(ctx, gs.GroupID)
+			// 只为 Key 类型账号建检测计划；OAuth / Setup Token 账号固定在调度池，不检测
+			accountIDs, err := s.repo.ListGroupKeyAccountIDs(ctx, gs.GroupID)
 			if err != nil {
 				return err
 			}
 			for _, id := range accountIDs {
 				if _, exists := desired[id]; !exists {
-					desired[id] = desiredPlan{groupID: gs.GroupID, cron: gs.CronExpression, model: gs.ModelID}
+					desired[id] = desiredPlan{groupID: gs.GroupID, cron: gs.CronExpression, model: gs.ModelID, keep: schedulingCenterRecordRetention(&gs)}
 				}
 			}
 		}
@@ -508,7 +587,7 @@ func (s *SchedulingCenterService) SyncPlans(ctx context.Context) error {
 				}
 				continue
 			}
-			if mp.CronExpression != want.cron || mp.ModelID != want.model || !mp.IQStream {
+			if mp.CronExpression != want.cron || mp.ModelID != want.model || !mp.IQStream || mp.MaxResults != want.keep {
 				plan, err := s.scheduledSvc.GetPlan(ctx, mp.PlanID)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("get plan %d: %w", mp.PlanID, err))
@@ -517,6 +596,7 @@ func (s *SchedulingCenterService) SyncPlans(ctx context.Context) error {
 				plan.CronExpression = want.cron
 				plan.ModelID = want.model
 				plan.IQStream = true
+				plan.MaxResults = want.keep
 				if _, err := s.scheduledSvc.UpdatePlan(ctx, plan); err != nil {
 					errs = append(errs, fmt.Errorf("update plan %d: %w", mp.PlanID, err))
 					continue
@@ -538,7 +618,7 @@ func (s *SchedulingCenterService) SyncPlans(ctx context.Context) error {
 				ModelID:        want.model,
 				CronExpression: want.cron,
 				Enabled:        true,
-				MaxResults:     SchedulingCenterPlanMaxResults,
+				MaxResults:     want.keep,
 				AutoRecover:    false,
 				IQCheck:        true,
 				IQStopOnFail:   false,
@@ -569,7 +649,13 @@ func SchedulingCenterRuleSatisfied(settings *SchedulingCenterGroupSettings, m *S
 	}
 	if settings.MinCacheRate != nil {
 		minReq := int64(max(settings.EntryCacheMinRequests, 1))
-		if m.CacheRate == nil || m.Requests < minReq || *m.CacheRate < *settings.MinCacheRate {
+		insufficient := m.CacheRate == nil || m.Requests < minReq
+		// 调度池生效后池外账号拿不到真实流量，24h 缓存率会一直缺数据；此时不因缺数据卡住入池，
+		// 入池后由「缓存率过低」出池规则兜住。
+		if insufficient && !(settings.Enabled && settings.EnforceEnabled) {
+			return false
+		}
+		if !insufficient && *m.CacheRate < *settings.MinCacheRate {
 			return false
 		}
 	}
@@ -615,6 +701,7 @@ func (s *SchedulingCenterService) Stop() {
 		case <-s.doneCh:
 		case <-time.After(5 * time.Second):
 		}
+		s.gate.Stop()
 	})
 }
 
@@ -650,6 +737,62 @@ func (s *SchedulingCenterService) runTick(syncPlans bool) {
 	if err := s.EvaluateRules(ctx); err != nil {
 		logger.LegacyPrintf("service.scheduling_center", "[SchedulingCenter] evaluate rules failed: %v", err)
 	}
+	if syncPlans {
+		if err := s.PruneEvents(ctx); err != nil {
+			logger.LegacyPrintf("service.scheduling_center", "[SchedulingCenter] prune events failed: %v", err)
+		}
+	}
+}
+
+// PruneEvents 按各分组的 EventRetentionDays 删除过期的调度日志（包括已关闭调度的分组）。
+func (s *SchedulingCenterService) PruneEvents(ctx context.Context) error {
+	return s.withLock(ctx, "scheduling_center:prune_events", func() error {
+		all, err := s.repo.ListGroupSettings(ctx)
+		if err != nil {
+			return err
+		}
+		now := s.now()
+		for i := range all {
+			before := now.Add(-time.Duration(schedulingCenterEventRetentionDays(&all[i])) * 24 * time.Hour)
+			n, err := s.repo.PruneEvents(ctx, all[i].GroupID, before)
+			if err != nil {
+				return err
+			}
+			if n > 0 {
+				logger.LegacyPrintf("service.scheduling_center", "[SchedulingCenter] pruned %d events of group %d", n, all[i].GroupID)
+			}
+		}
+		return nil
+	})
+}
+
+// SetOpsService 注入运维监控服务（可为 nil）。
+func (s *SchedulingCenterService) SetOpsService(ops *OpsService) {
+	if s != nil {
+		s.opsSvc = ops
+	}
+}
+
+// OpsMonitoringEnabled 报告运维监控是否开启（错误日志是否在记录）；未注入时视为开启。
+func (s *SchedulingCenterService) OpsMonitoringEnabled(ctx context.Context) bool {
+	if s == nil || s.opsSvc == nil {
+		return true
+	}
+	return s.opsSvc.IsMonitoringEnabled(ctx)
+}
+
+// IsSchedulingCenterFixedAccountType 报告账号类型是否固定在调度池（OAuth / Setup Token），
+// 调度中心只处理其余的 Key 类型账号。
+func IsSchedulingCenterFixedAccountType(accountType string) bool {
+	return accountType == AccountTypeOAuth || accountType == AccountTypeSetupToken
+}
+
+// schedulingCenterEventRetentionDays 返回分组的调度日志保留天数（未设置时为默认值）。
+func schedulingCenterEventRetentionDays(gs *SchedulingCenterGroupSettings) int {
+	if gs == nil || gs.EventRetentionDays <= 0 {
+		return SchedulingCenterDefaultEventRetentionDays
+	}
+	return gs.EventRetentionDays
 }
 
 // withLock 用 PG advisory lock 串行化后台任务与设置变更触发的同步；拿不到锁说明
@@ -686,4 +829,12 @@ func normalizeSchedulingCenterIDs(ids []int64) []int64 {
 		}
 	}
 	return out
+}
+
+// schedulingCenterRecordRetention 返回分组的检测记录保留条数（未设置时为默认值）。
+func schedulingCenterRecordRetention(gs *SchedulingCenterGroupSettings) int {
+	if gs == nil || gs.RecordRetention <= 0 {
+		return SchedulingCenterPlanMaxResults
+	}
+	return gs.RecordRetention
 }

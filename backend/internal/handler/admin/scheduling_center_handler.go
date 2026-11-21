@@ -2,6 +2,7 @@ package admin
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -149,6 +150,8 @@ type schedulingCenterSettingsRequest struct {
 	ExitLatencyMs        *int64   `json:"exit_latency_ms"`
 	ExitLatencyCount     int      `json:"exit_latency_count"`
 	ExitErrorCount       *int     `json:"exit_error_count"`
+	ExitLatencyWindow    int      `json:"exit_latency_window"`
+	ExitErrorWindow      int      `json:"exit_error_window"`
 	RecoverSuccessCount  int      `json:"recover_success_count"`
 
 	FirstTokenTestSamples  int    `json:"first_token_test_samples"`
@@ -158,6 +161,23 @@ type schedulingCenterSettingsRequest struct {
 	BadWindowMinutes       int    `json:"bad_window_minutes"`
 	CooldownMinutes        []int  `json:"cooldown_minutes"`
 	RecoverLatencyMs       *int64 `json:"recover_latency_ms"`
+
+	FallbackEnabled       bool     `json:"fallback_enabled"`
+	FallbackMinAccounts   int      `json:"fallback_min_accounts"`
+	FallbackOrder         []string `json:"fallback_order"`
+	FallbackRequireIQPass bool     `json:"fallback_require_iq_pass"`
+
+	// ManualOutHours 为指针：旧客户端不传时保持默认 24 小时，传 0 表示永久。
+	ManualOutHours *int `json:"manual_out_hours"`
+
+	// RecordRetention 不传或为 0 时使用默认 100 条。
+	RecordRetention int `json:"record_retention"`
+
+	// EventRetentionDays 不传或为 0 时使用默认 30 天。
+	EventRetentionDays int `json:"event_retention_days"`
+
+	// EnforceEnabled 调度池生效：开启后网关在该分组只从调度池选账号（池内无可用账号时回退原逻辑）。
+	EnforceEnabled bool `json:"enforce_enabled"`
 }
 
 // UpdateSettings PUT /admin/scheduling-center/groups/:id/settings
@@ -189,6 +209,8 @@ func (h *SchedulingCenterHandler) UpdateSettings(c *gin.Context) {
 		ExitLatencyMs:        req.ExitLatencyMs,
 		ExitLatencyCount:     req.ExitLatencyCount,
 		ExitErrorCount:       req.ExitErrorCount,
+		ExitLatencyWindow:    req.ExitLatencyWindow,
+		ExitErrorWindow:      req.ExitErrorWindow,
 		RecoverSuccessCount:  req.RecoverSuccessCount,
 
 		FirstTokenTestSamples:  req.FirstTokenTestSamples,
@@ -198,6 +220,19 @@ func (h *SchedulingCenterHandler) UpdateSettings(c *gin.Context) {
 		BadWindowMinutes:       req.BadWindowMinutes,
 		CooldownMinutes:        req.CooldownMinutes,
 		RecoverLatencyMs:       req.RecoverLatencyMs,
+
+		FallbackEnabled:       req.FallbackEnabled,
+		FallbackMinAccounts:   req.FallbackMinAccounts,
+		FallbackOrder:         req.FallbackOrder,
+		FallbackRequireIQPass: req.FallbackRequireIQPass,
+
+		ManualOutHours: manualOutHoursOrDefault(req.ManualOutHours),
+
+		RecordRetention: req.RecordRetention,
+
+		EventRetentionDays: req.EventRetentionDays,
+
+		EnforceEnabled: req.EnforceEnabled,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrSchedulingCenterInvalidCron) || errors.Is(err, service.ErrSchedulingCenterInvalidRule) ||
@@ -262,6 +297,39 @@ func (h *SchedulingCenterHandler) Export(c *gin.Context) {
 			return
 		}
 		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, result)
+}
+
+func manualOutHoursOrDefault(v *int) int {
+	if v == nil {
+		return 24
+	}
+	return *v
+}
+
+// ResetGroup POST /admin/scheduling-center/groups/:id/reset
+func (h *SchedulingCenterHandler) ResetGroup(c *gin.Context) {
+	groupID, ok := parseSchedulingCenterID(c, "group")
+	if !ok {
+		return
+	}
+	var opts service.SchedulingCenterResetOptions
+	if err := c.ShouldBindJSON(&opts); err != nil {
+		response.BadRequest(c, "invalid request: "+err.Error())
+		return
+	}
+	result, err := h.svc.ResetGroup(c.Request.Context(), groupID, opts)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrSchedulingCenterResetNothing):
+			response.BadRequest(c, err.Error())
+		case errors.Is(err, service.ErrSchedulingCenterBusy):
+			response.Error(c, http.StatusConflict, err.Error())
+		default:
+			response.InternalError(c, err.Error())
+		}
 		return
 	}
 	response.Success(c, result)

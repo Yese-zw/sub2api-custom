@@ -665,8 +665,12 @@ func ProvideSchedulingCenterService(
 	scheduledSvc *ScheduledTestService,
 	accountTestSvc *AccountTestService,
 	db *sql.DB,
+	opsSvc *OpsService,
 ) *SchedulingCenterService {
 	svc := NewSchedulingCenterService(repo, scheduledSvc, accountTestSvc, db)
+	svc.SetOpsService(opsSvc)
+	setActiveSchedulingCenterGate(svc.gate)
+	svc.gate.Start()
 	svc.Start()
 	return svc
 }

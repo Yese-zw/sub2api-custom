@@ -75,20 +75,22 @@
             <col class="w-24" />
             <col class="w-24" />
             <col class="w-24" />
+            <col class="w-24" />
             <col />
           </colgroup>
           <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400">
             <tr>
               <th class="px-3 py-2.5 font-medium">{{ t('admin.schedulingCenter.detail.time') }}</th>
-              <th class="px-3 py-2.5 text-right font-medium">{{ t('admin.schedulingCenter.columns.firstToken') }}</th>
-              <th class="px-3 py-2.5 text-right font-medium">{{ t('admin.schedulingCenter.detail.latency') }}</th>
+              <th class="px-3 py-2.5 text-right font-medium" :title="t('admin.schedulingCenter.detail.probeHint')">{{ t('admin.schedulingCenter.columns.firstToken') }}</th>
+              <th class="px-3 py-2.5 text-right font-medium" :title="t('admin.schedulingCenter.detail.probeHint')">{{ t('admin.schedulingCenter.detail.probeTotal') }}</th>
               <th class="px-3 py-2.5 font-medium">{{ t('admin.schedulingCenter.columns.iq') }}</th>
+              <th class="px-3 py-2.5 text-right font-medium">{{ t('admin.schedulingCenter.detail.iqLatency') }}</th>
               <th class="px-3 py-2.5 font-medium">{{ t('admin.schedulingCenter.detail.message') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
             <tr v-if="filtered.length === 0">
-              <td colspan="5" class="px-3 py-8 text-center text-xs text-gray-400">{{ t('admin.schedulingCenter.detail.filterEmpty') }}</td>
+              <td colspan="6" class="px-3 py-8 text-center text-xs text-gray-400">{{ t('admin.schedulingCenter.detail.filterEmpty') }}</td>
             </tr>
             <tr v-for="rec in filtered" :key="rec.id" class="align-top hover:bg-gray-50/80 dark:hover:bg-dark-700/30">
               <td class="whitespace-nowrap px-3 py-2 tabular-nums text-gray-600 dark:text-gray-300">
@@ -101,12 +103,15 @@
                 <span v-if="rec.first_token_ms != null" class="text-gray-900 dark:text-white">{{ formatMs(rec.first_token_ms) }}</span>
                 <span v-else class="text-gray-300 dark:text-dark-500">—</span>
               </td>
-              <td class="px-3 py-2 text-right tabular-nums text-gray-500 dark:text-dark-400">{{ formatMs(rec.latency_ms) }}</td>
+              <td class="px-3 py-2 text-right tabular-nums text-gray-500 dark:text-dark-400">
+                {{ rec.probe_total_ms != null ? formatMs(rec.probe_total_ms) : '—' }}
+              </td>
               <td class="px-3 py-2">
                 <span class="badge" :class="iqBadgeClass(rec.iq_status)">
                   {{ t(`admin.schedulingCenter.iq.${iqKey(rec.iq_status)}`) }}
                 </span>
               </td>
+              <td class="px-3 py-2 text-right tabular-nums text-gray-500 dark:text-dark-400">{{ formatMs(rec.latency_ms) }}</td>
               <td class="break-words px-3 py-2 text-xs leading-relaxed text-gray-500 dark:text-dark-400">
                 {{ messageOf(rec) }}
               </td>
@@ -145,6 +150,8 @@ const props = defineProps<{
   show: boolean
   accountId: number | null
   accountName: string
+  /** 加载条数：分组设置的检测记录保留条数 */
+  limit?: number
 }>()
 
 const emit = defineEmits<{ (e: 'close'): void }>()
@@ -165,7 +172,7 @@ watch(
     records.value = []
     filter.value = 'all'
     try {
-      const list = await schedulingCenterAPI.getAccountRecords(accountId, 100)
+      const list = await schedulingCenterAPI.getAccountRecords(accountId, props.limit || 100)
       if (accountId === props.accountId) records.value = list
     } catch (error) {
       appStore.showError(extractApiErrorMessage(error, t('admin.schedulingCenter.detail.loadFailed')))
@@ -219,8 +226,9 @@ function iqBadgeClass(status: string): string {
   }
 }
 
+// 首 Token 与测速耗时统一用毫秒显示
 function formatMs(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`
+  return `${Math.round(ms)}ms`
 }
 
 const PROBE_PREFIX = '恢复探测'
@@ -249,7 +257,7 @@ const summary = computed(() => {
   const passRate = judged.length ? (passed / judged.length) * 100 : null
   const ttft = recs.filter((r) => r.first_token_ms != null).map((r) => r.first_token_ms as number)
   const avgTTFT = avg(ttft)
-  const avgLatency = avg(recs.filter((r) => r.status === 'success').map((r) => r.latency_ms))
+  const avgLatency = avg(recs.filter((r) => r.probe_total_ms != null).map((r) => r.probe_total_ms as number))
   const latest = recs[0]
   return [
     {
@@ -280,7 +288,7 @@ const summary = computed(() => {
     },
     {
       key: 'latency',
-      label: t('admin.schedulingCenter.detail.avgLatency'),
+      label: t('admin.schedulingCenter.detail.avgProbeTotal'),
       value: avgLatency != null ? formatMs(avgLatency) : '-'
     },
     {
@@ -339,8 +347,8 @@ const chartData = computed(() => {
         spanGaps: true
       },
       {
-        label: t('admin.schedulingCenter.detail.latency'),
-        data: recs.map((r) => r.latency_ms),
+        label: t('admin.schedulingCenter.detail.probeTotal'),
+        data: recs.map((r) => r.probe_total_ms),
         borderColor: 'rgba(148, 163, 184, 0.9)',
         backgroundColor: 'rgba(148, 163, 184, 0.1)',
         borderDash: [4, 4],

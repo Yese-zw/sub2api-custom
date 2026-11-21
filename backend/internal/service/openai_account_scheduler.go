@@ -524,6 +524,9 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 			return nil, false, nil
 		}
 	}
+	if schedulingCenterBlocksSticky(ctx, req.GroupID, accountID) {
+		return nil, false, nil
+	}
 	ctx = withOpenAIImageSizeStickyAccount(ctx, accountID)
 
 	account, err := s.service.getSchedulableAccount(ctx, accountID)
@@ -1401,6 +1404,23 @@ func (s openAISelectionFilterStats) summary(extra string) string {
 }
 
 func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
+	ctx context.Context,
+	req OpenAIAccountScheduleRequest,
+) (*AccountSelectionResult, int, int, float64, error) {
+	type picked struct {
+		selection      *AccountSelectionResult
+		candidateCount int
+		topK           int
+		loadSkew       float64
+	}
+	res, err := runWithSchedulingCenterPool(ctx, func(ctx context.Context) (picked, error) {
+		selection, candidateCount, topK, loadSkew, err := s.selectByLoadBalanceInner(ctx, req)
+		return picked{selection, candidateCount, topK, loadSkew}, err
+	})
+	return res.selection, res.candidateCount, res.topK, res.loadSkew, err
+}
+
+func (s *defaultOpenAIAccountScheduler) selectByLoadBalanceInner(
 	ctx context.Context,
 	req OpenAIAccountScheduleRequest,
 ) (*AccountSelectionResult, int, int, float64, error) {

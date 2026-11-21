@@ -9,6 +9,7 @@ import promptAudit from './promptAudit'
 import financial from './financial'
 import plugins from './plugins'
 import schedulingCenter from './schedulingCenter'
+import operationsCenter from './operationsCenter'
 
 export default {
   ...overview,
@@ -22,4 +23,5 @@ export default {
   ...financial,
   ...plugins,
   ...schedulingCenter,
+  ...operationsCenter,
 }

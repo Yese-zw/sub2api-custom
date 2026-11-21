@@ -14,7 +14,7 @@ import (
 //
 //	账号池(空闲) ──入池规则/手动──▶ 调度池
 //	调度池 ──出池规则触发（一次「坏」）──▶ cooling（统计窗口内第 n 次坏按 cooldown_minutes[n-1] 冷却，默认 3 小时内 5/15/30/60 分钟封顶）
-//	cooling ──到期──▶ probing：先主动探测（智商检测；账号不支持时跳过探测）
+//	cooling ──到期──▶ probing：先主动探测（常规请求 hi 测速 + 智商检测，均只读；不支持智商检测时只测速）
 //	probing ──探测通过 + 真实请求连续正常 N 次──▶ 恢复：
 //	         原为手动成员或入池规则未开启 → 直接回到调度池；否则 → ready，等待入池规则
 //	probing ──探测失败 / 真实请求出现错误或过慢──▶ 再记一次「坏」，重新 cooling
@@ -35,13 +35,14 @@ const (
 	SchedulingCenterProbeRunning = "running"
 	SchedulingCenterProbePassed  = "passed"
 
-	SchedulingCenterActionEnter       = "enter"
-	SchedulingCenterActionExit        = "exit"
-	SchedulingCenterActionCooldownEnd = "cooldown_end"
-	SchedulingCenterActionProbePass   = "probe_pass"
-	SchedulingCenterActionProbeFail   = "probe_fail"
-	SchedulingCenterActionRecoverPass = "recover_pass"
-	SchedulingCenterActionRecoverFail = "recover_fail"
+	SchedulingCenterActionEnter        = "enter"
+	SchedulingCenterActionExit         = "exit"
+	SchedulingCenterActionCooldownEnd  = "cooldown_end"
+	SchedulingCenterActionProbePass    = "probe_pass"
+	SchedulingCenterActionProbeFail    = "probe_fail"
+	SchedulingCenterActionRecoverPass  = "recover_pass"
+	SchedulingCenterActionRecoverFail  = "recover_fail"
+	SchedulingCenterActionManualOutEnd = "manual_out_end"
 
 	SchedulingCenterReasonManualIn       = "manual_in"
 	SchedulingCenterReasonManualOut      = "manual_out"
@@ -58,13 +59,18 @@ const (
 	SchedulingCenterReasonRecoverLatency = "recover_latency"
 	SchedulingCenterReasonRecoverError   = "recover_error"
 	SchedulingCenterReasonWaitEntryRule  = "wait_entry_rule"
+	SchedulingCenterReasonManualOutEnd   = "manual_out_expired"
 
 	SchedulingCenterSourceSystem = "system"
 
-	schedulingCenterProbeConcurrency   = 5
-	schedulingCenterProbeTimeout       = 6 * time.Minute
-	schedulingCenterProbeStaleAfter    = 30 * time.Minute
+	schedulingCenterProbeConcurrency = 5
+	schedulingCenterProbeTimeout     = 6 * time.Minute
+	schedulingCenterProbeStaleAfter  = 30 * time.Minute
+	// schedulingCenterProbeShareTTL 内同一账号同一检测模型的测量结果在分组之间共用
+	schedulingCenterProbeShareTTL      = 5 * time.Minute
 	schedulingCenterRequestSampleLimit = 50
+	schedulingCenterMaxExitSampleLimit = 300
+	schedulingCenterMaxExitWindow      = 100
 	schedulingCenterMaxRuleCount       = 50
 )
 
@@ -101,6 +107,7 @@ type SchedulingCenterEvent struct {
 type SchedulingCenterRequestSample struct {
 	At           time.Time
 	OK           bool
+	Stream       bool
 	FirstTokenMs *int64
 }
 
@@ -108,6 +115,25 @@ type SchedulingCenterRequestSample struct {
 type SchedulingCenterPoolView struct {
 	Members []SchedulingCenterPoolMember   `json:"members"`
 	States  []SchedulingCenterAccountState `json:"states"`
+	// NextCheckAt 是分组下一次智商检测的时间（分组未开启调度时为空）。
+	NextCheckAt *time.Time `json:"next_check_at"`
+	// PlanOwners 列出本分组中检测计划归属于其他分组的账号（账号同属多个开启调度的分组时，
+	// 检测频率 / 模型 / 保留条数按分组 ID 最小的分组执行）。
+	PlanOwners []SchedulingCenterPlanOwner `json:"plan_owners"`
+	// OpsMonitoringEnabled 为 false 时没有上游错误日志：「连续上游错误」出池与恢复观察中的错误判断都不会生效。
+	OpsMonitoringEnabled bool `json:"ops_monitoring_enabled"`
+	// Enforce 是调度池生效在本实例上的状态与选号统计（多实例部署时只反映处理本次请求的实例）。
+	Enforce SchedulingCenterEnforceStats `json:"enforce"`
+}
+
+// SchedulingCenterPlanOwner 描述账号检测计划实际归属的分组及其生效设置。
+type SchedulingCenterPlanOwner struct {
+	AccountID      int64  `json:"account_id"`
+	GroupID        int64  `json:"group_id"`
+	GroupName      string `json:"group_name"`
+	CronExpression string `json:"cron_expression"`
+	ModelID        string `json:"model_id"`
+	MaxResults     int    `json:"max_results"`
 }
 
 // SchedulingCenterExitDecision 描述一次出池判定。
@@ -116,7 +142,28 @@ type SchedulingCenterExitDecision struct {
 	Detail map[string]any
 }
 
-type schedulingCenterProbeFunc func(ctx context.Context, accountID int64, gs SchedulingCenterGroupSettings) (passed bool, detail map[string]any)
+// schedulingCenterProbeOutcome 是一次主动探测的原始测量结果（与分组无关）；
+// 是否通过由各分组按自己的阈值判定（judgeSchedulingCenterProbe）。
+type schedulingCenterProbeOutcome struct {
+	IQSkipped      bool
+	IQError        string
+	IQVerdict      string
+	IQTaskError    string
+	LatencySuccess bool
+	FirstTokenMs   *int64
+	TotalMs        int64
+	LatencyError   string
+}
+
+// schedulingCenterMeasureFunc 执行一次测量（智商检测 + 常规请求测速）并写入检测记录；单测可替换。
+type schedulingCenterMeasureFunc func(ctx context.Context, accountID int64, modelID string, keep int) *schedulingCenterProbeOutcome
+
+// schedulingCenterProbeShare 是同一账号同一检测模型的一次测量，供多个分组共用。
+type schedulingCenterProbeShare struct {
+	done    chan struct{}
+	outcome *schedulingCenterProbeOutcome
+	at      time.Time
+}
 
 // SchedulingCenterBackoff 返回窗口内第 badCount 次「坏」之后的冷却时长：
 // steps[i] 对应第 i+1 次，超出后一直使用最后一个值（封顶）。steps 为空时用默认 5/15/30/60 分钟。
@@ -172,50 +219,80 @@ func SchedulingCenterCheckExit(gs *SchedulingCenterGroupSettings, m *SchedulingC
 		}
 	}
 
-	if gs.ExitLatencyMs != nil && gs.ExitLatencyCount > 0 {
-		values := make([]int64, 0, gs.ExitLatencyCount)
+	// 首 Token：最近 W 次成功的流式请求（有首 Token）中，超过阈值的达到 K 次；样本不足 W 次不判断。
+	if latencyWindow, latencyCount := schedulingCenterExitLatencyWindow(gs), gs.ExitLatencyCount; gs.ExitLatencyMs != nil && latencyCount > 0 {
+		values := make([]int64, 0, latencyWindow)
 		for _, r := range reqs {
-			if !r.OK || r.FirstTokenMs == nil {
+			if !r.OK || !r.Stream || r.FirstTokenMs == nil {
 				continue
 			}
 			values = append(values, *r.FirstTokenMs)
-			if len(values) == gs.ExitLatencyCount {
+			if len(values) == latencyWindow {
 				break
 			}
 		}
-		if len(values) == gs.ExitLatencyCount {
-			allSlow := true
+		if len(values) == latencyWindow {
+			slow := 0
 			for _, v := range values {
-				if v <= *gs.ExitLatencyMs {
-					allSlow = false
-					break
+				if v > *gs.ExitLatencyMs {
+					slow++
 				}
 			}
-			if allSlow {
+			if slow >= latencyCount {
 				return &SchedulingCenterExitDecision{Reason: SchedulingCenterReasonExitLatency, Detail: map[string]any{
 					"values": values,
 					"limit":  *gs.ExitLatencyMs,
-					"count":  gs.ExitLatencyCount,
+					"window": latencyWindow,
+					"slow":   slow,
+					"count":  latencyCount,
 				}}
 			}
 		}
 	}
 
-	if gs.ExitErrorCount != nil && *gs.ExitErrorCount > 0 && len(reqs) >= *gs.ExitErrorCount {
-		allErr := true
-		for _, r := range reqs[:*gs.ExitErrorCount] {
-			if r.OK {
-				allErr = false
-				break
+	// 上游错误：最近 W 次真实请求（流式与非流式）中上游错误达到 K 次；样本不足 W 次不判断。
+	if errorWindow := schedulingCenterExitErrorWindow(gs); gs.ExitErrorCount != nil && *gs.ExitErrorCount > 0 && len(reqs) >= errorWindow {
+		errs := 0
+		for _, r := range reqs[:errorWindow] {
+			if !r.OK {
+				errs++
 			}
 		}
-		if allErr {
+		if errs >= *gs.ExitErrorCount {
 			return &SchedulingCenterExitDecision{Reason: SchedulingCenterReasonExitError, Detail: map[string]any{
-				"count": *gs.ExitErrorCount,
+				"window": errorWindow,
+				"errors": errs,
+				"count":  *gs.ExitErrorCount,
 			}}
 		}
 	}
 	return nil
+}
+
+// schedulingCenterExitLatencyWindow 返回首 Token 出池规则的观察次数（未设置时等于触发次数，即「连续 N 次」）。
+func schedulingCenterExitLatencyWindow(gs *SchedulingCenterGroupSettings) int {
+	if gs.ExitLatencyWindow > 0 {
+		return gs.ExitLatencyWindow
+	}
+	return max(gs.ExitLatencyCount, 1)
+}
+
+// schedulingCenterExitErrorWindow 返回错误出池规则的观察次数（未设置时等于触发次数）。
+func schedulingCenterExitErrorWindow(gs *SchedulingCenterGroupSettings) int {
+	if gs.ExitErrorWindow > 0 {
+		return gs.ExitErrorWindow
+	}
+	if gs.ExitErrorCount != nil && *gs.ExitErrorCount > 0 {
+		return *gs.ExitErrorCount
+	}
+	return 3
+}
+
+// schedulingCenterExitSampleLimit 返回出池判断需要读取的真实请求条数：首 Token 规则只看成功的流式请求，
+// 多读一些以免被非流式请求挤掉。
+func schedulingCenterExitSampleLimit(gs *SchedulingCenterGroupSettings) int {
+	need := max(schedulingCenterExitLatencyWindow(gs)*3, schedulingCenterExitErrorWindow(gs))
+	return min(max(need, schedulingCenterRequestSampleLimit), schedulingCenterMaxExitSampleLimit)
 }
 
 // schedulingCenterRecoverVerdict 按时间顺序（旧 → 新）检查探测通过后的真实请求：
@@ -226,7 +303,7 @@ func schedulingCenterRecoverVerdict(gs *SchedulingCenterGroupSettings, newestFir
 		if !r.OK {
 			return okCount, SchedulingCenterReasonRecoverError, map[string]any{"ok_count": okCount}
 		}
-		if r.FirstTokenMs != nil && gs.RecoverLatencyMs != nil && *r.FirstTokenMs > *gs.RecoverLatencyMs {
+		if r.Stream && r.FirstTokenMs != nil && gs.RecoverLatencyMs != nil && *r.FirstTokenMs > *gs.RecoverLatencyMs {
 			return okCount, SchedulingCenterReasonRecoverLatency, map[string]any{
 				"ok_count":       okCount,
 				"first_token_ms": *r.FirstTokenMs,
@@ -236,6 +313,16 @@ func schedulingCenterRecoverVerdict(gs *SchedulingCenterGroupSettings, newestFir
 		okCount++
 	}
 	return okCount, "", nil
+}
+
+// SchedulingCenterManualOutUntil 返回手动移出的到期时间：从移出时刻（状态写入时间）起算 ManualOutHours 小时；
+// 0 表示永久，返回 nil。按当前设置计算，修改设置对已移出的账号立即生效。
+func SchedulingCenterManualOutUntil(gs *SchedulingCenterGroupSettings, st *SchedulingCenterAccountState) *time.Time {
+	if gs == nil || st == nil || st.State != SchedulingCenterStateManualOut || gs.ManualOutHours <= 0 || st.UpdatedAt.IsZero() {
+		return nil
+	}
+	until := st.UpdatedAt.Add(time.Duration(gs.ManualOutHours) * time.Hour)
+	return &until
 }
 
 func validateSchedulingCenterExitSettings(in *SchedulingCenterGroupSettings) error {
@@ -267,6 +354,15 @@ func validateSchedulingCenterExitSettings(in *SchedulingCenterGroupSettings) err
 	if in.ExitLatencyCount <= 0 {
 		in.ExitLatencyCount = 3
 	}
+	if in.ExitLatencyWindow <= 0 {
+		in.ExitLatencyWindow = in.ExitLatencyCount
+	}
+	if in.ExitErrorWindow <= 0 {
+		in.ExitErrorWindow = 3
+		if in.ExitErrorCount != nil && *in.ExitErrorCount > 0 {
+			in.ExitErrorWindow = *in.ExitErrorCount
+		}
+	}
 	if in.RecoverSuccessCount <= 0 {
 		in.RecoverSuccessCount = 3
 	}
@@ -274,8 +370,15 @@ func validateSchedulingCenterExitSettings(in *SchedulingCenterGroupSettings) err
 	if in.ExitCacheDropPoints != nil && (*in.ExitCacheDropPoints < 0 || *in.ExitCacheDropPoints > 100) {
 		return invalid("exit_cache_drop_points must be between 0 and 100")
 	}
-	if in.ExitIQWindow > SchedulingCenterPlanMaxResults {
-		return invalid("exit_iq_window must be at most 100")
+	if in.RecordRetention <= 0 {
+		in.RecordRetention = SchedulingCenterPlanMaxResults
+	}
+	if in.RecordRetention < SchedulingCenterMinRecordRetention || in.RecordRetention > SchedulingCenterMaxRecordRetention {
+		return invalid(fmt.Sprintf("record_retention must be between %d and %d", SchedulingCenterMinRecordRetention, SchedulingCenterMaxRecordRetention))
+	}
+	// 依赖历史检测记录的条数不能超过保留条数
+	if in.ExitIQWindow > in.RecordRetention {
+		return invalid("exit_iq_window must not exceed record_retention")
 	}
 	if in.ExitIQMaxDegraded != nil && (*in.ExitIQMaxDegraded < 0 || *in.ExitIQMaxDegraded >= in.ExitIQWindow) {
 		return invalid("exit_iq_max_degraded must be between 0 and exit_iq_window - 1")
@@ -286,11 +389,17 @@ func validateSchedulingCenterExitSettings(in *SchedulingCenterGroupSettings) err
 	if in.ExitLatencyCount > schedulingCenterMaxRuleCount || in.RecoverSuccessCount > schedulingCenterMaxRuleCount {
 		return invalid("counts must be at most 50")
 	}
-	if in.ExitErrorCount != nil && (*in.ExitErrorCount <= 0 || *in.ExitErrorCount > schedulingCenterMaxRuleCount) {
-		return invalid("exit_error_count must be between 1 and 50")
+	if in.ExitLatencyWindow > schedulingCenterMaxExitWindow || in.ExitErrorWindow > schedulingCenterMaxExitWindow {
+		return invalid(fmt.Sprintf("exit_latency_window / exit_error_window must be between 1 and %d", schedulingCenterMaxExitWindow))
 	}
-	if in.FirstTokenTestSamples > SchedulingCenterPlanMaxResults || in.EntryIQPassCount > SchedulingCenterPlanMaxResults {
-		return invalid("first_token_test_samples / entry_iq_pass_count must be at most 100")
+	if in.ExitLatencyCount > in.ExitLatencyWindow {
+		return invalid("exit_latency_count must not exceed exit_latency_window")
+	}
+	if in.ExitErrorCount != nil && (*in.ExitErrorCount <= 0 || *in.ExitErrorCount > in.ExitErrorWindow) {
+		return invalid("exit_error_count must be between 1 and exit_error_window")
+	}
+	if in.FirstTokenTestSamples > in.RecordRetention || in.EntryIQPassCount > in.RecordRetention {
+		return invalid("first_token_test_samples / entry_iq_pass_count must not exceed record_retention")
 	}
 	if in.EntryCacheMinRequests > 1_000_000 || in.ExitCacheMinRequests > 1_000_000 {
 		return invalid("min requests too large")
@@ -311,6 +420,15 @@ func validateSchedulingCenterExitSettings(in *SchedulingCenterGroupSettings) err
 	}
 	if in.RecoverLatencyMs != nil && *in.RecoverLatencyMs <= 0 {
 		return invalid("recover_latency_ms must be positive")
+	}
+	if in.ManualOutHours < 0 || in.ManualOutHours > 720 {
+		return invalid("manual_out_hours must be between 0 and 720")
+	}
+	if in.EventRetentionDays <= 0 {
+		in.EventRetentionDays = SchedulingCenterDefaultEventRetentionDays
+	}
+	if in.EventRetentionDays < SchedulingCenterMinEventRetentionDays || in.EventRetentionDays > SchedulingCenterMaxEventRetentionDays {
+		return invalid(fmt.Sprintf("event_retention_days must be between %d and %d", SchedulingCenterMinEventRetentionDays, SchedulingCenterMaxEventRetentionDays))
 	}
 	return nil
 }
@@ -334,7 +452,42 @@ func (s *SchedulingCenterService) GetPoolView(ctx context.Context, groupID int64
 	if states == nil {
 		states = []SchedulingCenterAccountState{}
 	}
-	return &SchedulingCenterPoolView{Members: members, States: states}, nil
+	nextCheckAt, err := s.nextCheckAt(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	owners, err := s.repo.ListForeignPlanOwners(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if owners == nil {
+		owners = []SchedulingCenterPlanOwner{}
+	}
+	return &SchedulingCenterPoolView{Members: members, States: states, NextCheckAt: nextCheckAt, PlanOwners: owners,
+		OpsMonitoringEnabled: s.OpsMonitoringEnabled(ctx), Enforce: s.gate.Stats(groupID)}, nil
+}
+
+// nextCheckAt 取该分组托管检测计划中最早的下次执行时间；计划尚未同步出来时按分组的 cron 推算。
+func (s *SchedulingCenterService) nextCheckAt(ctx context.Context, groupID int64) (*time.Time, error) {
+	settings, err := s.GetGroupSettings(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if !settings.Enabled {
+		return nil, nil
+	}
+	next, err := s.repo.GetNextPlanRunAt(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if next != nil {
+		return next, nil
+	}
+	computed, err := computeNextRun(settings.CronExpression, s.now())
+	if err != nil {
+		return nil, nil
+	}
+	return &computed, nil
 }
 
 func (s *SchedulingCenterService) ListEvents(ctx context.Context, groupID int64, keyword string, page, pageSize int) ([]SchedulingCenterEvent, int64, error) {
@@ -361,6 +514,7 @@ func (s *SchedulingCenterService) ListEvents(ctx context.Context, groupID int64,
 // MoveAccounts 手动移动账号：移入调度池（来源 manual，清除冷却 / 恢复中状态）；
 // 移回账号池（标记 manual_out，入池规则不会自动加回）。两者都写调度日志，不计入「坏」。
 func (s *SchedulingCenterService) MoveAccounts(ctx context.Context, groupID int64, accountIDs []int64, pool string) error {
+	defer s.gate.Notify()
 	ids := normalizeSchedulingCenterIDs(accountIDs)
 	if len(ids) == 0 {
 		return nil
@@ -410,6 +564,7 @@ func (s *SchedulingCenterService) MoveAccounts(ctx context.Context, groupID int6
 // EvaluateRules 对开启调度的分组依次执行：出池 → 冷却到期 → 恢复（探测 + 实测）→ 入池。
 // 未开启调度的分组保持现状。
 func (s *SchedulingCenterService) EvaluateRules(ctx context.Context) error {
+	defer s.gate.Notify()
 	return s.withLock(ctx, "scheduling_center:evaluate_rules", func() error {
 		settings, err := s.repo.ListGroupSettings(ctx)
 		if err != nil {
@@ -509,10 +664,17 @@ func (s *SchedulingCenterService) evaluateGroup(ctx context.Context, gs *Schedul
 		}
 	}
 
-	// 2. 冷却到期 → 恢复检测；3. 恢复检测（探测 + 实测）
+	// 2. 冷却到期 → 恢复检测；3. 恢复检测（探测 + 实测）；手动移出到期 → 回到普通账号池
 	var recovering []*SchedulingCenterAccountState
+	var manualExpired []int64
 	for id, st := range states {
 		if _, ok := inGroup[id]; !ok {
+			continue
+		}
+		if st.State == SchedulingCenterStateManualOut {
+			if until := SchedulingCenterManualOutUntil(gs, st); until != nil && !now.Before(*until) {
+				manualExpired = append(manualExpired, id)
+			}
 			continue
 		}
 		if st.State == SchedulingCenterStateCooling && (st.CooldownUntil == nil || !now.Before(*st.CooldownUntil)) {
@@ -543,6 +705,17 @@ func (s *SchedulingCenterService) evaluateGroup(ctx context.Context, gs *Schedul
 			recovering = append(recovering, st)
 		}
 	}
+	if len(manualExpired) > 0 {
+		if err := s.repo.DeleteAccountStates(ctx, groupID, manualExpired); err != nil {
+			return err
+		}
+		for _, id := range manualExpired {
+			delete(states, id)
+			events = append(events, newSchedulingCenterEvent(groupID, id, SchedulingCenterActionManualOutEnd,
+				SchedulingCenterSourceSystem, SchedulingCenterReasonManualOutEnd,
+				map[string]any{"hours": gs.ManualOutHours}, false, now))
+		}
+	}
 	if len(recovering) > 0 {
 		recoverEvents, err := s.evaluateRecovering(ctx, gs, recovering, memberByID, now)
 		events = append(events, recoverEvents...)
@@ -568,8 +741,15 @@ func (s *SchedulingCenterService) evaluateGroup(ctx context.Context, gs *Schedul
 		if err != nil {
 			return err
 		}
+		for _, e := range entryEvents {
+			memberByID[e.AccountID] = SchedulingCenterPoolMember{AccountID: e.AccountID, Source: SchedulingCenterSourceRule, EnteredAt: now}
+		}
 	}
-	return nil
+
+	// 5. 兜底：保证调度池不少于下限；非兜底成员够数后释放兜底账号
+	fallbackEvents, err := s.ensureFallback(ctx, gs, accountIDs, memberByID, states, now)
+	events = append(events, fallbackEvents...)
+	return err
 }
 
 // markBad 记一次「坏」：按统计窗口内的坏次数计算冷却时长，把 st 改为 cooling 并写入，返回对应日志。
@@ -607,6 +787,9 @@ func (s *SchedulingCenterService) evaluateExits(ctx context.Context, gs *Schedul
 	}
 	floor := now.Add(-time.Duration(windowHours) * time.Hour)
 	for _, m := range members {
+		if m.Source == SchedulingCenterSourceFixed {
+			continue // OAuth / Setup Token 账号固定在调度池，不参与出池
+		}
 		ids = append(ids, m.AccountID)
 		since := m.EnteredAt
 		if since.Before(floor) {
@@ -632,7 +815,7 @@ func (s *SchedulingCenterService) evaluateExits(ctx context.Context, gs *Schedul
 	var reqs map[int64][]SchedulingCenterRequestSample
 	if gs.ExitLatencyMs != nil || gs.ExitErrorCount != nil {
 		var err error
-		if reqs, err = s.repo.GetRecentRequests(ctx, trafficSince, schedulingCenterRequestSampleLimit); err != nil {
+		if reqs, err = s.repo.GetRecentRequests(ctx, trafficSince, schedulingCenterExitSampleLimit(gs)); err != nil {
 			return nil, err
 		}
 	}
@@ -782,7 +965,11 @@ func (s *SchedulingCenterService) launchProbe(gs SchedulingCenterGroupSettings, 
 		defer func() { <-s.probeSem }()
 		ctx, cancel := context.WithTimeout(context.Background(), schedulingCenterProbeTimeout)
 		defer cancel()
-		passed, detail := s.probe(ctx, accountID, gs)
+		outcome, shared := s.sharedMeasure(ctx, accountID, gs)
+		passed, detail := judgeSchedulingCenterProbe(&gs, outcome)
+		if shared {
+			detail["shared"] = true
+		}
 		if err := s.finishProbe(ctx, gs, accountID, startedAt, passed, detail); err != nil {
 			logger.LegacyPrintf("service.scheduling_center", "[SchedulingCenter] group=%d account=%d finish probe failed: %v", gs.GroupID, accountID, err)
 		}
@@ -796,6 +983,7 @@ func (s *SchedulingCenterService) launchProbe(gs SchedulingCenterGroupSettings, 
 
 // finishProbe 写回探测结果；若账号状态在探测期间已变化（手动移动、重新探测），丢弃本次结果。
 func (s *SchedulingCenterService) finishProbe(ctx context.Context, gs SchedulingCenterGroupSettings, accountID int64, startedAt time.Time, passed bool, detail map[string]any) error {
+	defer s.gate.Notify()
 	st, err := s.repo.GetAccountState(ctx, gs.GroupID, accountID)
 	if err != nil || st == nil {
 		return err
@@ -840,34 +1028,75 @@ func (s *SchedulingCenterService) finishProbe(ctx context.Context, gs Scheduling
 	return s.repo.InsertEvents(ctx, []SchedulingCenterEvent{event})
 }
 
-// defaultProbe 执行一次智商检测作为探测（必须判定通过，且首 Token 不超过恢复阈值）。
-// 智商检测只读结果、不改账号状态。账号不支持智商检测（如 OAuth 账号）时跳过主动探测，
-// 直接进入真实请求观察；不会退回连通性测试，因为连通性测试遇到 401/403/429 会改写账号状态，
-// 从而影响真实调度。智商检测结果写入该账号的检测记录。
-func (s *SchedulingCenterService) defaultProbe(ctx context.Context, accountID int64, gs SchedulingCenterGroupSettings) (bool, map[string]any) {
-	if s.accountTestSvc == nil {
-		return false, map[string]any{"error": "probe unavailable"}
-	}
-	startedAt := time.Now()
-	task, err := s.accountTestSvc.RunIQCheck(ctx, accountID, gs.ModelID, true)
-	if err != nil || task == nil {
-		detail := map[string]any{"kind": "skipped"}
-		if err != nil {
-			detail["error"] = truncateForIQ(err.Error(), 200)
-		}
-		return true, detail
-	}
+// sharedMeasure 返回账号在该检测模型下的测量结果：schedulingCenterProbeShareTTL 内已有结果（或正在测量）时
+// 直接复用，避免账号同属多个分组、同时冷却结束时被重复探测。返回值 shared 表示复用了已有结果。
+func (s *SchedulingCenterService) sharedMeasure(ctx context.Context, accountID int64, gs SchedulingCenterGroupSettings) (*schedulingCenterProbeOutcome, bool) {
+	key := fmt.Sprintf("%d|%s", accountID, gs.ModelID)
+	now := s.now()
 
-	s.saveProbeResult(ctx, accountID, schedulingCenterIQTaskResult(task, startedAt))
-	detail := map[string]any{"kind": "iq", "verdict": task.Verdict}
-	if task.FirstTokenMs > 0 {
-		detail["first_token_ms"] = task.FirstTokenMs
+	s.probeShareMu.Lock()
+	for k, e := range s.probeShares {
+		select {
+		case <-e.done:
+			if now.Sub(e.at) >= schedulingCenterProbeShareTTL {
+				delete(s.probeShares, k)
+			}
+		default:
+		}
 	}
-	if task.Error != "" {
-		detail["error"] = truncateForIQ(task.Error, 200)
+	if e, ok := s.probeShares[key]; ok {
+		s.probeShareMu.Unlock()
+		select {
+		case <-e.done:
+			return e.outcome, true
+		case <-ctx.Done():
+			return &schedulingCenterProbeOutcome{LatencyError: ctx.Err().Error()}, false
+		}
 	}
-	passed := task.Verdict == IQVerdictPassed
-	if passed && gs.RecoverLatencyMs != nil && task.FirstTokenMs > *gs.RecoverLatencyMs {
+	e := &schedulingCenterProbeShare{done: make(chan struct{})}
+	s.probeShares[key] = e
+	s.probeShareMu.Unlock()
+
+	outcome := s.measure(ctx, accountID, gs.ModelID, schedulingCenterRecordRetention(&gs))
+	if outcome == nil {
+		outcome = &schedulingCenterProbeOutcome{LatencyError: "probe unavailable"}
+	}
+	e.outcome, e.at = outcome, s.now()
+	close(e.done)
+	return outcome, false
+}
+
+// judgeSchedulingCenterProbe 按分组设置判定测量结果：
+//  1. 测速必须成功，且首 Token 不超过恢复阈值（recover_latency_ms）；
+//  2. 账号支持智商检测时必须判定通过；不支持（如 OAuth 账号）时跳过这一项。
+func judgeSchedulingCenterProbe(gs *SchedulingCenterGroupSettings, o *schedulingCenterProbeOutcome) (bool, map[string]any) {
+	detail := map[string]any{"kind": "probe", "total_ms": o.TotalMs}
+	passed := true
+	if o.IQSkipped {
+		detail["iq_skipped"] = true
+		if o.IQError != "" {
+			detail["iq_error"] = o.IQError
+		}
+	} else {
+		detail["verdict"] = o.IQVerdict
+		if o.IQTaskError != "" {
+			detail["error"] = o.IQTaskError
+		}
+		if o.IQVerdict != IQVerdictPassed {
+			passed = false
+		}
+	}
+	if o.FirstTokenMs != nil {
+		detail["first_token_ms"] = *o.FirstTokenMs
+	}
+	switch {
+	case !o.LatencySuccess:
+		passed = false
+		detail["latency_failed"] = true
+		if o.LatencyError != "" {
+			detail["latency_error"] = o.LatencyError
+		}
+	case gs.RecoverLatencyMs != nil && (o.FirstTokenMs == nil || *o.FirstTokenMs > *gs.RecoverLatencyMs):
 		passed = false
 		detail["slow"] = true
 		detail["limit"] = *gs.RecoverLatencyMs
@@ -875,7 +1104,50 @@ func (s *SchedulingCenterService) defaultProbe(ctx context.Context, accountID in
 	return passed, detail
 }
 
-func (s *SchedulingCenterService) saveProbeResult(ctx context.Context, accountID int64, result *ScheduledTestResult) {
+// defaultMeasure 执行一次主动探测测量，均不会改写账号状态：
+//   - 智商检测：账号不支持时标记 IQSkipped；
+//   - 测速：按「测试账号连接 → 常规请求（hi）」在只读账号仓储上请求一次。
+//
+// 结果写入该账号的检测记录（按 keep 条保留）。
+func (s *SchedulingCenterService) defaultMeasure(ctx context.Context, accountID int64, modelID string, keep int) *schedulingCenterProbeOutcome {
+	if s.accountTestSvc == nil || s.latencyProbe == nil {
+		return &schedulingCenterProbeOutcome{LatencyError: "probe unavailable"}
+	}
+	o := &schedulingCenterProbeOutcome{}
+	startedAt := time.Now()
+	var record *ScheduledTestResult
+	task, iqErr := s.accountTestSvc.RunIQCheck(ctx, accountID, modelID, true)
+	if iqErr != nil || task == nil {
+		o.IQSkipped = true
+		if iqErr != nil {
+			o.IQError = truncateForIQ(iqErr.Error(), 200)
+		}
+		record = &ScheduledTestResult{
+			Status: "success", IQMessage: "恢复探测 · 不支持智商检测，仅测速",
+			StartedAt: startedAt, FinishedAt: time.Now(),
+		}
+	} else {
+		record = schedulingCenterIQTaskResult(task, startedAt)
+		o.IQVerdict = task.Verdict
+		if task.Error != "" {
+			o.IQTaskError = truncateForIQ(task.Error, 200)
+		}
+	}
+
+	probe := s.latencyProbe.RunLatencyProbe(ctx, accountID, modelID)
+	applyLatencyProbe(record, probe)
+	o.LatencySuccess = probe.Success
+	o.FirstTokenMs = probe.FirstTokenMs
+	o.TotalMs = probe.TotalMs
+	if probe.Error != "" {
+		o.LatencyError = truncateForIQ(probe.Error, 200)
+	}
+
+	s.saveProbeResult(ctx, accountID, record, keep)
+	return o
+}
+
+func (s *SchedulingCenterService) saveProbeResult(ctx context.Context, accountID int64, result *ScheduledTestResult, keep int) {
 	if s.scheduledSvc == nil {
 		return
 	}
@@ -883,7 +1155,7 @@ func (s *SchedulingCenterService) saveProbeResult(ctx context.Context, accountID
 	if err != nil || !ok {
 		return
 	}
-	if err := s.scheduledSvc.SaveResult(ctx, planID, SchedulingCenterPlanMaxResults, result); err != nil {
+	if err := s.scheduledSvc.SaveResult(ctx, planID, keep, result); err != nil {
 		logger.LegacyPrintf("service.scheduling_center", "[SchedulingCenter] account=%d save probe result failed: %v", accountID, err)
 	}
 }
@@ -901,12 +1173,6 @@ func schedulingCenterIQTaskResult(task *IQCheckTask, startedAt time.Time) *Sched
 	if task.Status != "succeeded" {
 		result.Status = "failed"
 		result.ErrorMessage = task.Error
-	} else if !task.Streamed {
-		result.IQMessage += IQCheckNotStreamedNote
-	}
-	if task.FirstTokenMs > 0 {
-		ft := task.FirstTokenMs
-		result.FirstTokenMs = &ft
 	}
 	return result
 }

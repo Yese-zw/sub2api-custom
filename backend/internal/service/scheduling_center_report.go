@@ -92,14 +92,17 @@ type SchedulingCenterExportIQRecord struct {
 	Status       string    `json:"status"`
 	IQStatus     string    `json:"iq_status"`
 	FirstTokenMs *int64    `json:"first_token_ms"`
+	ProbeTotalMs *int64    `json:"probe_total_ms"`
 	LatencyMs    int64     `json:"latency_ms"`
 	ErrorMessage string    `json:"error_message,omitempty"`
 }
 
 // SchedulingCenterReportRepository 是对比与导出需要的查询。
 type SchedulingCenterReportRepository interface {
-	GetUsageBuckets(ctx context.Context, accountIDs []int64, from, to time.Time, bucket time.Duration, slowMs int64) ([]SchedulingCenterUsageBucket, error)
-	GetErrorBuckets(ctx context.Context, accountIDs []int64, from, to time.Time, bucket time.Duration) ([]SchedulingCenterErrorBucket, error)
+	// GetUsageBuckets / GetErrorBuckets 只统计该分组的真实请求（usage_logs / ops_error_logs 的 group_id），
+	// 账号同属多个分组时，其他分组的流量不计入本分组的对比。
+	GetUsageBuckets(ctx context.Context, groupID int64, accountIDs []int64, from, to time.Time, bucket time.Duration, slowMs int64) ([]SchedulingCenterUsageBucket, error)
+	GetErrorBuckets(ctx context.Context, groupID int64, accountIDs []int64, from, to time.Time, bucket time.Duration) ([]SchedulingCenterErrorBucket, error)
 	GetIQBuckets(ctx context.Context, accountIDs []int64, from, to time.Time, bucket time.Duration) ([]SchedulingCenterIQBucket, error)
 	// ListMembershipEvents 返回每个账号在 from 之前最后一次入池/出池动作，以及 [from, to) 内的入池/出池（旧 → 新）。
 	ListMembershipEvents(ctx context.Context, groupID int64, from, to time.Time) (map[int64]string, []SchedulingCenterMembershipEvent, error)
@@ -232,8 +235,10 @@ func buildSchedulingCenterTimeline(from, to time.Time, prior map[int64]string, e
 		byAccount[e.AccountID] = append(byAccount[e.AccountID], e)
 	}
 	memberAt := map[int64]time.Time{}
+	fixed := map[int64]bool{}
 	for _, m := range members {
 		memberAt[m.AccountID] = m.EnteredAt
+		fixed[m.AccountID] = m.Source == SchedulingCenterSourceFixed
 	}
 
 	ids := map[int64]struct{}{}
@@ -250,14 +255,19 @@ func buildSchedulingCenterTimeline(from, to time.Time, prior map[int64]string, e
 	out := schedulingCenterTimeline{}
 	for id := range ids {
 		evs := byAccount[id]
+		before := prior[id]
+		if fixed[id] {
+			// OAuth / Setup Token 账号固定在调度池：从加入分组起一直算在池中，忽略历史日志
+			evs, before = nil, ""
+		}
 		var (
 			in    bool
 			start time.Time
 		)
 		switch {
-		case prior[id] == SchedulingCenterActionEnter:
+		case before == SchedulingCenterActionEnter:
 			in, start = true, from
-		case prior[id] == SchedulingCenterActionExit:
+		case before == SchedulingCenterActionExit:
 			in = false
 		case len(evs) > 0:
 			// 窗口前没有日志：第一条是出池说明此前在池中
@@ -394,10 +404,10 @@ func (s *SchedulingCenterService) loadReportData(ctx context.Context, groupID in
 	if len(accountIDs) == 0 {
 		return d, nil
 	}
-	if d.usage, err = rr.GetUsageBuckets(ctx, accountIDs, from, to, d.bucket, slowMs); err != nil {
+	if d.usage, err = rr.GetUsageBuckets(ctx, groupID, accountIDs, from, to, d.bucket, slowMs); err != nil {
 		return nil, err
 	}
-	if d.errs, err = rr.GetErrorBuckets(ctx, accountIDs, from, to, d.bucket); err != nil {
+	if d.errs, err = rr.GetErrorBuckets(ctx, groupID, accountIDs, from, to, d.bucket); err != nil {
 		return nil, err
 	}
 	if d.iq, err = rr.GetIQBuckets(ctx, accountIDs, from, to, d.bucket); err != nil {
@@ -515,17 +525,19 @@ type SchedulingCenterExportAccount struct {
 }
 
 type SchedulingCenterExport struct {
-	Schema      string                           `json:"schema"`
-	GeneratedAt time.Time                        `json:"generated_at"`
-	Group       *SchedulingCenterGroupBrief      `json:"group"`
-	Window      map[string]any                   `json:"window"`
-	Notes       []string                         `json:"notes"`
-	Settings    *SchedulingCenterGroupSettings   `json:"settings"`
-	Comparison  *SchedulingCenterComparison      `json:"comparison"`
-	Accounts    []SchedulingCenterExportAccount  `json:"accounts"`
-	Events      []SchedulingCenterEvent          `json:"events"`
-	IQRecords   []SchedulingCenterExportIQRecord `json:"iq_records"`
-	Truncated   map[string]bool                  `json:"truncated"`
+	Schema      string                         `json:"schema"`
+	GeneratedAt time.Time                      `json:"generated_at"`
+	Group       *SchedulingCenterGroupBrief    `json:"group"`
+	Window      map[string]any                 `json:"window"`
+	Notes       []string                       `json:"notes"`
+	Settings    *SchedulingCenterGroupSettings `json:"settings"`
+	// OpsMonitoringEnabled 为 false 时 upstream errors 恒为空，错误相关结论无效。
+	OpsMonitoringEnabled bool                             `json:"ops_monitoring_enabled"`
+	Comparison           *SchedulingCenterComparison      `json:"comparison"`
+	Accounts             []SchedulingCenterExportAccount  `json:"accounts"`
+	Events               []SchedulingCenterEvent          `json:"events"`
+	IQRecords            []SchedulingCenterExportIQRecord `json:"iq_records"`
+	Truncated            map[string]bool                  `json:"truncated"`
 }
 
 // Export 生成分组最近 hours 小时的完整调度中心数据，用于离线评估是否可以替换现有调度。
@@ -652,15 +664,17 @@ func (s *SchedulingCenterService) Export(ctx context.Context, groupID int64, hou
 		Notes: []string{
 			"Scheduling center is shadow-only: real traffic is routed by the existing scheduler, not by these pools.",
 			"Real requests, upstream errors and IQ checks are attributed to the pool the account was in at that time (10-minute buckets, bucket midpoint).",
+			"Real requests and upstream errors only count traffic of this group (group_id); IQ checks and latency probes are per account and shared by every group the account belongs to.",
 			"Upstream errors come from ops_error_logs (error_owner=provider, excluding business-limited); they are empty when ops monitoring is disabled.",
 			"Rates are percentages (0-100); latencies are milliseconds; slow = streaming first token above slow_threshold_ms.",
 			"Account status fields (status, schedulable, rate_limit_reset_at, overload_until, temp_unschedulable_until) are the existing scheduler's current state at export time.",
 		},
-		Settings:   d.settings,
-		Comparison: d.buildComparison(groupID, hours),
-		Accounts:   out,
-		Events:     events,
-		IQRecords:  iqRecords,
-		Truncated:  truncated,
+		Settings:             d.settings,
+		OpsMonitoringEnabled: s.OpsMonitoringEnabled(ctx),
+		Comparison:           d.buildComparison(groupID, hours),
+		Accounts:             out,
+		Events:               events,
+		IQRecords:            iqRecords,
+		Truncated:            truncated,
 	}, nil
 }

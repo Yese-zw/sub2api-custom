@@ -297,7 +297,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	auditLogService := service.ProvideAuditLogService(auditLogRepository, settingService)
 	auditLogHandler := admin.NewAuditLogHandler(auditLogService, totpService)
 	schedulingCenterRepository := repository.NewSchedulingCenterRepository(client)
-	schedulingCenterService := service.ProvideSchedulingCenterService(schedulingCenterRepository, scheduledTestService, accountTestService, db)
+	schedulingCenterService := service.ProvideSchedulingCenterService(schedulingCenterRepository, scheduledTestService, accountTestService, db, opsService)
 	schedulingCenterHandler := admin.NewSchedulingCenterHandler(schedulingCenterService)
 	upstreamBillingProbeService := service.ProvideUpstreamBillingProbeService(accountRepository, accountTestService, settingService, leaderLockCache, db)
 	openCodeGoUsageService := service.ProvideOpenCodeGoUsageService(accountRepository, httpUpstream, settingService, leaderLockCache, db)

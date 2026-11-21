@@ -534,6 +534,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/operations-center',
+    name: 'AdminOperationsCenter',
+    component: () => import('@/views/admin/OperationsCenterView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Operations Center',
+      titleKey: 'admin.operationsCenter.title',
+      descriptionKey: 'admin.operationsCenter.description'
+    }
+  },
+  {
     path: '/admin/channels',
     redirect: '/admin/channels/pricing'
   },
@@ -704,18 +716,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Usage Records',
       titleKey: 'admin.usage.title',
       descriptionKey: 'admin.usage.description'
-    }
-  },
-  {
-    path: '/admin/profit',
-    name: 'AdminProfit',
-    component: () => import('@/views/admin/ProfitView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: true,
-      title: 'Profit Details',
-      titleKey: 'admin.profit.title',
-      descriptionKey: 'admin.profit.description'
     }
   },
   {

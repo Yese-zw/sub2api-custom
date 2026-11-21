@@ -5,7 +5,6 @@
  */
 const ROUTE_PERMISSIONS: Array<[string, string]> = [
   ['/admin/dashboard', 'dashboard.view'],
-  ['/admin/profit', 'profit.view'],
   ['/admin/ops', 'ops.view'],
   ['/admin/users', 'users.view'],
   ['/admin/groups', 'groups.view'],

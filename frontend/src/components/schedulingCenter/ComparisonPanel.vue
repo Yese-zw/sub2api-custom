@@ -176,7 +176,7 @@ function fmtPct(v: number | null | undefined): string {
 }
 function fmtMs(v: number | null | undefined): string {
   if (v == null) return '-'
-  return v >= 1000 ? `${(v / 1000).toFixed(2)}s` : `${Math.round(v)}ms`
+  return `${Math.round(v)}ms`
 }
 
 interface Row {

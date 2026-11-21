@@ -108,6 +108,29 @@
         </div>
 
         <template v-else>
+          <div
+            v-if="currentSettings?.enabled && !opsMonitoringEnabled"
+            class="flex flex-shrink-0 items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300"
+          >
+            <Icon name="exclamationTriangle" size="sm" class="mt-px flex-shrink-0" />
+            <span>{{ t('admin.schedulingCenter.opsDisabledWarning') }}</span>
+          </div>
+
+          <div
+            v-if="enforceOn"
+            class="flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-300"
+          >
+            <span class="inline-flex items-center gap-1.5 font-medium">
+              <Icon name="bolt" size="sm" class="flex-shrink-0" />
+              {{ enforceStats.active ? t('admin.schedulingCenter.enforce.active', { n: enforceStats.pool_size }) : t('admin.schedulingCenter.enforce.pending') }}
+            </span>
+            <span>{{ t('admin.schedulingCenter.enforce.hits', { n: enforceStats.pool_hits }) }}</span>
+            <span>{{ t('admin.schedulingCenter.enforce.fallbacks', { n: enforceStats.fallbacks }) }}</span>
+            <span>{{ t('admin.schedulingCenter.enforce.emptyFallbacks', { n: enforceStats.empty_fallbacks }) }}</span>
+            <span v-if="enforceStats.last_fallback_at">{{ t('admin.schedulingCenter.enforce.lastFallback', { time: formatDateTime(enforceStats.last_fallback_at) }) }}</span>
+            <span class="text-red-600/70 dark:text-red-300/70">{{ t('admin.schedulingCenter.enforce.instanceNote') }}</span>
+          </div>
+
           <!-- 分组概览 + 指标 -->
           <div class="card flex-shrink-0">
             <div class="flex flex-col gap-3 p-4 md:flex-row md:items-start md:justify-between">
@@ -126,6 +149,18 @@
                     <span v-if="currentSettings?.enabled" class="badge badge-success">
                       <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                       {{ t('admin.schedulingCenter.schedulingEnabled') }}
+                    </span>
+                    <span v-if="enforceOn" class="badge badge-danger">
+                      <Icon name="bolt" size="xs" />
+                      {{ t('admin.schedulingCenter.enforce.badge') }}
+                    </span>
+                    <span
+                      v-if="currentSettings?.enabled && nextCheckLabel"
+                      class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-dark-400"
+                      :title="nextCheckAt ? formatDateTime(nextCheckAt) : undefined"
+                    >
+                      <Icon name="clock" size="xs" />
+                      {{ nextCheckLabel }}
                     </span>
                     <span v-else class="badge badge-gray">
                       <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
@@ -151,6 +186,15 @@
                 <button type="button" class="btn btn-secondary" @click="exportOpen = true">
                   <Icon name="download" size="sm" />
                   {{ t('admin.schedulingCenter.export.button') }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary text-red-600 hover:text-red-700 dark:text-red-400"
+                  :title="t('admin.schedulingCenter.reset.buttonHint')"
+                  @click="resetOpen = true"
+                >
+                  <Icon name="refresh" size="sm" />
+                  {{ t('admin.schedulingCenter.reset.button') }}
                 </button>
                 <button
                   type="button"
@@ -279,6 +323,9 @@
                       <th>{{ t('admin.schedulingCenter.columns.name') }}</th>
                       <th :title="t('admin.schedulingCenter.centerStatusHint')">{{ t('admin.schedulingCenter.columns.centerStatus') }}</th>
                       <th class="text-right">{{ t('admin.schedulingCenter.columns.rateMultiplier') }}</th>
+                      <th v-if="activePool === 'scheduling'" :title="t('admin.schedulingCenter.capacityHint')">
+                        {{ t('admin.schedulingCenter.columns.capacity') }}
+                      </th>
                       <th :title="t('admin.schedulingCenter.window24h')">{{ t('admin.schedulingCenter.columns.cacheRate') }}</th>
                       <th>{{ t('admin.schedulingCenter.columns.iq') }}</th>
                       <th class="text-right" :title="t('admin.schedulingCenter.firstTokenHint', { n: ttftSamples })">
@@ -289,10 +336,10 @@
                   </thead>
                   <tbody>
                     <tr v-if="accountsLoading && allAccounts.length === 0" class="no-hover">
-                      <td colspan="8" class="py-16"><div class="flex justify-center"><LoadingSpinner /></div></td>
+                      <td :colspan="activePool === 'scheduling' ? 9 : 8" class="py-16"><div class="flex justify-center"><LoadingSpinner /></div></td>
                     </tr>
                     <tr v-else-if="pagedAccounts.length === 0" class="no-hover">
-                      <td colspan="8" class="py-6">
+                      <td :colspan="activePool === 'scheduling' ? 9 : 8" class="py-6">
                         <EmptyState
                           :title="activePool === 'scheduling' ? t('admin.schedulingCenter.emptySchedulingPoolTitle') : t('admin.schedulingCenter.noAccounts')"
                           :description="activePool === 'scheduling' ? t('admin.schedulingCenter.emptySchedulingPool') : ''"
@@ -309,6 +356,7 @@
                           type="checkbox"
                           class="sc-checkbox"
                           :checked="selectedIds.has(account.id)"
+                          :disabled="isFixed(account.id)"
                           @change="toggleOne(account.id)"
                         />
                       </td>
@@ -330,6 +378,30 @@
                             <Icon name="bolt" size="xs" />
                             {{ t('admin.schedulingCenter.sourceRule') }}
                           </span>
+                          <span
+                            v-if="isFixed(account.id)"
+                            class="inline-flex items-center gap-0.5 rounded-md bg-gray-100 px-1.5 text-[10px] font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300"
+                            :title="t('admin.schedulingCenter.sourceFixedHint')"
+                          >
+                            <Icon name="lock" size="xs" />
+                            {{ t('admin.schedulingCenter.sourceFixed') }}
+                          </span>
+                          <span
+                            v-if="memberSource.get(account.id) === 'fallback'"
+                            class="inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                            :title="t('admin.schedulingCenter.sourceFallbackHint')"
+                          >
+                            <Icon name="shield" size="xs" />
+                            {{ t('admin.schedulingCenter.sourceFallback') }}
+                          </span>
+                          <span
+                            v-if="planOwnerByAccount.get(account.id)"
+                            class="inline-flex max-w-[10rem] items-center gap-0.5 truncate rounded-md bg-violet-50 px-1.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                            :title="planOwnerTitle(planOwnerByAccount.get(account.id)!)"
+                          >
+                            <Icon name="link" size="xs" />
+                            {{ t('admin.schedulingCenter.planOwnerTag', { group: planOwnerByAccount.get(account.id)!.group_name || `#${planOwnerByAccount.get(account.id)!.group_id}` }) }}
+                          </span>
                         </div>
                       </td>
                       <td>
@@ -343,6 +415,9 @@
                         <span class="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-dark-700 dark:text-gray-300">
                           {{ formatMultiplier(account.rate_multiplier) }}
                         </span>
+                      </td>
+                      <td v-if="activePool === 'scheduling'">
+                        <AccountCapacityCell :account="account" />
                       </td>
                       <td>
                         <div v-if="metricsOf(account.id)?.cache_rate != null" class="flex items-center gap-2">
@@ -380,6 +455,7 @@
                             <span>{{ t('admin.schedulingCenter.viewDetail') }}</span>
                           </button>
                           <button
+                            v-if="!isFixed(account.id)"
                             type="button"
                             class="row-action"
                             :class="activePool === 'account' ? 'row-action-primary' : 'row-action-warn'"
@@ -415,8 +491,18 @@
       :show="settingsOpen"
       :group-id="selectedGroupId"
       :group-name="selectedGroup?.name ?? ''"
+      :plan-owners="planOwners"
+      :account-count="allAccounts.filter((a) => !isFixed(a.id)).length"
+      :ops-monitoring-enabled="opsMonitoringEnabled"
       @close="settingsOpen = false"
       @saved="onSettingsSaved"
+    />
+    <ResetDialog
+      :show="resetOpen"
+      :group-id="selectedGroupId"
+      :group-name="selectedGroup?.name ?? ''"
+      @close="resetOpen = false"
+      @done="onResetDone"
     />
     <ExportDialog
       :show="exportOpen"
@@ -428,6 +514,7 @@
       :show="detailAccount != null"
       :account-id="detailAccount?.id ?? null"
       :account-name="detailAccount?.name ?? ''"
+      :limit="currentSettings?.record_retention || 100"
       @close="detailAccount = null"
     />
   </AppLayout>
@@ -449,14 +536,18 @@ import AccountRecordsDialog from '@/components/schedulingCenter/AccountRecordsDi
 import SchedulingLogPanel from '@/components/schedulingCenter/SchedulingLogPanel.vue'
 import ComparisonPanel from '@/components/schedulingCenter/ComparisonPanel.vue'
 import ExportDialog from '@/components/schedulingCenter/ExportDialog.vue'
+import ResetDialog from '@/components/schedulingCenter/ResetDialog.vue'
+import AccountCapacityCell from '@/components/account/AccountCapacityCell.vue'
 import { adminAPI } from '@/api/admin'
 import schedulingCenterAPI, {
   type SchedulingCenterAccountMetrics,
   type SchedulingCenterAccountState,
+  type SchedulingCenterPlanOwner,
   type SchedulingCenterGroupSettings,
   type SchedulingCenterMemberSource,
   type SchedulingCenterPool,
-  type SchedulingCenterPoolMember
+  type SchedulingCenterPoolMember,
+  type SchedulingCenterEnforceStats
 } from '@/api/admin/schedulingCenter'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -594,6 +685,9 @@ function selectGroup(id: number) {
   allAccounts.value = []
   members.value = []
   accountStates.value = []
+  nextCheckAt.value = null
+  enforceStats.value = emptyEnforceStats()
+  planOwners.value = []
   metrics.value = {}
   selectedIds.value = new Set()
   page.value = 1
@@ -624,9 +718,60 @@ const metricsLoading = ref(false)
 const moving = ref(false)
 type CenterTab = 'log' | 'compare' | SchedulingCenterPool
 const exportOpen = ref(false)
+const resetOpen = ref(false)
+
+async function onResetDone(result: { settings_reset: boolean }) {
+  resetOpen.value = false
+  if (result.settings_reset) await loadSettings()
+  selectedIds.value = new Set()
+  loadGroupData()
+  logPanel.value?.reload()
+}
 const activeTab = ref<CenterTab>('account')
 const activePool = computed<SchedulingCenterPool>(() => (activeTab.value === 'scheduling' ? 'scheduling' : 'account'))
 const accountStates = ref<SchedulingCenterAccountState[]>([])
+const nextCheckAt = ref<string | null>(null)
+const planOwners = ref<SchedulingCenterPlanOwner[]>([])
+// 运维监控未开启时没有上游错误日志，「连续上游错误」出池与恢复观察的错误判断不会生效
+const opsMonitoringEnabled = ref(true)
+const emptyEnforceStats = (): SchedulingCenterEnforceStats => ({
+  active: false,
+  pool_size: 0,
+  pool_hits: 0,
+  fallbacks: 0,
+  empty_fallbacks: 0,
+  since: ''
+})
+const enforceStats = ref<SchedulingCenterEnforceStats>(emptyEnforceStats())
+const enforceOn = computed(() => !!currentSettings.value?.enabled && !!currentSettings.value?.enforce_enabled)
+const planOwnerByAccount = computed(() => new Map(planOwners.value.map((o) => [o.account_id, o])))
+
+function planOwnerTitle(o: SchedulingCenterPlanOwner): string {
+  return t('admin.schedulingCenter.planOwnerHint', {
+    group: o.group_name || `#${o.group_id}`,
+    cron: o.cron_expression,
+    model: o.model_id || t('admin.schedulingCenter.statusLine.defaultModel'),
+    keep: o.max_results
+  })
+}
+
+// 下次检测：今天只显示时间，否则带日期；后面附相对时间。时间已过说明检测正在执行。
+const nextCheckLabel = computed(() => {
+  if (!nextCheckAt.value) return ''
+  const at = new Date(nextCheckAt.value)
+  const now = new Date(nowTick.value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const hm = `${pad(at.getHours())}:${pad(at.getMinutes())}`
+  const sameDay = at.toDateString() === now.toDateString()
+  const time = sameDay ? hm : `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${hm}`
+  const diffMin = Math.ceil((at.getTime() - now.getTime()) / 60000)
+  if (diffMin <= 0) return t('admin.schedulingCenter.nextCheckRunning', { time })
+  const rel =
+    diffMin < 60
+      ? t('admin.schedulingCenter.inMinutes', { n: diffMin })
+      : t('admin.schedulingCenter.inHours', { h: Math.floor(diffMin / 60), m: diffMin % 60 })
+  return t('admin.schedulingCenter.nextCheck', { time, rel })
+})
 const stateByAccount = computed(
   () => new Map<number, SchedulingCenterAccountState>(accountStates.value.map((st) => [st.account_id, st]))
 )
@@ -756,6 +901,10 @@ async function loadGroupData() {
     allAccounts.value = accounts
     members.value = pool.members
     accountStates.value = pool.states
+    nextCheckAt.value = pool.next_check_at
+    planOwners.value = pool.plan_owners
+    opsMonitoringEnabled.value = pool.ops_monitoring_enabled
+    enforceStats.value = pool.enforce
     const alive = new Set(accounts.map((a) => a.id))
     selectedIds.value = new Set([...selectedIds.value].filter((id) => alive.has(id)))
   } catch (error) {
@@ -820,6 +969,15 @@ async function refreshPoolView() {
     if (groupId !== selectedGroupId.value) return
     members.value = view.members
     accountStates.value = view.states
+    nextCheckAt.value = view.next_check_at
+    planOwners.value = view.plan_owners
+    opsMonitoringEnabled.value = view.ops_monitoring_enabled
+    enforceStats.value = view.enforce
+    // 调度池页签展示容量（并发 / 窗口费用 / 会话 / RPM 等实时值），一并刷新账号数据
+    if (activeTab.value === 'scheduling') {
+      const accounts = await fetchAllGroupAccounts(groupId)
+      if (groupId === selectedGroupId.value) allAccounts.value = accounts
+    }
   } catch {
     // 静默失败，等待下一次刷新
   }
@@ -827,11 +985,20 @@ async function refreshPoolView() {
 
 // ---------- 选择 & 移动 ----------
 const allPageSelected = computed(
-  () => pagedAccounts.value.length > 0 && pagedAccounts.value.every((a) => selectedIds.value.has(a.id))
+  () => {
+    const selectable = pagedAccounts.value.filter((a) => !isFixed(a.id))
+    return selectable.length > 0 && selectable.every((a) => selectedIds.value.has(a.id))
+  }
 )
 const somePageSelected = computed(() => pagedAccounts.value.some((a) => selectedIds.value.has(a.id)))
 
+// OAuth / Setup Token 账号固定在调度池：调度中心只处理 Key 类型账号，这些账号不能选择或移动
+function isFixed(id: number): boolean {
+  return memberSource.value.get(id) === 'fixed'
+}
+
 function toggleOne(id: number) {
+  if (isFixed(id)) return
   const next = new Set(selectedIds.value)
   if (next.has(id)) next.delete(id)
   else next.add(id)
@@ -841,7 +1008,7 @@ function toggleOne(id: number) {
 function togglePage() {
   const next = new Set(selectedIds.value)
   if (allPageSelected.value) pagedAccounts.value.forEach((a) => next.delete(a.id))
-  else pagedAccounts.value.forEach((a) => next.add(a.id))
+  else pagedAccounts.value.forEach((a) => !isFixed(a.id) && next.add(a.id))
   selectedIds.value = next
 }
 
@@ -858,6 +1025,10 @@ async function moveAccounts(ids: number[], target: SchedulingCenterPool) {
     if (groupId !== selectedGroupId.value) return
     members.value = res.members
     accountStates.value = res.states
+    nextCheckAt.value = res.next_check_at
+    planOwners.value = res.plan_owners
+    opsMonitoringEnabled.value = res.ops_monitoring_enabled
+    enforceStats.value = res.enforce
     const next = new Set(selectedIds.value)
     ids.forEach((id) => next.delete(id))
     selectedIds.value = next
@@ -903,6 +1074,9 @@ interface CenterStatusView {
 function centerStatus(id: number): CenterStatusView {
   void nowTick.value // 倒计时依赖
   const member = memberByAccount.value.get(id)
+  if (member?.source === 'fixed') {
+    return { key: 'fixed', tone: 'ok', title: t('admin.schedulingCenter.sourceFixedHint') }
+  }
   if (member) {
     return {
       key: 'inPool',
@@ -934,8 +1108,20 @@ function centerStatus(id: number): CenterStatusView {
       return { key: 'probing', tone: 'info', title: t('admin.schedulingCenter.centerStatusTitle.probing') }
     case 'ready':
       return { key: 'ready', tone: 'muted', title: t('admin.schedulingCenter.centerStatusTitle.ready') }
-    case 'manual_out':
+    case 'manual_out': {
+      // 有效期按当前设置从移出时刻起算；0 表示永久
+      const hours = currentSettings.value?.manual_out_hours ?? 24
+      if (hours > 0 && st.updated_at) {
+        const until = new Date(new Date(st.updated_at).getTime() + hours * 3600_000).toISOString()
+        return {
+          key: 'manualOut',
+          tone: 'muted',
+          extra: formatRemaining(until),
+          title: t('admin.schedulingCenter.centerStatusTitle.manualOutUntil', { time: formatDateTime(until) })
+        }
+      }
       return { key: 'manualOut', tone: 'muted', title: t('admin.schedulingCenter.centerStatusTitle.manualOut') }
+    }
     default:
       return { key: 'idle', tone: 'muted' }
   }
@@ -985,8 +1171,9 @@ function formatMultiplier(value: number | undefined | null): string {
   return `${Number(v.toFixed(4))}x`
 }
 
+// 首 Token 统一用毫秒显示
 function formatMs(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`
+  return `${Math.round(ms)}ms`
 }
 
 function cacheRateClass(rate: number): string {

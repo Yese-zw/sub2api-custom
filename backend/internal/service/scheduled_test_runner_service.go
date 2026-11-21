@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,8 @@ type ScheduledTestRunnerService struct {
 	accountTestSvc *AccountTestService
 	rateLimitSvc   *RateLimitService
 	cfg            *config.Config
+	// latencyProbe 是只读账号仓储上的测试服务，用于调度中心计划的测速（不改写账号状态）。
+	latencyProbe *AccountTestService
 
 	cron      *cron.Cron
 	startOnce sync.Once
@@ -40,6 +43,7 @@ func NewScheduledTestRunnerService(
 		accountTestSvc: accountTestSvc,
 		rateLimitSvc:   rateLimitSvc,
 		cfg:            cfg,
+		latencyProbe:   accountTestSvc.ReadOnlyClone(),
 	}
 }
 
@@ -184,6 +188,16 @@ func (s *ScheduledTestRunnerService) tryRecoverAccount(ctx context.Context, acco
 // The result is "success" when the check ran to a verdict (passed or incorrect); a
 // failed request or empty answer is "failed".
 func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *ScheduledTestPlan) *ScheduledTestResult {
+	result := s.runIQCheck(ctx, plan)
+	if plan.IQStream && s.latencyProbe != nil {
+		// 调度中心计划：首 Token 不取智商题（推理模型会先思考整道题），
+		// 而是按「测试账号连接 → 常规请求（hi）」单独测速；不支持智商检测的账号同样测速。
+		applyLatencyProbe(result, s.latencyProbe.RunLatencyProbe(ctx, plan.AccountID, plan.ModelID))
+	}
+	return result
+}
+
+func (s *ScheduledTestRunnerService) runIQCheck(ctx context.Context, plan *ScheduledTestPlan) *ScheduledTestResult {
 	startedAt := time.Now()
 	result := &ScheduledTestResult{StartedAt: startedAt}
 	task, err := s.accountTestSvc.RunIQCheck(ctx, plan.AccountID, plan.ModelID, plan.IQStream)
@@ -209,10 +223,27 @@ func (s *ScheduledTestRunnerService) runIQCheckOnly(ctx context.Context, plan *S
 	}
 	result.IQStatus = task.Verdict
 	result.IQMessage = IQCheckVerdictLabel(task)
-	if plan.IQStream && task.Status == "succeeded" && !task.Streamed {
-		result.IQMessage += IQCheckNotStreamedNote
-	}
 	return result
+}
+
+// applyLatencyProbe 把测速结果写入检测结果：首 Token、测速总耗时；测速失败时首 Token 为空并在说明中注明。
+func applyLatencyProbe(result *ScheduledTestResult, probe *AccountLatencyProbeResult) {
+	result.FirstTokenMs = nil
+	if probe == nil {
+		return
+	}
+	total := probe.TotalMs
+	result.ProbeTotalMs = &total
+	if probe.Success && probe.FirstTokenMs != nil {
+		ft := *probe.FirstTokenMs
+		result.FirstTokenMs = &ft
+		return
+	}
+	msg := strings.TrimSpace(probe.Error)
+	if msg == "" {
+		msg = "未返回内容"
+	}
+	result.IQMessage += "；测速失败：" + truncateForIQ(msg, 200)
 }
 
 // pauseAccountForIQ temporarily stops scheduling the account after a failed IQ check.

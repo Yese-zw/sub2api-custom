@@ -68,9 +68,6 @@ var iqCheckTasks = struct {
 	m map[string]*IQCheckTask
 }{m: map[string]*IQCheckTask{}}
 
-// IQCheckNotStreamedNote 追加在检测说明后：请求了流式但上游直接返回了整段结果，首 Token 不可用。
-const IQCheckNotStreamedNote = "（上游未按流式返回，首 Token 不可用）"
-
 // IQCheckVerdictLabel returns a short Chinese summary for storing in scheduled results.
 func IQCheckVerdictLabel(t *IQCheckTask) string {
 	switch t.Verdict {

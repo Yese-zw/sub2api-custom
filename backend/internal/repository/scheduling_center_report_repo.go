@@ -22,7 +22,7 @@ func bucketSeconds(bucket time.Duration) int64 {
 	return s
 }
 
-func (r *schedulingCenterRepository) GetUsageBuckets(ctx context.Context, accountIDs []int64, from, to time.Time, bucket time.Duration, slowMs int64) ([]service.SchedulingCenterUsageBucket, error) {
+func (r *schedulingCenterRepository) GetUsageBuckets(ctx context.Context, groupID int64, accountIDs []int64, from, to time.Time, bucket time.Duration, slowMs int64) ([]service.SchedulingCenterUsageBucket, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -37,8 +37,8 @@ func (r *schedulingCenterRepository) GetUsageBuckets(ctx context.Context, accoun
 		       COALESCE(SUM(first_token_ms), 0),
 		       COUNT(*) FILTER (WHERE first_token_ms > $5)
 		FROM usage_logs
-		WHERE account_id = ANY($1) AND created_at >= $2 AND created_at < $3
-		GROUP BY account_id, bucket`, pq.Array(accountIDs), from, to, bucketSeconds(bucket), slowMs)
+		WHERE account_id = ANY($1) AND created_at >= $2 AND created_at < $3 AND group_id = $6
+		GROUP BY account_id, bucket`, pq.Array(accountIDs), from, to, bucketSeconds(bucket), slowMs, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (r *schedulingCenterRepository) GetUsageBuckets(ctx context.Context, accoun
 	return out, rows.Err()
 }
 
-func (r *schedulingCenterRepository) GetErrorBuckets(ctx context.Context, accountIDs []int64, from, to time.Time, bucket time.Duration) ([]service.SchedulingCenterErrorBucket, error) {
+func (r *schedulingCenterRepository) GetErrorBuckets(ctx context.Context, groupID int64, accountIDs []int64, from, to time.Time, bucket time.Duration) ([]service.SchedulingCenterErrorBucket, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -65,8 +65,8 @@ func (r *schedulingCenterRepository) GetErrorBuckets(ctx context.Context, accoun
 		       COUNT(*)
 		FROM ops_error_logs
 		WHERE account_id = ANY($1) AND created_at >= $2 AND created_at < $3
-		  AND error_owner = 'provider' AND NOT is_business_limited
-		GROUP BY account_id, bucket`, pq.Array(accountIDs), from, to, bucketSeconds(bucket))
+		  AND error_owner = 'provider' AND NOT is_business_limited AND group_id = $5
+		GROUP BY account_id, bucket`, pq.Array(accountIDs), from, to, bucketSeconds(bucket), groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (r *schedulingCenterRepository) ListIQRecordsInRange(ctx context.Context, a
 		return nil, nil
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, `
-		SELECT p.account_id, r.started_at, r.status, r.iq_status, r.first_token_ms, r.latency_ms, LEFT(r.error_message, 300)
+		SELECT p.account_id, r.started_at, r.status, r.iq_status, r.first_token_ms, r.probe_total_ms, r.latency_ms, LEFT(r.error_message, 300)
 		FROM scheduled_test_results r
 		JOIN scheduled_test_plans p ON p.id = r.plan_id
 		WHERE p.account_id = ANY($1) AND r.iq_status <> '' AND r.created_at >= $2 AND r.created_at < $3
@@ -210,7 +210,7 @@ func (r *schedulingCenterRepository) ListIQRecordsInRange(ctx context.Context, a
 	out := make([]service.SchedulingCenterExportIQRecord, 0)
 	for rows.Next() {
 		var rec service.SchedulingCenterExportIQRecord
-		if err := rows.Scan(&rec.AccountID, &rec.StartedAt, &rec.Status, &rec.IQStatus, &rec.FirstTokenMs, &rec.LatencyMs, &rec.ErrorMessage); err != nil {
+		if err := rows.Scan(&rec.AccountID, &rec.StartedAt, &rec.Status, &rec.IQStatus, &rec.FirstTokenMs, &rec.ProbeTotalMs, &rec.LatencyMs, &rec.ErrorMessage); err != nil {
 			return nil, err
 		}
 		out = append(out, rec)

@@ -46,7 +46,10 @@
               <span v-else class="text-gray-300 dark:text-dark-500">—</span>
             </td>
             <td class="min-w-[18rem] text-gray-700 dark:text-gray-300">
-              <div class="leading-relaxed">{{ describe(ev) }}</div>
+              <div class="leading-relaxed">
+                {{ describe(ev) }}
+                <span v-if="ev.detail.shared" class="text-xs text-gray-400">{{ t('admin.schedulingCenter.log.sharedProbe') }}</span>
+              </div>
               <div
                 v-if="ev.is_bad && ev.detail.cooldown_minutes != null"
                 class="mt-1 inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
@@ -169,7 +172,7 @@ function num(v: unknown): number | null {
 function ms(v: unknown): string {
   const n = num(v)
   if (n == null) return '-'
-  return n >= 1000 ? `${(n / 1000).toFixed(2)}s` : `${Math.round(n)}ms`
+  return `${Math.round(n)}ms`
 }
 
 function pct(v: unknown): string {
@@ -213,18 +216,28 @@ function describe(ev: SchedulingCenterEvent): string {
       return r('exit_iq', { checks: num(d.checks) ?? '-', degraded: num(d.degraded) ?? '-', max: num(d.max) ?? '-' })
     case 'exit_latency': {
       const values = Array.isArray(d.values) ? d.values.map((v) => ms(v)).join(' / ') : '-'
-      return r('exit_latency', { count: num(d.count) ?? '-', limit: ms(d.limit), values })
+      // 旧日志没有 window，按「连续 N 次」展示
+      if (d.window == null) return r('exit_latency', { count: num(d.count) ?? '-', limit: ms(d.limit), values })
+      return r('exit_latency_window', { window: num(d.window) ?? '-', slow: num(d.slow) ?? '-', limit: ms(d.limit), values })
     }
     case 'exit_error':
-      return r('exit_error', { count: num(d.count) ?? '-' })
+      if (d.window == null) return r('exit_error', { count: num(d.count) ?? '-' })
+      return r('exit_error_window', { window: num(d.window) ?? '-', errors: num(d.errors) ?? '-' })
     case 'probe_passed':
+      // 当前探测：测速（常规请求 hi）+ 智商检测；兼容旧日志的 skipped / connectivity / iq
+      if (d.kind === 'probe') {
+        return d.iq_skipped
+          ? r('probe_passed_latency_only', { ft: ms(d.first_token_ms), total: ms(d.total_ms) })
+          : r('probe_passed_both', { ft: ms(d.first_token_ms), total: ms(d.total_ms) })
+      }
       if (d.kind === 'skipped') return r('probe_skipped', { error: (d.error as string) || '-' })
       return d.kind === 'connectivity'
         ? r('probe_passed_connectivity')
         : r('probe_passed_iq', { ft: ms(d.first_token_ms) })
     case 'probe_failed': {
+      if (d.latency_failed) return r('probe_failed_latency', { error: (d.latency_error as string) || '-' })
       if (d.slow) return r('probe_failed_slow', { ft: ms(d.first_token_ms), limit: ms(d.limit) })
-      if (d.kind === 'iq' && d.verdict === 'incorrect') return r('probe_failed_degraded')
+      if (d.verdict === 'incorrect') return r('probe_failed_degraded')
       return r('probe_failed_error', { error: (d.error as string) || '-' })
     }
     case 'recover_ok':
@@ -235,6 +248,19 @@ function describe(ev: SchedulingCenterEvent): string {
       return r('recover_latency', { ft: ms(d.first_token_ms), limit: ms(d.limit) })
     case 'recovered':
       return r(d.source === 'manual' ? 'recovered_manual' : 'recovered')
+    case 'fallback_fill': {
+      const parts: string[] = []
+      if (d.rate_multiplier != null) parts.push(`${t('admin.schedulingCenter.columns.rateMultiplier')} ${num(d.rate_multiplier)}x`)
+      if (d.first_token_ms != null) parts.push(`${t('admin.schedulingCenter.columns.firstToken')} ${ms(d.first_token_ms)}`)
+      if (d.cache_rate != null) parts.push(`${t('admin.schedulingCenter.columns.cacheRate')} ${pct(d.cache_rate)}`)
+      if (d.iq_status) parts.push(`${t('admin.schedulingCenter.columns.iq')} ${iqText(d.iq_status)}`)
+      const base = r('fallback_fill', { min: num(d.min_accounts) ?? 1, rank: num(d.rank) ?? 1 })
+      return parts.length ? `${base}（${parts.join('，')}）` : base
+    }
+    case 'fallback_release':
+      return r('fallback_release')
+    case 'manual_out_expired':
+      return r('manual_out_expired', { hours: num(d.hours) ?? '-' })
     case 'manual_in':
     case 'manual_out':
     case 'cooldown_end':

@@ -514,6 +514,10 @@ const SchedulingIcon = {
     )
 }
 
+const OperationsIcon = {
+  render: () => h(Icon, { name: 'dollar' })
+}
+
 const PluginIcon = {
   render: () => h(Icon, { name: 'cube' })
 }
@@ -856,6 +860,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true, featureFlag: flagSubscription },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
     { path: '/admin/scheduling-center', label: t('nav.schedulingCenter'), icon: SchedulingIcon },
+    { path: '/admin/operations-center', label: t('nav.operationsCenter'), icon: OperationsIcon },
     { path: '/admin/plugins', label: t('nav.plugins'), icon: PluginIcon, featureFlag: flagPluginManagement },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: ServerIcon },
@@ -900,7 +905,6 @@ const adminNavItems = computed((): NavItem[] => {
     },
     { path: '/admin/usage', label: t('nav.usage'), icon: ChartIcon },
     { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon, hideInSimpleMode: true },
-    { path: '/admin/profit', label: t('nav.profit'), icon: ChartIcon },
   ]
 
   // 运营：仅保留被授予查看权限的标签页，不展示系统设置、插件与自定义菜单

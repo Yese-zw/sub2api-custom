@@ -116,6 +116,12 @@ func (s *GeminiMessagesCompatService) SelectAccountForModel(ctx context.Context,
 }
 
 func (s *GeminiMessagesCompatService) SelectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*Account, error) {
+	return runWithSchedulingCenterPool(ctx, func(ctx context.Context) (*Account, error) {
+		return s.selectAccountForModelWithExclusionsInner(ctx, groupID, sessionHash, requestedModel, excludedIDs)
+	})
+}
+
+func (s *GeminiMessagesCompatService) selectAccountForModelWithExclusionsInner(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*Account, error) {
 	// 1. 确定目标平台和调度模式
 	// Determine target platform and scheduling mode
 	platform, useMixedScheduling, hasForcePlatform, err := s.resolvePlatformAndSchedulingMode(ctx, groupID)
@@ -218,7 +224,7 @@ func (s *GeminiMessagesCompatService) tryStickySessionHit(
 		return nil
 	}
 
-	if _, excluded := excludedIDs[accountID]; excluded {
+	if _, excluded := excludedIDs[accountID]; excluded || schedulingCenterBlocksSticky(ctx, groupID, accountID) {
 		return nil
 	}
 
@@ -456,6 +462,14 @@ func (s *GeminiMessagesCompatService) hydrateSelectedAccount(ctx context.Context
 }
 
 func (s *GeminiMessagesCompatService) listSchedulableAccountsOnce(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]Account, error) {
+	accounts, err := s.listSchedulableAccountsOnceUnfiltered(ctx, groupID, platform, hasForcePlatform)
+	if err != nil {
+		return accounts, err
+	}
+	return filterSchedulingCenterPool(ctx, groupID, accounts), nil
+}
+
+func (s *GeminiMessagesCompatService) listSchedulableAccountsOnceUnfiltered(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]Account, error) {
 	if s.schedulerSnapshot != nil {
 		accounts, _, err := s.schedulerSnapshot.ListSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
 		return accounts, err

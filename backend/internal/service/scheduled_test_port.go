@@ -34,7 +34,9 @@ type ScheduledTestResult struct {
 	ErrorMessage string `json:"error_message"`
 	LatencyMs    int64  `json:"latency_ms"`
 	// FirstTokenMs 只有智商检测结果才有值（首个回答内容到达的耗时）。
-	FirstTokenMs *int64    `json:"first_token_ms"`
+	FirstTokenMs *int64 `json:"first_token_ms"`
+	// ProbeTotalMs 是调度中心测速（常规请求 hi）的总耗时；其他测试为空。
+	ProbeTotalMs *int64    `json:"probe_total_ms"`
 	IQStatus     string    `json:"iq_status"`
 	IQMessage    string    `json:"iq_message"`
 	StartedAt    time.Time `json:"started_at"`
