@@ -189,7 +189,16 @@ func (s *SettingService) SetCheckinSettings(ctx context.Context, settings *Check
 	if err != nil {
 		return fmt.Errorf("marshal checkin settings: %w", err)
 	}
-	return s.settingRepo.Set(ctx, SettingKeyCheckinSettings, string(data))
+	if err := s.settingRepo.Set(ctx, SettingKeyCheckinSettings, string(data)); err != nil {
+		return err
+	}
+	// checkin_enabled is part of the SSR-injected public settings
+	// (window.__APP_CONFIG__). Without invalidating the HTML cache, a page
+	// refresh keeps serving the stale flag and the 签到 menu disappears.
+	if s.onUpdate != nil {
+		s.onUpdate()
+	}
+	return nil
 }
 
 // CheckinRecord is one stored check-in.
