@@ -150,6 +150,8 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 		SetMaxReasoningEffort(groupIn.MaxReasoningEffort).
 		SetMaxReasoningEffortOverLimit(groupIn.MaxReasoningEffortOverLimit).
 		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings).
+		SetUaBindingEnabled(groupIn.UABindingEnabled).
+		SetUaBindingRules(normalizeGroupUABindingRulesForStore(groupIn.UABindingRules)).
 		SetPeakRateEnabled(groupIn.PeakRateEnabled).
 		SetPeakStart(groupIn.PeakStart).
 		SetPeakEnd(groupIn.PeakEnd).
@@ -336,6 +338,8 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetMaxReasoningEffort(groupIn.MaxReasoningEffort).
 		SetMaxReasoningEffortOverLimit(groupIn.MaxReasoningEffortOverLimit).
 		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings).
+		SetUaBindingEnabled(groupIn.UABindingEnabled).
+		SetUaBindingRules(normalizeGroupUABindingRulesForStore(groupIn.UABindingRules)).
 		SetPeakRateEnabled(groupIn.PeakRateEnabled).
 		SetPeakStart(groupIn.PeakStart).
 		SetPeakEnd(groupIn.PeakEnd).
@@ -1228,4 +1232,11 @@ func (r *groupRepository) UpdateSortOrders(ctx context.Context, updates []servic
 		}
 	}
 	return nil
+}
+
+func normalizeGroupUABindingRulesForStore(rules []service.GroupUABindingRule) []service.GroupUABindingRule {
+	if rules == nil {
+		return []service.GroupUABindingRule{}
+	}
+	return rules
 }

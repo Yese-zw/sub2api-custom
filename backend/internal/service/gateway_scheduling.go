@@ -1029,7 +1029,7 @@ func (s *GatewayService) listSchedulableAccounts(ctx context.Context, groupID *i
 	if err != nil {
 		return accounts, useMixed, err
 	}
-	return filterSchedulingCenterPool(ctx, groupID, accounts), useMixed, nil
+	return filterSchedulingCenterPool(ctx, groupID, filterUABindingAccounts(ctx, groupID, accounts, s.uaBindingLookup)), useMixed, nil
 }
 
 func (s *GatewayService) listSchedulableAccountsUnfiltered(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]Account, bool, error) {
@@ -1955,7 +1955,7 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 		if sessionHash != "" && s.cache != nil {
 			accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 			if err == nil && accountID > 0 && containsInt64(routingAccountIDs, accountID) {
-				if _, excluded := excludedIDs[accountID]; !excluded && !schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+				if _, excluded := excludedIDs[accountID]; !excluded && !s.stickyAccountBlocked(ctx, groupID, accountID) {
 					account, err := s.getSchedulableAccount(ctx, accountID)
 					// 检查账号分组归属和平台匹配（确保粘性会话不会跨分组或跨平台）
 					if err == nil {
@@ -2077,7 +2077,7 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 	if sessionHash != "" && s.cache != nil {
 		accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 		if err == nil && accountID > 0 {
-			if _, excluded := excludedIDs[accountID]; !excluded && !schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+			if _, excluded := excludedIDs[accountID]; !excluded && !s.stickyAccountBlocked(ctx, groupID, accountID) {
 				account, err := s.getSchedulableAccount(ctx, accountID)
 				// 检查账号分组归属和平台匹配（确保粘性会话不会跨分组或跨平台）
 				if err == nil {
@@ -2219,7 +2219,7 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 		if sessionHash != "" && s.cache != nil {
 			accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 			if err == nil && accountID > 0 && containsInt64(routingAccountIDs, accountID) {
-				if _, excluded := excludedIDs[accountID]; !excluded && !schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+				if _, excluded := excludedIDs[accountID]; !excluded && !s.stickyAccountBlocked(ctx, groupID, accountID) {
 					account, err := s.getSchedulableAccount(ctx, accountID)
 					// 检查账号分组归属和有效性：原生平台直接匹配，antigravity 需要启用混合调度
 					if err == nil {
@@ -2343,7 +2343,7 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 	if sessionHash != "" && s.cache != nil {
 		accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 		if err == nil && accountID > 0 {
-			if _, excluded := excludedIDs[accountID]; !excluded && !schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+			if _, excluded := excludedIDs[accountID]; !excluded && !s.stickyAccountBlocked(ctx, groupID, accountID) {
 				account, err := s.getSchedulableAccount(ctx, accountID)
 				// 检查账号分组归属和有效性：原生平台直接匹配，antigravity 需要启用混合调度
 				if err == nil {

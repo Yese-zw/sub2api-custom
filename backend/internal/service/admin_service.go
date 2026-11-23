@@ -311,6 +311,9 @@ type CreateGroupInput struct {
 	MaxReasoningEffortOverLimit string
 	// ReasoningEffortMappings Anthropic/OpenAI 推理强度映射，可按模型精确名、前缀或后缀限定。
 	ReasoningEffortMappings []ReasoningEffortMapping
+	// User-Agent 绑定账号
+	UABindingEnabled bool
+	UABindingRules   []GroupUABindingRule
 	// 分组利润控制（五个 token 平台分组可启用；margin/buffer 为小数，nil 按 0 处理）
 	ProfitControlEnabled bool
 	ProfitMinMargin      *float64
@@ -395,6 +398,9 @@ type UpdateGroupInput struct {
 	MaxReasoningEffortOverLimit *string
 	// ReasoningEffortMappings nil 表示不修改，空数组表示清空，非空数组表示替换。
 	ReasoningEffortMappings *[]ReasoningEffortMapping
+	// User-Agent 绑定账号（nil 表示不修改；规则空数组表示清空）
+	UABindingEnabled *bool
+	UABindingRules   *[]GroupUABindingRule
 	// 分组利润控制（nil 表示不修改；margin/buffer 为小数）
 	ProfitControlEnabled *bool
 	ProfitMinMargin      *float64

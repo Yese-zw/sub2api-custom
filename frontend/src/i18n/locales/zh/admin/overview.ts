@@ -1176,6 +1176,26 @@ export default {
           duplicate: '该条目已存在'
         }
       },
+      uaBinding: {
+        title: 'User-Agent 绑定检测账号',
+        hint: '为指定（黑名单）User-Agent 固定调度到本分组内的检测账号；其余正常请求自动排除这些检测账号。',
+        enable: '启用 User-Agent 绑定检测账号',
+        disabledHint: '未开启：所有请求按正常逻辑在本分组账号中调度。',
+        enabledHint: '已开启：命中规则的 User-Agent 只会调度到该规则的检测账号（不可用时直接失败，不回退）；未命中任何规则的请求不会再调度到任何检测账号。',
+        ruleName: '规则名称（可选）',
+        ruleNamePlaceholder: '例如：扫描器',
+        patterns: 'User-Agent 匹配规则',
+        patternsPlaceholder: '每行一条，例如：\npython-requests\ncurl/*',
+        patternsHint: '每行一条，不区分大小写；不含 * 时按包含匹配，含 * 时按通配符匹配整个 User-Agent。多条规则按顺序匹配，命中第一条即生效。',
+        accounts: '检测账号',
+        accountsHint: '只能选择本分组内的账号。',
+        searchPlaceholder: '搜索本分组账号…',
+        searchEmpty: '没有匹配的账号',
+        addRule: '添加规则',
+        removeRule: '删除规则',
+        atLeastOneRule: '开启后至少需要一条规则',
+        ruleIncomplete: '每条规则都需要至少一个 User-Agent 和一个检测账号',
+      },
       codexModelsManifest: {
         title: '固定账号获取模型列表',
         hint: '开启后，普通模型列表与 Codex Model Manifest 均优先从选定账号获取并合并，再应用账号映射和分组列表过滤；限流/过载中的选定账号仍会被使用。',

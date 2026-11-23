@@ -157,6 +157,8 @@ func GroupFromServiceAdmin(g *service.Group) *AdminGroup {
 		ModelPricing:                g.ModelPricing,
 		ModelRouting:                g.ModelRouting,
 		ModelRoutingEnabled:         g.ModelRoutingEnabled,
+		UABindingEnabled:            g.UABindingEnabled,
+		UABindingRules:              nonNilUABindingRules(g.UABindingRules),
 		MCPXMLInject:                g.MCPXMLInject,
 		DefaultMappedModel:          g.DefaultMappedModel,
 		MessagesDispatchModelConfig: g.MessagesDispatchModelConfig,
@@ -967,4 +969,11 @@ func PromoCodeUsageFromService(u *service.PromoCodeUsage) *PromoCodeUsage {
 		UsedAt:      u.UsedAt,
 		User:        UserFromServiceShallow(u.User),
 	}
+}
+
+func nonNilUABindingRules(rules []service.GroupUABindingRule) []service.GroupUABindingRule {
+	if rules == nil {
+		return []service.GroupUABindingRule{}
+	}
+	return rules
 }

@@ -301,6 +301,15 @@ func (Group) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
 			Comment("OpenAI reasoning effort 自定义映射；可按模型精确名、前缀或后缀限定，先映射再应用上限"),
 
+		// User-Agent 绑定账号（migration 271）
+		field.Bool("ua_binding_enabled").
+			Default(false).
+			Comment("是否启用 User-Agent 绑定账号"),
+		field.JSON("ua_binding_rules", []domain.GroupUABindingRule{}).
+			Default([]domain.GroupUABindingRule{}).
+			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
+			Comment("User-Agent 绑定规则：命中的 UA 只能调度到规则指定的账号"),
+
 		// 分组利润控制（migration 192/193）：openai/anthropic/gemini/grok/antigravity
 		// 的 token 分组可启用，composite 分组不能直接启用。
 		field.Bool("profit_control_enabled").

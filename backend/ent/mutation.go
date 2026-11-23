@@ -22175,6 +22175,9 @@ type GroupMutation struct {
 	max_reasoning_effort_over_limit         *string
 	reasoning_effort_mappings               *[]domain.ReasoningEffortMapping
 	appendreasoning_effort_mappings         []domain.ReasoningEffortMapping
+	ua_binding_enabled                      *bool
+	ua_binding_rules                        *[]domain.GroupUABindingRule
+	appendua_binding_rules                  []domain.GroupUABindingRule
 	profit_control_enabled                  *bool
 	profit_min_margin                       *float64
 	addprofit_min_margin                    *float64
@@ -25526,6 +25529,93 @@ func (m *GroupMutation) ResetReasoningEffortMappings() {
 	m.appendreasoning_effort_mappings = nil
 }
 
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (m *GroupMutation) SetUaBindingEnabled(b bool) {
+	m.ua_binding_enabled = &b
+}
+
+// UaBindingEnabled returns the value of the "ua_binding_enabled" field in the mutation.
+func (m *GroupMutation) UaBindingEnabled() (r bool, exists bool) {
+	v := m.ua_binding_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUaBindingEnabled returns the old "ua_binding_enabled" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldUaBindingEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUaBindingEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUaBindingEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUaBindingEnabled: %w", err)
+	}
+	return oldValue.UaBindingEnabled, nil
+}
+
+// ResetUaBindingEnabled resets all changes to the "ua_binding_enabled" field.
+func (m *GroupMutation) ResetUaBindingEnabled() {
+	m.ua_binding_enabled = nil
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (m *GroupMutation) SetUaBindingRules(dubr []domain.GroupUABindingRule) {
+	m.ua_binding_rules = &dubr
+	m.appendua_binding_rules = nil
+}
+
+// UaBindingRules returns the value of the "ua_binding_rules" field in the mutation.
+func (m *GroupMutation) UaBindingRules() (r []domain.GroupUABindingRule, exists bool) {
+	v := m.ua_binding_rules
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUaBindingRules returns the old "ua_binding_rules" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldUaBindingRules(ctx context.Context) (v []domain.GroupUABindingRule, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUaBindingRules is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUaBindingRules requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUaBindingRules: %w", err)
+	}
+	return oldValue.UaBindingRules, nil
+}
+
+// AppendUaBindingRules adds dubr to the "ua_binding_rules" field.
+func (m *GroupMutation) AppendUaBindingRules(dubr []domain.GroupUABindingRule) {
+	m.appendua_binding_rules = append(m.appendua_binding_rules, dubr...)
+}
+
+// AppendedUaBindingRules returns the list of values that were appended to the "ua_binding_rules" field in this mutation.
+func (m *GroupMutation) AppendedUaBindingRules() ([]domain.GroupUABindingRule, bool) {
+	if len(m.appendua_binding_rules) == 0 {
+		return nil, false
+	}
+	return m.appendua_binding_rules, true
+}
+
+// ResetUaBindingRules resets all changes to the "ua_binding_rules" field.
+func (m *GroupMutation) ResetUaBindingRules() {
+	m.ua_binding_rules = nil
+	m.appendua_binding_rules = nil
+}
+
 // SetProfitControlEnabled sets the "profit_control_enabled" field.
 func (m *GroupMutation) SetProfitControlEnabled(b bool) {
 	m.profit_control_enabled = &b
@@ -26032,7 +26122,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 69)
+	fields := make([]string, 0, 71)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -26231,6 +26321,12 @@ func (m *GroupMutation) Fields() []string {
 	if m.reasoning_effort_mappings != nil {
 		fields = append(fields, group.FieldReasoningEffortMappings)
 	}
+	if m.ua_binding_enabled != nil {
+		fields = append(fields, group.FieldUaBindingEnabled)
+	}
+	if m.ua_binding_rules != nil {
+		fields = append(fields, group.FieldUaBindingRules)
+	}
 	if m.profit_control_enabled != nil {
 		fields = append(fields, group.FieldProfitControlEnabled)
 	}
@@ -26380,6 +26476,10 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.MaxReasoningEffortOverLimit()
 	case group.FieldReasoningEffortMappings:
 		return m.ReasoningEffortMappings()
+	case group.FieldUaBindingEnabled:
+		return m.UaBindingEnabled()
+	case group.FieldUaBindingRules:
+		return m.UaBindingRules()
 	case group.FieldProfitControlEnabled:
 		return m.ProfitControlEnabled()
 	case group.FieldProfitMinMargin:
@@ -26527,6 +26627,10 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldMaxReasoningEffortOverLimit(ctx)
 	case group.FieldReasoningEffortMappings:
 		return m.OldReasoningEffortMappings(ctx)
+	case group.FieldUaBindingEnabled:
+		return m.OldUaBindingEnabled(ctx)
+	case group.FieldUaBindingRules:
+		return m.OldUaBindingRules(ctx)
 	case group.FieldProfitControlEnabled:
 		return m.OldProfitControlEnabled(ctx)
 	case group.FieldProfitMinMargin:
@@ -27003,6 +27107,20 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetReasoningEffortMappings(v)
+		return nil
+	case group.FieldUaBindingEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUaBindingEnabled(v)
+		return nil
+	case group.FieldUaBindingRules:
+		v, ok := value.([]domain.GroupUABindingRule)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUaBindingRules(v)
 		return nil
 	case group.FieldProfitControlEnabled:
 		v, ok := value.(bool)
@@ -27733,6 +27851,12 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldReasoningEffortMappings:
 		m.ResetReasoningEffortMappings()
+		return nil
+	case group.FieldUaBindingEnabled:
+		m.ResetUaBindingEnabled()
+		return nil
+	case group.FieldUaBindingRules:
+		m.ResetUaBindingRules()
 		return nil
 	case group.FieldProfitControlEnabled:
 		m.ResetProfitControlEnabled()

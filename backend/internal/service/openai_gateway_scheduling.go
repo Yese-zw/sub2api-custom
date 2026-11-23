@@ -982,7 +982,7 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		}
 	}
 
-	if _, excluded := excludedIDs[accountID]; excluded || schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+	if _, excluded := excludedIDs[accountID]; excluded || s.stickyAccountBlocked(ctx, groupID, accountID) {
 		return nil
 	}
 	ctx = withOpenAIImageSizeStickyAccount(ctx, accountID)
@@ -1231,7 +1231,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwarenessInner(ctx context.C
 	stickySpillover := false
 	if sessionHash != "" {
 		accountID := stickyAccountID
-		if accountID > 0 && !isExcluded(accountID) && !schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+		if accountID > 0 && !isExcluded(accountID) && !s.stickyAccountBlocked(ctx, groupID, accountID) {
 			account, err := s.getSchedulableAccount(ctx, accountID)
 			if err == nil {
 				clearSticky := shouldClearStickySession(account, requestedModel)
@@ -1525,7 +1525,7 @@ func (s *OpenAIGatewayService) listSchedulableAccounts(ctx context.Context, grou
 	if err != nil {
 		return accounts, err
 	}
-	return filterSchedulingCenterPool(ctx, groupID, accounts), nil
+	return filterSchedulingCenterPool(ctx, groupID, filterUABindingAccounts(ctx, groupID, accounts, s.uaBindingLookup)), nil
 }
 
 func (s *OpenAIGatewayService) listSchedulableAccountsUnfiltered(ctx context.Context, groupID *int64, platform string) ([]Account, error) {

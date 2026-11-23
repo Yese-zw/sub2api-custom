@@ -666,6 +666,10 @@ export interface AdminGroup extends Group {
   model_routing: Record<string, number[]> | null
   model_routing_enabled: boolean
 
+  // User-Agent 绑定检测账号（仅管理员可见）
+  ua_binding_enabled?: boolean
+  ua_binding_rules?: GroupUABindingRule[] | null
+
   // MCP XML 协议注入（仅 antigravity 平台使用）
   mcp_xml_inject: boolean
 
@@ -943,6 +947,8 @@ export interface UpdateGroupRequest {
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
+  ua_binding_enabled?: boolean
+  ua_binding_rules?: GroupUABindingRule[]
   rpm_limit?: number
   max_reasoning_effort?: string
   max_reasoning_effort_over_limit?: string
@@ -2633,3 +2639,10 @@ export type {
   PlatformQuotaWindow,
   PlatformQuotasResponse,
 } from '@/api/admin/users'
+
+/** 分组 User-Agent 绑定规则：命中 patterns 的 UA 只能调度到 account_ids；其余请求排除这些账号。 */
+export interface GroupUABindingRule {
+  name?: string
+  patterns: string[]
+  account_ids: number[]
+}

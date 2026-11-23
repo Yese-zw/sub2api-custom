@@ -524,7 +524,7 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 			return nil, false, nil
 		}
 	}
-	if schedulingCenterBlocksSticky(ctx, req.GroupID, accountID) {
+	if s.service.stickyAccountBlocked(ctx, req.GroupID, accountID) {
 		return nil, false, nil
 	}
 	ctx = withOpenAIImageSizeStickyAccount(ctx, accountID)

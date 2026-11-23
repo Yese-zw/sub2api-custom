@@ -189,6 +189,10 @@ type AdminGroup struct {
 	ModelRouting        map[string][]int64 `json:"model_routing"`
 	ModelRoutingEnabled bool               `json:"model_routing_enabled"`
 
+	// User-Agent 绑定账号：命中规则的 UA 只能调度到规则内账号
+	UABindingEnabled bool                        `json:"ua_binding_enabled"`
+	UABindingRules   []domain.GroupUABindingRule `json:"ua_binding_rules"`
+
 	// MCP XML 协议注入（仅 antigravity 平台使用）
 	MCPXMLInject bool `json:"mcp_xml_inject"`
 

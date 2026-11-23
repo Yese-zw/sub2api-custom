@@ -898,6 +898,26 @@ func (_c *GroupCreate) SetReasoningEffortMappings(v []domain.ReasoningEffortMapp
 	return _c
 }
 
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (_c *GroupCreate) SetUaBindingEnabled(v bool) *GroupCreate {
+	_c.mutation.SetUaBindingEnabled(v)
+	return _c
+}
+
+// SetNillableUaBindingEnabled sets the "ua_binding_enabled" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableUaBindingEnabled(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetUaBindingEnabled(*v)
+	}
+	return _c
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (_c *GroupCreate) SetUaBindingRules(v []domain.GroupUABindingRule) *GroupCreate {
+	_c.mutation.SetUaBindingRules(v)
+	return _c
+}
+
 // SetProfitControlEnabled sets the "profit_control_enabled" field.
 func (_c *GroupCreate) SetProfitControlEnabled(v bool) *GroupCreate {
 	_c.mutation.SetProfitControlEnabled(v)
@@ -1245,6 +1265,14 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultReasoningEffortMappings
 		_c.mutation.SetReasoningEffortMappings(v)
 	}
+	if _, ok := _c.mutation.UaBindingEnabled(); !ok {
+		v := group.DefaultUaBindingEnabled
+		_c.mutation.SetUaBindingEnabled(v)
+	}
+	if _, ok := _c.mutation.UaBindingRules(); !ok {
+		v := group.DefaultUaBindingRules
+		_c.mutation.SetUaBindingRules(v)
+	}
 	if _, ok := _c.mutation.ProfitControlEnabled(); !ok {
 		v := group.DefaultProfitControlEnabled
 		_c.mutation.SetProfitControlEnabled(v)
@@ -1463,6 +1491,12 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.ReasoningEffortMappings(); !ok {
 		return &ValidationError{Name: "reasoning_effort_mappings", err: errors.New(`ent: missing required field "Group.reasoning_effort_mappings"`)}
+	}
+	if _, ok := _c.mutation.UaBindingEnabled(); !ok {
+		return &ValidationError{Name: "ua_binding_enabled", err: errors.New(`ent: missing required field "Group.ua_binding_enabled"`)}
+	}
+	if _, ok := _c.mutation.UaBindingRules(); !ok {
+		return &ValidationError{Name: "ua_binding_rules", err: errors.New(`ent: missing required field "Group.ua_binding_rules"`)}
 	}
 	if _, ok := _c.mutation.ProfitControlEnabled(); !ok {
 		return &ValidationError{Name: "profit_control_enabled", err: errors.New(`ent: missing required field "Group.profit_control_enabled"`)}
@@ -1763,6 +1797,14 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ReasoningEffortMappings(); ok {
 		_spec.SetField(group.FieldReasoningEffortMappings, field.TypeJSON, value)
 		_node.ReasoningEffortMappings = value
+	}
+	if value, ok := _c.mutation.UaBindingEnabled(); ok {
+		_spec.SetField(group.FieldUaBindingEnabled, field.TypeBool, value)
+		_node.UaBindingEnabled = value
+	}
+	if value, ok := _c.mutation.UaBindingRules(); ok {
+		_spec.SetField(group.FieldUaBindingRules, field.TypeJSON, value)
+		_node.UaBindingRules = value
 	}
 	if value, ok := _c.mutation.ProfitControlEnabled(); ok {
 		_spec.SetField(group.FieldProfitControlEnabled, field.TypeBool, value)
@@ -2973,6 +3015,30 @@ func (u *GroupUpsert) SetReasoningEffortMappings(v []domain.ReasoningEffortMappi
 // UpdateReasoningEffortMappings sets the "reasoning_effort_mappings" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateReasoningEffortMappings() *GroupUpsert {
 	u.SetExcluded(group.FieldReasoningEffortMappings)
+	return u
+}
+
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (u *GroupUpsert) SetUaBindingEnabled(v bool) *GroupUpsert {
+	u.Set(group.FieldUaBindingEnabled, v)
+	return u
+}
+
+// UpdateUaBindingEnabled sets the "ua_binding_enabled" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateUaBindingEnabled() *GroupUpsert {
+	u.SetExcluded(group.FieldUaBindingEnabled)
+	return u
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (u *GroupUpsert) SetUaBindingRules(v []domain.GroupUABindingRule) *GroupUpsert {
+	u.Set(group.FieldUaBindingRules, v)
+	return u
+}
+
+// UpdateUaBindingRules sets the "ua_binding_rules" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateUaBindingRules() *GroupUpsert {
+	u.SetExcluded(group.FieldUaBindingRules)
 	return u
 }
 
@@ -4287,6 +4353,34 @@ func (u *GroupUpsertOne) SetReasoningEffortMappings(v []domain.ReasoningEffortMa
 func (u *GroupUpsertOne) UpdateReasoningEffortMappings() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateReasoningEffortMappings()
+	})
+}
+
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (u *GroupUpsertOne) SetUaBindingEnabled(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUaBindingEnabled(v)
+	})
+}
+
+// UpdateUaBindingEnabled sets the "ua_binding_enabled" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateUaBindingEnabled() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUaBindingEnabled()
+	})
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (u *GroupUpsertOne) SetUaBindingRules(v []domain.GroupUABindingRule) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUaBindingRules(v)
+	})
+}
+
+// UpdateUaBindingRules sets the "ua_binding_rules" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateUaBindingRules() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUaBindingRules()
 	})
 }
 
@@ -5775,6 +5869,34 @@ func (u *GroupUpsertBulk) SetReasoningEffortMappings(v []domain.ReasoningEffortM
 func (u *GroupUpsertBulk) UpdateReasoningEffortMappings() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateReasoningEffortMappings()
+	})
+}
+
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (u *GroupUpsertBulk) SetUaBindingEnabled(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUaBindingEnabled(v)
+	})
+}
+
+// UpdateUaBindingEnabled sets the "ua_binding_enabled" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateUaBindingEnabled() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUaBindingEnabled()
+	})
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (u *GroupUpsertBulk) SetUaBindingRules(v []domain.GroupUABindingRule) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUaBindingRules(v)
+	})
+}
+
+// UpdateUaBindingRules sets the "ua_binding_rules" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateUaBindingRules() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUaBindingRules()
 	})
 }
 

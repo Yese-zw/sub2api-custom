@@ -3599,6 +3599,14 @@
           </p>
         </div>
 
+        <!-- User-Agent 绑定检测账号（所有平台） -->
+        <GroupUABindingField
+          v-if="editingGroup"
+          ref="editUABindingRef"
+          :group-id="editingGroup.id"
+          :platform="editForm.platform"
+        />
+
         <!-- 模型路由配置（仅 anthropic 平台） -->
         <div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
@@ -4319,7 +4327,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
@@ -4334,6 +4342,7 @@ import type {
   CompositeRouteEndpoint,
   CompositeRouteMatchType,
   GroupI18n,
+  GroupUABindingRule,
   GroupPlatform,
   SubscriptionType,
 } from "@/types";
@@ -4360,6 +4369,7 @@ import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesMo
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
 import ReasoningEffortPolicyFields from "@/components/admin/group/ReasoningEffortPolicyFields.vue";
 import CodexManifestAccountsField from "@/components/admin/group/CodexManifestAccountsField.vue";
+import GroupUABindingField from "@/components/admin/group/GroupUABindingField.vue";
 import PricingEntryCard from "@/components/admin/channel/PricingEntryCard.vue";
 import type { PricingFormEntry } from "@/components/admin/channel/types";
 import {
@@ -4955,6 +4965,12 @@ type CodexManifestAccountsFieldExpose = {
   resetValidation: () => void;
 };
 const editCodexManifestRef = ref<CodexManifestAccountsFieldExpose | null>(null);
+type GroupUABindingFieldExpose = {
+  load: (value: { enabled?: boolean; rules?: GroupUABindingRule[] | null }) => void;
+  getValue: () => { ua_binding_enabled: boolean; ua_binding_rules: GroupUABindingRule[] };
+  validate: () => boolean;
+};
+const editUABindingRef = ref<GroupUABindingFieldExpose | null>(null);
 const createCodexManifestDefaults = (): CodexModelsManifestConfig => ({
   enabled: false,
   account_ids: [],
@@ -6258,6 +6274,12 @@ const handleEdit = async (group: AdminGroup) => {
   );
   loadModelAllowlistCandidates("edit", group.id, group.platform);
   showEditModal.value = true;
+  // 对话框渲染后组件才挂载，再回显 UA 绑定配置
+  await nextTick();
+  editUABindingRef.value?.load({
+    enabled: group.ua_binding_enabled,
+    rules: group.ua_binding_rules,
+  });
 };
 
 const closeEditModal = () => {
@@ -6339,6 +6361,11 @@ const handleUpdateGroup = async () => {
     editCodexManifestRef.value?.validate();
     return;
   }
+  // UA 绑定检测账号：开启后每条规则都需要 UA 与账号。
+  if (editUABindingRef.value && !editUABindingRef.value.validate()) {
+    appStore.showError(t("admin.groups.uaBinding.ruleIncomplete"));
+    return;
+  }
 
   submitting.value = true;
   try {
@@ -6383,6 +6410,7 @@ const handleUpdateGroup = async () => {
         editModelRoutingRules.value,
       ),
       model_allowlist: buildModelAllowlistConfig(editModelAllowlistState),
+      ...(editUABindingRef.value?.getValue() ?? {}),
       // 非 openai 平台提交关闭状态，与后端归一化一致
       codex_models_manifest_config:
         editForm.platform === "openai"

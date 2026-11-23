@@ -14,6 +14,7 @@ import (
 type OpenAIMessagesDispatchModelConfig = domain.OpenAIMessagesDispatchModelConfig
 type GroupCodexModelsManifestConfig = domain.GroupCodexModelsManifestConfig
 type ReasoningEffortMapping = domain.ReasoningEffortMapping
+type GroupUABindingRule = domain.GroupUABindingRule
 
 type Group struct {
 	ID             int64
@@ -126,6 +127,10 @@ type Group struct {
 	MaxReasoningEffortOverLimit string
 	// ReasoningEffortMappings rewrites explicit request values before applying the ceiling.
 	ReasoningEffortMappings []ReasoningEffortMapping
+
+	// User-Agent 绑定账号：开启后，命中规则的 User-Agent 只能调度到规则指定的账号。
+	UABindingEnabled bool
+	UABindingRules   []GroupUABindingRule
 
 	// 分组利润控制（五个 token 计费平台可启用）。
 	// 调度准入条件：账号倍率 U 满足 U <= D*(1-margin-buffer)，

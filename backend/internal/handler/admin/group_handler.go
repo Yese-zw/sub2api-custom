@@ -256,6 +256,9 @@ type CreateGroupRequest struct {
 	MaxReasoningEffortOverLimit string `json:"max_reasoning_effort_over_limit"`
 	// Anthropic/OpenAI 推理强度映射，可按模型精确名、前缀或后缀限定。
 	ReasoningEffortMappings []service.ReasoningEffortMapping `json:"reasoning_effort_mappings"`
+	// User-Agent 绑定账号
+	UABindingEnabled bool                         `json:"ua_binding_enabled"`
+	UABindingRules   []service.GroupUABindingRule `json:"ua_binding_rules"`
 	// 从指定分组复制账号（创建后自动绑定）
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
@@ -334,6 +337,9 @@ type UpdateGroupRequest struct {
 	MaxReasoningEffortOverLimit *string `json:"max_reasoning_effort_over_limit"`
 	// nil 不修改，空数组清空，非空数组替换。
 	ReasoningEffortMappings *[]service.ReasoningEffortMapping `json:"reasoning_effort_mappings"`
+	// User-Agent 绑定账号（nil 不修改；规则空数组清空）
+	UABindingEnabled *bool                         `json:"ua_binding_enabled"`
+	UABindingRules   *[]service.GroupUABindingRule `json:"ua_binding_rules"`
 	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
@@ -733,6 +739,8 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		MaxReasoningEffort:              req.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit:     req.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:         req.ReasoningEffortMappings,
+		UABindingEnabled:                req.UABindingEnabled,
+		UABindingRules:                  req.UABindingRules,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
 	})
 	if err != nil {
@@ -882,6 +890,8 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		MaxReasoningEffort:              req.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit:     req.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:         req.ReasoningEffortMappings,
+		UABindingEnabled:                req.UABindingEnabled,
+		UABindingRules:                  req.UABindingRules,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
 	})
 	if err != nil {

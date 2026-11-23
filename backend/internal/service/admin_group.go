@@ -429,6 +429,10 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	if err != nil {
 		return nil, infraerrors.Newf(http.StatusBadRequest, "INVALID_REASONING_EFFORT_MAPPING", "%v", err)
 	}
+	uaBindingRules, err := NormalizeGroupUABindingRules(input.UABindingRules)
+	if err != nil {
+		return nil, infraerrors.Newf(http.StatusBadRequest, "INVALID_UA_BINDING_RULES", "%v", err)
+	}
 
 	subscriptionType := input.SubscriptionType
 	if subscriptionType == "" {
@@ -641,6 +645,8 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		MaxReasoningEffort:          maxReasoningEffort,
 		MaxReasoningEffortOverLimit: maxReasoningEffortOverLimit,
 		ReasoningEffortMappings:     reasoningEffortMappings,
+		UABindingEnabled:            input.UABindingEnabled,
+		UABindingRules:              uaBindingRules,
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 	sanitizeGroupOpenAIFast(group)
@@ -1072,6 +1078,16 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 			return nil, infraerrors.Newf(http.StatusBadRequest, "INVALID_REASONING_EFFORT_MAPPING", "%v", err)
 		}
 		group.ReasoningEffortMappings = reasoningEffortMappings
+	}
+	if input.UABindingRules != nil {
+		uaBindingRules, err := NormalizeGroupUABindingRules(*input.UABindingRules)
+		if err != nil {
+			return nil, infraerrors.Newf(http.StatusBadRequest, "INVALID_UA_BINDING_RULES", "%v", err)
+		}
+		group.UABindingRules = uaBindingRules
+	}
+	if input.UABindingEnabled != nil {
+		group.UABindingEnabled = *input.UABindingEnabled
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 	sanitizeGroupOpenAIFast(group)

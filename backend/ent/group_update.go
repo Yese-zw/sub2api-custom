@@ -1196,6 +1196,32 @@ func (_u *GroupUpdate) AppendReasoningEffortMappings(v []domain.ReasoningEffortM
 	return _u
 }
 
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (_u *GroupUpdate) SetUaBindingEnabled(v bool) *GroupUpdate {
+	_u.mutation.SetUaBindingEnabled(v)
+	return _u
+}
+
+// SetNillableUaBindingEnabled sets the "ua_binding_enabled" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableUaBindingEnabled(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetUaBindingEnabled(*v)
+	}
+	return _u
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (_u *GroupUpdate) SetUaBindingRules(v []domain.GroupUABindingRule) *GroupUpdate {
+	_u.mutation.SetUaBindingRules(v)
+	return _u
+}
+
+// AppendUaBindingRules appends value to the "ua_binding_rules" field.
+func (_u *GroupUpdate) AppendUaBindingRules(v []domain.GroupUABindingRule) *GroupUpdate {
+	_u.mutation.AppendUaBindingRules(v)
+	return _u
+}
+
 // SetProfitControlEnabled sets the "profit_control_enabled" field.
 func (_u *GroupUpdate) SetProfitControlEnabled(v bool) *GroupUpdate {
 	_u.mutation.SetProfitControlEnabled(v)
@@ -1943,6 +1969,17 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AppendedReasoningEffortMappings(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, group.FieldReasoningEffortMappings, value)
+		})
+	}
+	if value, ok := _u.mutation.UaBindingEnabled(); ok {
+		_spec.SetField(group.FieldUaBindingEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UaBindingRules(); ok {
+		_spec.SetField(group.FieldUaBindingRules, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedUaBindingRules(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, group.FieldUaBindingRules, value)
 		})
 	}
 	if value, ok := _u.mutation.ProfitControlEnabled(); ok {
@@ -3433,6 +3470,32 @@ func (_u *GroupUpdateOne) AppendReasoningEffortMappings(v []domain.ReasoningEffo
 	return _u
 }
 
+// SetUaBindingEnabled sets the "ua_binding_enabled" field.
+func (_u *GroupUpdateOne) SetUaBindingEnabled(v bool) *GroupUpdateOne {
+	_u.mutation.SetUaBindingEnabled(v)
+	return _u
+}
+
+// SetNillableUaBindingEnabled sets the "ua_binding_enabled" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableUaBindingEnabled(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetUaBindingEnabled(*v)
+	}
+	return _u
+}
+
+// SetUaBindingRules sets the "ua_binding_rules" field.
+func (_u *GroupUpdateOne) SetUaBindingRules(v []domain.GroupUABindingRule) *GroupUpdateOne {
+	_u.mutation.SetUaBindingRules(v)
+	return _u
+}
+
+// AppendUaBindingRules appends value to the "ua_binding_rules" field.
+func (_u *GroupUpdateOne) AppendUaBindingRules(v []domain.GroupUABindingRule) *GroupUpdateOne {
+	_u.mutation.AppendUaBindingRules(v)
+	return _u
+}
+
 // SetProfitControlEnabled sets the "profit_control_enabled" field.
 func (_u *GroupUpdateOne) SetProfitControlEnabled(v bool) *GroupUpdateOne {
 	_u.mutation.SetProfitControlEnabled(v)
@@ -4210,6 +4273,17 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.AppendedReasoningEffortMappings(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, group.FieldReasoningEffortMappings, value)
+		})
+	}
+	if value, ok := _u.mutation.UaBindingEnabled(); ok {
+		_spec.SetField(group.FieldUaBindingEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UaBindingRules(); ok {
+		_spec.SetField(group.FieldUaBindingRules, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedUaBindingRules(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, group.FieldUaBindingRules, value)
 		})
 	}
 	if value, ok := _u.mutation.ProfitControlEnabled(); ok {

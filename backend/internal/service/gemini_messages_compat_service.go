@@ -144,7 +144,8 @@ func (s *GeminiMessagesCompatService) selectAccountForModelWithExclusionsInner(c
 		return nil, fmt.Errorf("query accounts failed: %w", err)
 	}
 	// 强制平台模式下，分组中找不到账户时回退查询全部
-	if len(accounts) == 0 && groupID != nil && hasForcePlatform {
+	// 请求 UA 命中分组绑定规则时不回退到分组外账号。
+	if len(accounts) == 0 && groupID != nil && hasForcePlatform && !uaBindingDecisionFor(ctx, groupID, s.uaBindingLookup).matched() {
 		accounts, err = s.listSchedulableAccountsOnce(ctx, nil, platform, hasForcePlatform)
 		if err != nil {
 			return nil, fmt.Errorf("query accounts failed: %w", err)
@@ -224,7 +225,7 @@ func (s *GeminiMessagesCompatService) tryStickySessionHit(
 		return nil
 	}
 
-	if _, excluded := excludedIDs[accountID]; excluded || schedulingCenterBlocksSticky(ctx, groupID, accountID) {
+	if _, excluded := excludedIDs[accountID]; excluded || s.stickyAccountBlocked(ctx, groupID, accountID) {
 		return nil
 	}
 
@@ -466,7 +467,7 @@ func (s *GeminiMessagesCompatService) listSchedulableAccountsOnce(ctx context.Co
 	if err != nil {
 		return accounts, err
 	}
-	return filterSchedulingCenterPool(ctx, groupID, accounts), nil
+	return filterSchedulingCenterPool(ctx, groupID, filterUABindingAccounts(ctx, groupID, accounts, s.uaBindingLookup)), nil
 }
 
 func (s *GeminiMessagesCompatService) listSchedulableAccountsOnceUnfiltered(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]Account, error) {

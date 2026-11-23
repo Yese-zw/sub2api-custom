@@ -163,6 +163,8 @@ func cloneGroupForDuplicate(source *Group, operationID string) *Group {
 		MaxReasoningEffort:          source.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: source.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:     append([]ReasoningEffortMapping(nil), source.ReasoningEffortMappings...),
+		UABindingEnabled:            source.UABindingEnabled,
+		UABindingRules:              cloneGroupUABindingRules(source.UABindingRules),
 	}
 }
 
@@ -243,4 +245,19 @@ func (s *adminServiceImpl) DuplicateGroup(ctx context.Context, id int64, actorSc
 			return recovered, nil
 		}
 	}
+}
+
+func cloneGroupUABindingRules(rules []GroupUABindingRule) []GroupUABindingRule {
+	if rules == nil {
+		return nil
+	}
+	out := make([]GroupUABindingRule, len(rules))
+	for i, r := range rules {
+		out[i] = GroupUABindingRule{
+			Name:       r.Name,
+			Patterns:   append([]string(nil), r.Patterns...),
+			AccountIDs: append([]int64(nil), r.AccountIDs...),
+		}
+	}
+	return out
 }

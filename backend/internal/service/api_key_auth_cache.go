@@ -127,6 +127,10 @@ type APIKeyAuthGroupSnapshot struct {
 	// ReasoningEffortMappings rewrites explicit effort values before the ceiling.
 	ReasoningEffortMappings []ReasoningEffortMapping `json:"reasoning_effort_mappings"`
 
+	// User-Agent 绑定账号（网关选号时使用）。
+	UABindingEnabled bool                 `json:"ua_binding_enabled"`
+	UABindingRules   []GroupUABindingRule `json:"ua_binding_rules,omitempty"`
+
 	// 高峰时段倍率：PeakRateEnabled 为 true 且请求时刻处于 [PeakStart, PeakEnd) 时，
 	// token 计费倍率额外乘以 PeakRateMultiplier（详见 Group.PeakMultiplierAt）。
 	// 必须随快照缓存，否则扣费路径拿到的 apiKey.Group 缺字段、高峰倍率失效。

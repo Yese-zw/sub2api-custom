@@ -1237,16 +1237,24 @@ func init() {
 	groupDescReasoningEffortMappings := groupFields[62].Descriptor()
 	// group.DefaultReasoningEffortMappings holds the default value on creation for the reasoning_effort_mappings field.
 	group.DefaultReasoningEffortMappings = groupDescReasoningEffortMappings.Default.([]domain.ReasoningEffortMapping)
+	// groupDescUaBindingEnabled is the schema descriptor for ua_binding_enabled field.
+	groupDescUaBindingEnabled := groupFields[63].Descriptor()
+	// group.DefaultUaBindingEnabled holds the default value on creation for the ua_binding_enabled field.
+	group.DefaultUaBindingEnabled = groupDescUaBindingEnabled.Default.(bool)
+	// groupDescUaBindingRules is the schema descriptor for ua_binding_rules field.
+	groupDescUaBindingRules := groupFields[64].Descriptor()
+	// group.DefaultUaBindingRules holds the default value on creation for the ua_binding_rules field.
+	group.DefaultUaBindingRules = groupDescUaBindingRules.Default.([]domain.GroupUABindingRule)
 	// groupDescProfitControlEnabled is the schema descriptor for profit_control_enabled field.
-	groupDescProfitControlEnabled := groupFields[63].Descriptor()
+	groupDescProfitControlEnabled := groupFields[65].Descriptor()
 	// group.DefaultProfitControlEnabled holds the default value on creation for the profit_control_enabled field.
 	group.DefaultProfitControlEnabled = groupDescProfitControlEnabled.Default.(bool)
 	// groupDescProfitMinMargin is the schema descriptor for profit_min_margin field.
-	groupDescProfitMinMargin := groupFields[64].Descriptor()
+	groupDescProfitMinMargin := groupFields[66].Descriptor()
 	// group.DefaultProfitMinMargin holds the default value on creation for the profit_min_margin field.
 	group.DefaultProfitMinMargin = groupDescProfitMinMargin.Default.(float64)
 	// groupDescProfitSafetyBuffer is the schema descriptor for profit_safety_buffer field.
-	groupDescProfitSafetyBuffer := groupFields[65].Descriptor()
+	groupDescProfitSafetyBuffer := groupFields[67].Descriptor()
 	// group.DefaultProfitSafetyBuffer holds the default value on creation for the profit_safety_buffer field.
 	group.DefaultProfitSafetyBuffer = groupDescProfitSafetyBuffer.Default.(float64)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()

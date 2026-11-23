@@ -148,6 +148,10 @@ const (
 	FieldMaxReasoningEffortOverLimit = "max_reasoning_effort_over_limit"
 	// FieldReasoningEffortMappings holds the string denoting the reasoning_effort_mappings field in the database.
 	FieldReasoningEffortMappings = "reasoning_effort_mappings"
+	// FieldUaBindingEnabled holds the string denoting the ua_binding_enabled field in the database.
+	FieldUaBindingEnabled = "ua_binding_enabled"
+	// FieldUaBindingRules holds the string denoting the ua_binding_rules field in the database.
+	FieldUaBindingRules = "ua_binding_rules"
 	// FieldProfitControlEnabled holds the string denoting the profit_control_enabled field in the database.
 	FieldProfitControlEnabled = "profit_control_enabled"
 	// FieldProfitMinMargin holds the string denoting the profit_min_margin field in the database.
@@ -295,6 +299,8 @@ var Columns = []string{
 	FieldMaxReasoningEffort,
 	FieldMaxReasoningEffortOverLimit,
 	FieldReasoningEffortMappings,
+	FieldUaBindingEnabled,
+	FieldUaBindingRules,
 	FieldProfitControlEnabled,
 	FieldProfitMinMargin,
 	FieldProfitSafetyBuffer,
@@ -443,6 +449,10 @@ var (
 	MaxReasoningEffortOverLimitValidator func(string) error
 	// DefaultReasoningEffortMappings holds the default value on creation for the "reasoning_effort_mappings" field.
 	DefaultReasoningEffortMappings []domain.ReasoningEffortMapping
+	// DefaultUaBindingEnabled holds the default value on creation for the "ua_binding_enabled" field.
+	DefaultUaBindingEnabled bool
+	// DefaultUaBindingRules holds the default value on creation for the "ua_binding_rules" field.
+	DefaultUaBindingRules []domain.GroupUABindingRule
 	// DefaultProfitControlEnabled holds the default value on creation for the "profit_control_enabled" field.
 	DefaultProfitControlEnabled bool
 	// DefaultProfitMinMargin holds the default value on creation for the "profit_min_margin" field.
@@ -742,6 +752,11 @@ func ByMaxReasoningEffort(opts ...sql.OrderTermOption) OrderOption {
 // ByMaxReasoningEffortOverLimit orders the results by the max_reasoning_effort_over_limit field.
 func ByMaxReasoningEffortOverLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMaxReasoningEffortOverLimit, opts...).ToFunc()
+}
+
+// ByUaBindingEnabled orders the results by the ua_binding_enabled field.
+func ByUaBindingEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUaBindingEnabled, opts...).ToFunc()
 }
 
 // ByProfitControlEnabled orders the results by the profit_control_enabled field.

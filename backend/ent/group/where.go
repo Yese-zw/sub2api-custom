@@ -340,6 +340,11 @@ func MaxReasoningEffortOverLimit(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldMaxReasoningEffortOverLimit, v))
 }
 
+// UaBindingEnabled applies equality check predicate on the "ua_binding_enabled" field. It's identical to UaBindingEnabledEQ.
+func UaBindingEnabled(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldUaBindingEnabled, v))
+}
+
 // ProfitControlEnabled applies equality check predicate on the "profit_control_enabled" field. It's identical to ProfitControlEnabledEQ.
 func ProfitControlEnabled(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldProfitControlEnabled, v))
@@ -2588,6 +2593,16 @@ func MaxReasoningEffortOverLimitEqualFold(v string) predicate.Group {
 // MaxReasoningEffortOverLimitContainsFold applies the ContainsFold predicate on the "max_reasoning_effort_over_limit" field.
 func MaxReasoningEffortOverLimitContainsFold(v string) predicate.Group {
 	return predicate.Group(sql.FieldContainsFold(FieldMaxReasoningEffortOverLimit, v))
+}
+
+// UaBindingEnabledEQ applies the EQ predicate on the "ua_binding_enabled" field.
+func UaBindingEnabledEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldUaBindingEnabled, v))
+}
+
+// UaBindingEnabledNEQ applies the NEQ predicate on the "ua_binding_enabled" field.
+func UaBindingEnabledNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldUaBindingEnabled, v))
 }
 
 // ProfitControlEnabledEQ applies the EQ predicate on the "profit_control_enabled" field.

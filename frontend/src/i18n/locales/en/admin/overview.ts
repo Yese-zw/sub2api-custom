@@ -1179,6 +1179,26 @@ export default {
           duplicate: 'This entry already exists'
         }
       },
+      uaBinding: {
+        title: 'User-Agent Detection Accounts',
+        hint: 'Pin specific (blacklisted) User-Agents to detection accounts in this group; all other requests automatically skip those detection accounts.',
+        enable: 'Enable User-Agent detection accounts',
+        disabledHint: 'Disabled: all requests are scheduled across this group\'s accounts as usual.',
+        enabledHint: 'Enabled: a User-Agent matching a rule is only scheduled to that rule\'s detection accounts (fails instead of falling back when they are unavailable); requests matching no rule are never scheduled to any detection account.',
+        ruleName: 'Rule name (optional)',
+        ruleNamePlaceholder: 'e.g. Scanners',
+        patterns: 'User-Agent patterns',
+        patternsPlaceholder: 'One per line, e.g.\npython-requests\ncurl/*',
+        patternsHint: 'One per line, case-insensitive. Without * it matches as a substring; with * it is a wildcard over the whole User-Agent. Rules are checked in order and the first match wins.',
+        accounts: 'Detection accounts',
+        accountsHint: 'Only accounts in this group can be selected.',
+        searchPlaceholder: 'Search accounts in this group…',
+        searchEmpty: 'No matching accounts',
+        addRule: 'Add rule',
+        removeRule: 'Remove rule',
+        atLeastOneRule: 'At least one rule is required when enabled',
+        ruleIncomplete: 'Each rule needs at least one User-Agent pattern and one detection account',
+      },
       codexModelsManifest: {
         title: 'Pinned Accounts for Model Lists',
         hint: 'When enabled, ordinary model lists and Codex Model Manifest are discovered from the pinned accounts first, then merged and filtered using account mappings and the group model list. Rate-limited or overloaded pinned accounts are still used.',

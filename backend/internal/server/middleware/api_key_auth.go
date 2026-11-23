@@ -392,6 +392,10 @@ func setGroupContext(c *gin.Context, group *service.Group) {
 	if !service.IsGroupContextValid(group) {
 		return
 	}
+	// 分组 UA 绑定账号调度需要客户端 User-Agent。
+	if _, ok := c.Request.Context().Value(ctxkey.UserAgent).(string); !ok {
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.UserAgent, c.Request.UserAgent()))
+	}
 	if existing, ok := c.Request.Context().Value(ctxkey.Group).(*service.Group); ok && existing != nil && existing.ID == group.ID && service.IsGroupContextValid(existing) {
 		return
 	}
