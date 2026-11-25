@@ -134,6 +134,9 @@ func RegisterAdminRoutes(
 
 		// 操作审计日志
 		registerAuditLogRoutes(admin, h, stepUpAuth)
+
+		// 网关请求审计（完整输入/输出）
+		registerRequestAuditRoutes(admin, h)
 	}
 }
 

@@ -34,10 +34,11 @@ func TestGatewayRoutesRejectConflictingFieldsMountedOnEveryGatewayRoute(t *testi
 
 	// 带合成路由改写的链：歧义拒绝必须在改写之前。
 	for _, chain := range []string{
-		`gateway.Use(rejectConflictingFields)` + "\n\t" + `gateway.Use(compositeTarget)`,
-		`gemini.Use(rejectConflictingFields)` + "\n\t" + `gemini.Use(compositeGeminiTarget)`,
-		`groupModelAllowlist, rejectConflictingFields, compositeTarget, requireGroupAnthropic, handler)`,
-		`groupModelAllowlist, rejectConflictingFields, compositeTarget, requireGroupAnthropic)`,
+		// requestAudit（请求审计，只读）夹在中间不改变「歧义拒绝先于改写」的顺序。
+		`gateway.Use(rejectConflictingFields)` + "\n\t" + `gateway.Use(requestAudit)` + "\n\t" + `gateway.Use(compositeTarget)`,
+		`gemini.Use(rejectConflictingFields)` + "\n\t" + `gemini.Use(requestAudit)` + "\n\t" + `gemini.Use(compositeGeminiTarget)`,
+		`groupModelAllowlist, rejectConflictingFields, requestAudit, compositeTarget, requireGroupAnthropic, handler)`,
+		`groupModelAllowlist, rejectConflictingFields, requestAudit, compositeTarget, requireGroupAnthropic)`,
 	} {
 		require.Contains(t, source, chain)
 	}

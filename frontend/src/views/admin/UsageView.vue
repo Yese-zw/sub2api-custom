@@ -85,6 +85,17 @@
 
         <UsageFilters v-model="filters" ref="usageFiltersRef" flat :mode="activeTab" class="border-b border-gray-100 dark:border-dark-700/50" :start-date="startDate" :end-date="endDate" :exporting="exporting" :model-options="modelNameOptions" @change="applyFilters" @refresh="refreshData" @reset="resetFilters" @cleanup="openCleanupDialog" @export="exportToExcel">
           <template #after-reset>
+            <button
+              v-if="activeTab === 'usage'"
+              type="button"
+              data-testid="request-audit-settings"
+              class="btn btn-secondary px-2 md:px-3"
+              :title="t('admin.requestAudit.clickHint')"
+              @click="showRequestAuditSettings = true"
+            >
+              <Icon name="shield" size="sm" class="md:mr-1.5" />
+              <span class="hidden md:inline">{{ t('admin.requestAudit.settingsButton') }}</span>
+            </button>
             <div v-if="activeTab !== 'ranking'" class="relative" ref="columnDropdownRef">
               <button
                 data-testid="usage-column-settings"
@@ -132,8 +143,10 @@
             :default-sort-key="'created_at'"
             :default-sort-order="'desc'"
             @sort="handleSort"
+            clickable-rows
             @userClick="handleUserClick"
             @ipGeoBatchFailed="handleIpGeoBatchFailed"
+            @rowClick="openRequestAudit"
           />
           <Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" />
         </div>
@@ -181,6 +194,8 @@
     :hide-actions="true"
     @close="showBalanceHistoryModal = false; balanceHistoryUser = null"
   />
+  <RequestAuditDetailModal :show="showRequestAuditDetail" :usage-log-id="requestAuditUsageLogId" @close="showRequestAuditDetail = false" />
+  <RequestAuditSettingsDialog :show="showRequestAuditSettings" @close="showRequestAuditSettings = false" />
 </template>
 
 <script setup lang="ts">
@@ -194,7 +209,7 @@ import { formatReasoningEffort } from '@/utils/format'
 import { resolveUsageRequestType, requestTypeToLegacyStream } from '@/utils/usageRequestType'
 import AppLayout from '@/components/layout/AppLayout.vue'; import Pagination from '@/components/common/Pagination.vue'; import Select from '@/components/common/Select.vue'; import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import UsageStatsCards from '@/components/admin/usage/UsageStatsCards.vue'; import UsageFilters from '@/components/admin/usage/UsageFilters.vue'
-import UsageTable from '@/components/admin/usage/UsageTable.vue'; import UsageExportProgress from '@/components/admin/usage/UsageExportProgress.vue'
+import UsageTable from '@/components/admin/usage/UsageTable.vue'; import RequestAuditDetailModal from '@/components/admin/usage/RequestAuditDetailModal.vue'; import RequestAuditSettingsDialog from '@/components/admin/usage/RequestAuditSettingsDialog.vue'; import type { AdminUsageLog as RequestAuditUsageRow } from '@/types'; import UsageExportProgress from '@/components/admin/usage/UsageExportProgress.vue'
 import UserTokenRanking from '@/components/admin/usage/UserTokenRanking.vue'
 import UsageCleanupDialog from '@/components/admin/usage/UsageCleanupDialog.vue'
 import UserBalanceHistoryModal from '@/components/admin/user/UserBalanceHistoryModal.vue'
@@ -254,6 +269,14 @@ const breakdownFilters = computed(() => {
 const modelNameOptions = computed(() =>
   Array.from(new Set(requestedModelStats.value.map((m) => m.model).filter(Boolean))).sort()
 )
+
+const showRequestAuditDetail = ref(false)
+const showRequestAuditSettings = ref(false)
+const requestAuditUsageLogId = ref<number | null>(null)
+const openRequestAudit = (row: RequestAuditUsageRow) => {
+  requestAuditUsageLogId.value = row.id
+  showRequestAuditDetail.value = true
+}
 
 const handleUserClick = async (userId: number) => {
   try {

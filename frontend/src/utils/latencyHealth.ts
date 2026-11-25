@@ -83,3 +83,13 @@ export const formatUsageOutputRate = (row: Pick<UsageLog,
   }
   return `${(outputTokens * 1000 / durationMs).toFixed(1)} tok/s`
 }
+
+// 与仪表盘 Cache Hit Rate 一致：缓存读取 ÷ (输入 + 缓存读取 + 缓存创建)。
+export const formatUsageCacheRate = (row: Pick<UsageLog,
+  'input_tokens' | 'cache_read_tokens' | 'cache_creation_tokens'
+>): string => {
+  const cacheRead = row.cache_read_tokens || 0
+  const total = (row.input_tokens || 0) + cacheRead + (row.cache_creation_tokens || 0)
+  if (total <= 0) return '—'
+  return `${((cacheRead / total) * 100).toFixed(1)}%`
+}

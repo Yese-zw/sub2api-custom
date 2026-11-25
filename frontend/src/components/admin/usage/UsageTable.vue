@@ -24,14 +24,16 @@
         :server-side-sort="serverSideSort"
         :default-sort-key="defaultSortKey"
         :default-sort-order="defaultSortOrder"
+        :clickable-rows="clickableRows"
         @sort="(key, order) => $emit('sort', key, order)"
+        @row-click="handleRowClick"
       >
         <template #cell-user="{ row }">
           <div class="text-sm">
             <button
               v-if="row.user?.email"
               class="font-medium text-primary-600 underline decoration-dashed underline-offset-2 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              @click="$emit('userClick', row.user_id, row.user?.email)"
+              @click.stop="$emit('userClick', row.user_id, row.user?.email)"
               :title="t('admin.usage.clickToViewBalance')"
             >
               {{ row.user.email }}
@@ -251,6 +253,8 @@
               <span class="font-medium tabular-nums" :class="LATENCY_TEXT_CLASSES[durationSeverity(row.duration_ms ?? 0)]">{{ formatDuration(row.duration_ms) }}</span>
               <span class="text-gray-400 dark:text-gray-500" :title="t('usage.outputTpsHint')">{{ t('usage.outputTps') }}</span>
               <span data-testid="output-tps" class="font-medium tabular-nums text-gray-700 dark:text-gray-300">{{ formatUsageOutputRate(row) }}</span>
+              <span class="text-gray-400 dark:text-gray-500" :title="t('usage.cacheRateHint')">{{ t('usage.cacheRate') }}</span>
+              <span data-testid="cache-rate" class="font-medium tabular-nums text-sky-600 dark:text-sky-400">{{ formatUsageCacheRate(row) }}</span>
             </div>
           </div>
         </template>
@@ -269,7 +273,7 @@
               class="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
               :class="copiedRequestId === row.request_id ? 'text-green-500 hover:text-green-500' : ''"
               :title="copiedRequestId === row.request_id ? t('keys.copied') : t('keys.copyToClipboard')"
-              @click="copyRequestId(row.request_id)"
+              @click.stop="copyRequestId(row.request_id)"
             >
               <Icon :name="copiedRequestId === row.request_id ? 'check' : 'copy'" size="sm" class="h-3.5 w-3.5" />
             </button>
@@ -287,7 +291,7 @@
               class="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
               :class="copiedRequestId === row.upstream_request_id ? 'text-green-500 hover:text-green-500' : ''"
               :title="copiedRequestId === row.upstream_request_id ? t('keys.copied') : t('keys.copyToClipboard')"
-              @click="copyUpstreamRequestId(row.upstream_request_id)"
+              @click.stop="copyUpstreamRequestId(row.upstream_request_id)"
             >
               <Icon :name="copiedRequestId === row.upstream_request_id ? 'check' : 'copy'" size="sm" class="h-3.5 w-3.5" />
             </button>
@@ -570,6 +574,7 @@ import {
   LATENCY_TEXT_CLASSES,
   durationSeverity,
   firstTokenSeverity,
+  formatUsageCacheRate,
   formatUsageOutputRate,
 } from '@/utils/latencyHealth'
 import {
@@ -621,6 +626,8 @@ interface Props {
   showUpstreamEndpoint?: boolean
   /** 嵌入统一卡片内使用：去掉自身卡片外观 */
   flat?: boolean
+  /** 行可点击（管理员查看请求审计详情） */
+  clickableRows?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -630,13 +637,21 @@ const props = withDefaults(defineProps<Props>(), {
   defaultSortOrder: 'asc',
   showAccountBilling: true,
   showUpstreamEndpoint: true,
-  flat: false
+  flat: false,
+  clickableRows: false
 })
 const emit = defineEmits<{
   userClick: [userID: number, email?: string]
   sort: [key: string, order: 'asc' | 'desc']
   ipGeoBatchFailed: []
+  rowClick: [row: AdminUsageLog]
 }>()
+// 选中文本（复制内容）时不触发行点击。
+const handleRowClick = (row: AdminUsageLog) => {
+  const selection = typeof window !== 'undefined' ? window.getSelection?.()?.toString() : ''
+  if (selection) return
+  emit('rowClick', row)
+}
 const { t } = useI18n()
 const appStore = useAppStore()
 const copiedRequestId = ref<string | null>(null)
