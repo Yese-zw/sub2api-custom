@@ -245,7 +245,7 @@ func (s *AccountTestService) buildIQCheckRequest(ctx context.Context, account *A
 	} else {
 		req = req.WithContext(WithHTTPUpstreamProfile(req.Context(), HTTPUpstreamProfileOpenAI))
 	}
-	account.ApplyHeaderOverrides(req.Header)
+	account.ApplyHeaderOverrides(req.Context(), req.Header)
 	return req, nil
 }
 

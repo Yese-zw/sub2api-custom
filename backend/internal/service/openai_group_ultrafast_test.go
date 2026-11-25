@@ -63,15 +63,15 @@ func TestGroupForcedUltrafastScope(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.WithValue(context.Background(), ctxkey.Group, tc.group)
-			require.Equal(t, tc.want, openAIGroupForcedServiceTier(ctx, account))
+			require.Equal(t, tc.want, openAIGroupForcedServiceTier(ctx, account, "gpt-6.1-sol"))
 		})
 	}
 	ctx := context.WithValue(context.Background(), ctxkey.Group, &Group{
 		ID: 19, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ForceOpenAIUltrafast: true,
 	})
-	require.Empty(t, openAIGroupForcedServiceTier(nil, account))
-	require.Empty(t, openAIGroupForcedServiceTier(ctx, nil))
-	require.Empty(t, openAIGroupForcedServiceTier(ctx, &Account{Platform: PlatformAnthropic}))
+	require.Empty(t, openAIGroupForcedServiceTier(nil, account, "gpt-6.1-sol"))
+	require.Empty(t, openAIGroupForcedServiceTier(ctx, nil, "gpt-6.1-sol"))
+	require.Empty(t, openAIGroupForcedServiceTier(ctx, &Account{Platform: PlatformAnthropic}, "gpt-6.1-sol"))
 }
 
 func TestGroupForcedUltrafastLeavesOtherWebSocketFramesUntouched(t *testing.T) {
